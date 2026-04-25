@@ -47,8 +47,13 @@ const WhatsAppService = {
     return this.link(client.phone, `¡Hola ${client.name}! 👋 Te contactamos desde NATIVA 💧`);
   },
 
+  _isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  },
+
   openMaps(address) {
     const encoded = encodeURIComponent(address);
+    if (this._isIOS()) return `https://maps.apple.com/?q=${encoded}&dirflg=d`;
     return `https://www.google.com/maps/search/?api=1&query=${encoded}`;
   },
 
