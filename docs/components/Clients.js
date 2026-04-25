@@ -356,10 +356,11 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
               {client.address && <p className="text-sm text-slate-500 mt-2"><Icon name="mapPin" size={12} className="inline mr-1"/>{client.address}{client.city ? `, ${client.city}` : ''}</p>}
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
             {client.phone && <a href={WhatsAppService.generic(client)} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 transition-colors" title="WhatsApp"><Icon name="messageCircle" size={18} /></a>}
             {client.phone && <a href={`tel:${client.phone}`} className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-600 transition-colors" title="Llamar"><Icon name="phone" size={18} /></a>}
             <button onClick={() => onEdit(client)} className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-600 transition-colors" title="Editar"><Icon name="edit" size={18} /></button>
+            <ClientAccessBtn client={client} />
           </div>
         </div>
 
@@ -482,6 +483,53 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClientAccessBtn({ client }) {
+  const [loading, setLoading] = React.useState(false);
+  const [token, setToken] = React.useState(client.accessToken || null);
+
+  const getToken = async () => {
+    if (token) return token;
+    const t = await DataService.regenerateClientToken(client.id);
+    setToken(t);
+    return t;
+  };
+
+  const sendAccess = async () => {
+    if (!client.phone) { alert('El cliente no tiene teléfono registrado'); return; }
+    setLoading(true);
+    const t = await getToken();
+    const url = DataService.clientPortalUrl(t);
+    const msg = `¡Hola ${client.name}! 👋\n\nAcá tenés tu acceso al portal de clientes de *NATIVA* 💧\n\nPodés ver tus pedidos, facturas y puntos desde este link:\n${url}\n\n¡Guardalo para usarlo cuando quieras!`;
+    const wa = `https://wa.me/${(client.phone).replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
+    window.open(wa, '_blank');
+    setLoading(false);
+  };
+
+  const copyLink = async () => {
+    setLoading(true);
+    const t = await getToken();
+    const url = DataService.clientPortalUrl(t);
+    navigator.clipboard.writeText(url);
+    alert('Link copiado al portapapeles');
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex gap-1">
+      <button onClick={sendAccess} disabled={loading}
+        className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors disabled:opacity-50"
+        title="Enviar acceso por WhatsApp">
+        <Icon name="share2" size={18} />
+      </button>
+      <button onClick={copyLink} disabled={loading}
+        className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-500 transition-colors disabled:opacity-50"
+        title="Copiar link de acceso">
+        <Icon name="copy" size={18} />
+      </button>
     </div>
   );
 }

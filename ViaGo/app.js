@@ -1,10 +1,7 @@
-// NATIVA - Root App component: navigation, layout, module routing
+// NATIVA - Root App component
 
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
   componentDidCatch(error, info) { console.error('NATIVA error:', error, info); }
   render() {
@@ -18,7 +15,7 @@ class ErrorBoundary extends React.Component {
             <h1 className="text-xl font-bold text-slate-900 mb-2">Algo salió mal</h1>
             <p className="text-slate-500 mb-4 text-sm">{this.state.error?.message || 'Error inesperado'}</p>
             <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700">
-              Recargar aplicación
+              Recargar
             </button>
           </div>
         </div>
@@ -29,51 +26,20 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
-  const [user, setUser] = React.useState(undefined); // undefined=cargando, null=no logueado
+  const [loggedIn, setLoggedIn] = React.useState(!!sessionStorage.getItem('nativa_admin_ok'));
   const [config, setConfig] = React.useState({ companyName: 'NATIVA' });
   const [activeModule, setActiveModule] = React.useState('dashboard');
   const [navParams, setNavParams] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [initialized, setInitialized] = React.useState(false);
 
-  // Auth state listener
   React.useEffect(() => {
-    SupabaseDB.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-    const { data: { subscription } } = SupabaseDB.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Load config once logged in
-  React.useEffect(() => {
-    if (!user) return;
-    (async () => {
-      try {
-        const cfg = await DataService.getConfig();
-        if (!cfg.adminUserId) {
-          // First login: try to claim admin role
-          // Requires the "config_initial_setup" RLS policy in Supabase
-          try {
-            await DataService.setAdminUser(user.id);
-            DataService._configCache = null;
-            const updated = await DataService.getConfig();
-            setConfig(updated);
-          } catch {
-            // RLS policy not yet added — show config anyway
-            setConfig(cfg);
-          }
-        } else {
-          setConfig(cfg);
-        }
-      } catch (e) {
-        console.error('Init error:', e);
-      }
+    if (!loggedIn) return;
+    DataService.getConfig().then(cfg => {
+      setConfig(cfg);
       setInitialized(true);
-    })();
-  }, [user]);
+    }).catch(() => setInitialized(true));
+  }, [loggedIn]);
 
   const navigate = (module, params = null) => {
     setActiveModule(module);
@@ -82,8 +48,10 @@ function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleLogout = async () => {
-    await SupabaseDB.auth.signOut();
+  const handleLogout = () => {
+    sessionStorage.removeItem('nativa_admin_ok');
+    setLoggedIn(false);
+    setInitialized(false);
   };
 
   const moduleTitle = {
@@ -94,47 +62,31 @@ function App() {
 
   const renderModule = () => {
     switch (activeModule) {
-      case 'dashboard':  return <Dashboard onNavigate={navigate} />;
-      case 'clients':    return <Clients onNavigate={navigate} navParams={navParams} />;
-      case 'orders':     return <Orders onNavigate={navigate} navParams={navParams} />;
-      case 'delivery':   return <Delivery onNavigate={navigate} />;
-      case 'zones':      return <Zones />;
-      case 'billing':    return <Billing navParams={navParams} />;
-      case 'loyalty':    return <Loyalty />;
-      case 'products':   return <Products />;
-      case 'config':     return <Config onConfigChange={setConfig} />;
-      default:           return <Dashboard onNavigate={navigate} />;
+      case 'dashboard': return <Dashboard onNavigate={navigate} />;
+      case 'clients':   return <Clients onNavigate={navigate} navParams={navParams} />;
+      case 'orders':    return <Orders onNavigate={navigate} navParams={navParams} />;
+      case 'delivery':  return <Delivery onNavigate={navigate} />;
+      case 'zones':     return <Zones />;
+      case 'billing':   return <Billing navParams={navParams} />;
+      case 'loyalty':   return <Loyalty />;
+      case 'products':  return <Products />;
+      case 'config':    return <Config onConfigChange={cfg => setConfig(cfg)} />;
+      default:          return <Dashboard onNavigate={navigate} />;
     }
   };
 
-  // Loading auth
-  if (user === undefined) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
-            <Icon name="droplets" size={32} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
-          <div className="mt-4 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        </div>
-      </div>
-    );
-  }
+  if (!loggedIn) return <Auth onLogin={() => setLoggedIn(true)} />;
 
-  // Not logged in
-  if (user === null) return <Auth onLogin={setUser} />;
-
-  // Loading data after login
   if (!initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
             <Icon name="droplets" size={32} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
-          <p className="text-slate-400 text-sm mt-1">Cargando datos...</p>
+          <p className="text-slate-400 text-sm mt-1">Cargando...</p>
           <div className="mt-4 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       </div>
@@ -148,7 +100,7 @@ function App() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile header */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-slate-600">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 text-slate-600">
             <Icon name="menu" size={22} />
           </button>
           <div className="flex items-center gap-2 flex-1">
@@ -167,7 +119,7 @@ function App() {
         {/* Desktop header */}
         <header className="hidden lg:flex items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100 flex-shrink-0">
           <nav className="flex items-center gap-1 text-sm text-slate-400">
-            <span className="font-medium text-blue-600">{config.companyName}</span>
+            <span className="font-medium text-blue-600">{config.companyName || 'NATIVA'}</span>
             <Icon name="chevRight" size={14} />
             <span className="font-medium text-slate-700">{moduleTitle[activeModule]}</span>
           </nav>
@@ -195,23 +147,16 @@ function App() {
 function QuickStats() {
   const [pending, setPending] = React.useState(0);
   React.useEffect(() => {
-    DataService.getTodayOrders().then(orders => {
-      setPending(orders.filter(o => o.status === 'pendiente').length);
-    });
+    DataService.getTodayOrders().then(orders => setPending(orders.filter(o => o.status === 'pendiente').length));
   }, []);
   if (pending === 0) return null;
   return (
     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-full text-amber-700 font-medium text-xs">
-      <Icon name="truck" size={12} />
-      {pending} pendiente{pending !== 1 ? 's' : ''} hoy
+      <Icon name="truck" size={12} />{pending} pendiente{pending !== 1 ? 's' : ''} hoy
     </div>
   );
 }
 
 const rootEl = document.getElementById('root');
 const root = ReactDOM.createRoot(rootEl);
-root.render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-);
+root.render(<ErrorBoundary><App /></ErrorBoundary>);

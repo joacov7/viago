@@ -118,9 +118,18 @@ const DataService = {
     const { data } = await this._sb.from('clients').select('*').eq('id', id).single();
     return this._js(data);
   },
-  async getClientByUserId(userId) {
-    const { data } = await this._sb.from('clients').select('*').eq('user_id', userId).single();
+  async getClientByToken(token) {
+    const { data } = await this._sb.from('clients').select('*').eq('access_token', token).eq('active', true).single();
     return this._js(data);
+  },
+  async regenerateClientToken(id) {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+    await this._sb.from('clients').update({ access_token: token }).eq('id', id);
+    return token;
+  },
+  clientPortalUrl(token) {
+    const base = window.location.href.replace('index.html', '').replace(/\/$/, '');
+    return `${base}/client.html?token=${token}`;
   },
   async getClientByReferral(code) {
     const { data } = await this._sb.from('clients').select('*').eq('referral_code', code).single();
