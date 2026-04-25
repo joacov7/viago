@@ -95,6 +95,7 @@ const DataService = {
     const code = this._genClientCode();
     const client = {
       id: this._nextId(clients), code, name: data.name, address: data.address || '',
+      city: data.city || '',
       phone: data.phone || '', email: data.email || '', zoneId: data.zoneId ? parseInt(data.zoneId) : null,
       type: data.type || 'hogar', frequency: data.frequency || 'semanal',
       deliveryDay: data.deliveryDay || '', points: 0, referralCode: this._genReferralCode(code),

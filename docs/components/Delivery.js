@@ -42,7 +42,8 @@ function Delivery({ onNavigate }) {
   const handleCobro = (order) => setShowCobro(order);
 
   const allAddresses = filtered.map(o => o.client.address).filter(Boolean);
-  const mapUrl = WhatsAppService.openRoute(allAddresses);
+  const allCities = filtered.filter(o => o.client.address).map(o => o.client.city || '');
+  const mapUrl = WhatsAppService.openRoute(allAddresses, allCities);
 
   if (driverMode) {
     return (
@@ -144,9 +145,9 @@ function DeliveryRow({ order, onStatus, onCobro }) {
             </div>
             <p className="font-semibold text-slate-900">{order.client?.name || `#${order.clientId}`}</p>
             {order.client?.address && (
-              <a href={WhatsAppService.openMaps(order.client.address)} target="_blank" rel="noopener noreferrer"
+              <a href={WhatsAppService.openMaps(order.client.address, order.client.city)} target="_blank" rel="noopener noreferrer"
                 className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 mt-0.5">
-                <Icon name="mapPin" size={11} />{order.client.address}
+                <Icon name="mapPin" size={11} />{order.client.address}{order.client.city ? `, ${order.client.city}` : ''}
               </a>
             )}
           </div>
@@ -435,7 +436,7 @@ function DriverOrderDetail({ order, distance, onBack, onStatus, onCobro }) {
           <p className="text-xs text-slate-400 uppercase font-semibold mb-2">Dirección</p>
           <p className="text-base font-medium text-slate-900">{order.client?.address || 'Sin dirección'}</p>
           {order.client?.address && (
-            <a href={WhatsAppService.openMaps(order.client.address)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-blue-600 text-sm font-medium">
+            <a href={WhatsAppService.openMaps(order.client.address, order.client.city)} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 text-blue-600 text-sm font-medium">
               <Icon name="navigation" size={16} />Abrir en Maps
             </a>
           )}
