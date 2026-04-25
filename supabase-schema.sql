@@ -1,5 +1,5 @@
 -- ============================================================
--- NATIVA - Supabase Schema
+-- NATIVA - Supabase Schema completo
 -- Ejecutar en: Supabase Dashboard → SQL Editor → New query
 -- ============================================================
 
@@ -20,7 +20,7 @@ create table if not exists config (
   mp_public_key text default '',
   whatsapp_number text default '',
   payment_methods jsonb default '["efectivo","transferencia","mercadopago"]',
-  admin_user_id uuid
+  admin_password text default ''
 );
 insert into config (id) values (1) on conflict (id) do nothing;
 
@@ -62,7 +62,7 @@ create table if not exists clients (
   referred_by bigint references clients(id) on delete set null,
   active boolean default true,
   notes text default '',
-  user_id uuid references auth.users(id) on delete set null,
+  access_token text,
   created_at timestamptz default now()
 );
 
@@ -120,57 +120,13 @@ create table if not exists promotions (
 );
 
 -- ============================================================
--- Row Level Security (RLS)
+-- Deshabilitar RLS (sin Supabase Auth, no se necesita)
 -- ============================================================
-
-alter table config enable row level security;
-alter table zones enable row level security;
-alter table products enable row level security;
-alter table clients enable row level security;
-alter table orders enable row level security;
-alter table invoices enable row level security;
-alter table points_history enable row level security;
-alter table promotions enable row level security;
-
--- Función: verifica si el usuario actual es el admin
-create or replace function is_admin()
-returns boolean language sql security definer as $$
-  select coalesce(
-    (select auth.uid() = admin_user_id from config where id = 1),
-    false
-  )
-$$;
-
--- Config: admin full + cualquier auth puede leer (para primer login)
-create policy "config_admin_all" on config for all using (is_admin()) with check (is_admin());
-create policy "config_read_auth"  on config for select using (auth.role() = 'authenticated');
-
--- Zonas: admin full, clientes solo lectura
-create policy "zones_admin"       on zones for all    using (is_admin()) with check (is_admin());
-create policy "zones_client_read" on zones for select using (auth.role() = 'authenticated');
-
--- Productos: admin full, clientes solo lectura
-create policy "products_admin"       on products for all    using (is_admin()) with check (is_admin());
-create policy "products_client_read" on products for select using (auth.role() = 'authenticated');
-
--- Clientes: admin full, cliente lee/edita su propio registro
-create policy "clients_admin"       on clients for all    using (is_admin()) with check (is_admin());
-create policy "clients_self_read"   on clients for select using (user_id = auth.uid());
-create policy "clients_self_update" on clients for update using (user_id = auth.uid()) with check (user_id = auth.uid());
-
--- Pedidos: admin full, cliente lee/crea los suyos
-create policy "orders_admin"         on orders for all    using (is_admin()) with check (is_admin());
-create policy "orders_client_read"   on orders for select using (client_id in (select id from clients where user_id = auth.uid()));
-create policy "orders_client_insert" on orders for insert with check (client_id in (select id from clients where user_id = auth.uid()));
-
--- Facturas: admin full, cliente solo lee las suyas
-create policy "invoices_admin"       on invoices for all    using (is_admin()) with check (is_admin());
-create policy "invoices_client_read" on invoices for select using (client_id in (select id from clients where user_id = auth.uid()));
-
--- Puntos: admin full, cliente solo lee los suyos
-create policy "points_admin"       on points_history for all    using (is_admin()) with check (is_admin());
-create policy "points_client_read" on points_history for select using (client_id in (select id from clients where user_id = auth.uid()));
-
--- Promociones: admin full, clientes solo lectura
-create policy "promotions_admin"       on promotions for all    using (is_admin()) with check (is_admin());
-create policy "promotions_client_read" on promotions for select using (auth.role() = 'authenticated');
+alter table config disable row level security;
+alter table zones disable row level security;
+alter table products disable row level security;
+alter table clients disable row level security;
+alter table orders disable row level security;
+alter table invoices disable row level security;
+alter table points_history disable row level security;
+alter table promotions disable row level security;
