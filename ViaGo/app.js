@@ -1,135 +1,170 @@
+// NATIVA - Root App component: navigation, layout, module routing
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
   }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo.componentStack);
-  }
-
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('NATIVA error:', error, info); }
   render() {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-4">We're sorry, but something unexpected happened.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="btn btn-black"
-            >
-              Reload Page
+          <div className="text-center max-w-md p-8">
+            <div className="w-16 h-16 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <Icon name="alertCircle" size={32} className="text-red-500" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 mb-2">Algo salió mal</h1>
+            <p className="text-slate-500 mb-4 text-sm">{this.state.error?.message || 'Error inesperado'}</p>
+            <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700">
+              Recargar aplicación
             </button>
           </div>
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
 function App() {
-  try {
-    const [activeTab, setActiveTab] = React.useState('new');
-    const [shipments, setShipments] = React.useState([]);
-    const [loading, setLoading] = React.useState(false);
+  const [activeModule, setActiveModule] = React.useState('dashboard');
+  const [navParams, setNavParams] = React.useState(null);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [initialized, setInitialized] = React.useState(false);
 
-    const loadShipments = async () => {
-      setLoading(true);
-      try {
-        const shipmentsData = await ShipmentService.getShipments();
-        setShipments(shipmentsData);
-      } catch (error) {
-        alert('Error al cargar envíos: ' + error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  React.useEffect(() => {
+    DataService.seedData();
+    setInitialized(true);
+  }, []);
 
-    const handleCreateShipment = async (shipmentData) => {
-      try {
-        await ShipmentService.createShipment(shipmentData);
-        alert('Envío creado exitosamente');
-        setActiveTab('shipments');
-        loadShipments();
-      } catch (error) {
-        alert('Error al crear envío: ' + error.message);
-      }
-    };
+  const navigate = (module, params = null) => {
+    setActiveModule(module);
+    setNavParams(params);
+    setSidebarOpen(false);
+    window.scrollTo(0, 0);
+  };
 
-    const handleUpdateShipment = async (shipmentId, updateData) => {
-      try {
-        await ShipmentService.updateShipment(shipmentId, updateData);
-        loadShipments();
-      } catch (error) {
-        throw error;
-      }
-    };
+  const moduleTitle = {
+    dashboard:  'Dashboard',
+    clients:    'Clientes',
+    orders:     'Pedidos',
+    delivery:   'Reparto',
+    zones:      'Zonas',
+    billing:    'Facturación',
+    loyalty:    'Fidelización',
+    products:   'Productos',
+    config:     'Configuración',
+  };
 
-    React.useEffect(() => {
-      if (activeTab === 'shipments' || activeTab === 'tracking' || activeTab === 'driver') {
-        loadShipments();
-      }
-    }, [activeTab]);
+  const renderModule = () => {
+    switch (activeModule) {
+      case 'dashboard':  return <Dashboard onNavigate={navigate} />;
+      case 'clients':    return <Clients onNavigate={navigate} navParams={navParams} />;
+      case 'orders':     return <Orders onNavigate={navigate} navParams={navParams} />;
+      case 'delivery':   return <Delivery onNavigate={navigate} />;
+      case 'zones':      return <Zones />;
+      case 'billing':    return <Billing navParams={navParams} />;
+      case 'loyalty':    return <Loyalty />;
+      case 'products':   return <Products />;
+      case 'config':     return <Config />;
+      default:           return <Dashboard onNavigate={navigate} />;
+    }
+  };
 
+  if (!initialized) {
     return (
-      <div className="min-h-screen bg-gray-50" data-name="app" data-file="app.js">
-        <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-2 bg-white border-b">
-          <Header activeTab={activeTab} setActiveTab={setActiveTab} />
-          <NotificationCenter shipments={shipments} />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
+            <Icon name="droplets" size={32} className="text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
+          <p className="text-slate-400 text-sm mt-1">Iniciando sistema...</p>
+          <div className="mt-4 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
-        
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {activeTab === 'new' && (
-            <ShipmentForm onSubmit={handleCreateShipment} />
-          )}
-          
-          {activeTab === 'shipments' && (
-            <ShipmentList 
-              shipments={shipments}
-              loading={loading}
-              onRefresh={loadShipments}
-            />
-          )}
-          
-          {activeTab === 'tracking' && (
-            <TrackingMap shipments={shipments} />
-          )}
-          
-          {activeTab === 'driver' && (
-            <DriverPanel 
-              shipments={shipments}
-              onUpdateShipment={handleUpdateShipment}
-            />
-          )}
-          
-          {activeTab === 'reports' && (
-            <ReportsPanel shipments={shipments} />
-          )}
-          
-          {activeTab === 'fleet' && (
-            <FleetManagement />
-          )}
-          
-          {activeTab === 'billing' && (
-            <BillingPanel shipments={shipments} />
-          )}
-        </main>
       </div>
     );
-  } catch (error) {
-    console.error('App component error:', error);
-    return null;
   }
+
+  // Full-screen driver mode (Delivery module handles its own layout when in driver mode)
+  const isDriverMode = activeModule === 'delivery';
+
+  return (
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar
+        activeModule={activeModule}
+        onNavigate={navigate}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top header (mobile) */}
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-slate-600">
+            <Icon name="menu" size={22} />
+          </button>
+          <div className="flex items-center gap-2 flex-1">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
+              <Icon name="droplets" size={14} className="text-white" />
+            </div>
+            <span className="font-bold text-slate-900">{moduleTitle[activeModule] || 'NATIVA'}</span>
+          </div>
+          {activeModule !== 'config' && (
+            <button onClick={() => navigate('config')} className="p-2 rounded-xl hover:bg-gray-100 text-slate-400">
+              <Icon name="settings" size={18} />
+            </button>
+          )}
+        </header>
+
+        {/* Desktop header */}
+        <header className="hidden lg:flex items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <nav className="flex items-center gap-1 text-sm text-slate-400">
+              <span className="font-medium text-blue-600">{DataService.getConfig().companyName}</span>
+              <Icon name="chevRight" size={14} />
+              <span className="font-medium text-slate-700">{moduleTitle[activeModule]}</span>
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400">{DataService.formatDate(DataService.today())}</span>
+            <div className="w-px h-4 bg-gray-200" />
+            <QuickStats />
+          </div>
+        </header>
+
+        {/* Module content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+            {renderModule()}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+function QuickStats() {
+  const pending = DataService.getTodayOrders().filter(o => o.status === 'pendiente').length;
+  return (
+    <div className="flex items-center gap-3 text-xs">
+      {pending > 0 && (
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-full text-amber-700 font-medium">
+          <Icon name="truck" size={12} />
+          {pending} pendiente{pending !== 1 ? 's' : ''} hoy
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Mount the app
+const rootEl = document.getElementById('root');
+const root = ReactDOM.createRoot(rootEl);
 root.render(
   <ErrorBoundary>
     <App />

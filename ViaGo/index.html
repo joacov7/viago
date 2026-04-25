@@ -1,89 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CargoExpress - Transporte de Carga</title>
-    <meta name="description" content="Plataforma de transporte de carga rápida y confiable">
-    <meta name="keywords" content="transporte, carga, envíos, logística">
-    <meta property="og:title" content="CargoExpress - Transporte de Carga">
-    <meta property="og:description" content="Plataforma de transporte de carga rápida y confiable">
-    <meta name="twitter:title" content="CargoExpress - Transporte de Carga">
-    <meta name="twitter:description" content="Plataforma de transporte de carga rápida y confiable">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>NATIVA — Gestión de distribución de agua</title>
+  <meta name="description" content="Sistema de gestión para distribución de agua: clientes, pedidos, reparto, facturación y fidelización.">
+  <meta name="theme-color" content="#2563EB">
 
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+  <!-- React 18 -->
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
 
-    <style type="text/tailwindcss">
-    @layer base {
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Base styles */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #f8fafc;
     }
+    #root { height: 100%; }
 
-    @layer components {
-        .btn-primary {
-            @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200;
-        }
-        .btn-secondary {
-            @apply bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 px-6 rounded-lg transition-colors duration-200;
-        }
-        .card {
-            @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
-        }
-        .status-badge {
-            @apply px-3 py-1 rounded-full text-sm font-medium;
-        }
-        .status-pending {
-            @apply bg-yellow-100 text-yellow-800;
-        }
-        .status-assigned {
-            @apply bg-blue-100 text-blue-800;
-        }
-        .status-transit {
-            @apply bg-purple-100 text-purple-800;
-        }
-        .status-delivered {
-            @apply bg-green-100 text-green-800;
-        }
-        .status-cancelled {
-            @apply bg-red-100 text-red-800;
-        }
-    }
-    </style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-    <div id="root"></div>
-    <script type="text/babel" src="components/Header.js"></script>
-    <script type="text/babel" src="components/ShipmentForm.js"></script>
-    <script type="text/babel" src="components/ShipmentCard.js"></script>
-    <script type="text/babel" src="components/ShipmentList.js"></script>
-    <script type="text/babel" src="components/PriceCalculator.js"></script>
-    <script type="text/babel" src="components/TrackingMap.js"></script>
-    <script type="text/babel" src="components/DriverPanel.js"></script>
-    <script type="text/babel" src="components/NotificationCenter.js"></script>
-    <script type="text/babel" src="components/RatingSystem.js"></script>
-    <script type="text/babel" src="components/ReportsPanel.js"></script>
-    <script type="text/babel" src="components/FleetManagement.js"></script>
-    <script type="text/babel" src="components/ChatSystem.js"></script>
-    <script type="text/babel" src="components/BillingPanel.js"></script>
-    <script type="text/babel" src="components/RouteOptimizer.js"></script>
-    <script type="text/babel" src="components/GeofencingPanel.js"></script>
-    <script type="text/babel" src="components/DemandPredictor.js"></script>
-    <script type="text/babel" src="components/InventoryManager.js"></script>
-    <script type="text/babel" src="utils/shipmentService.js"></script>
-    <script type="text/babel" src="utils/notificationService.js"></script>
-    <script type="text/babel" src="utils/trackingService.js"></script>
-    <script type="text/babel" src="utils/analyticsService.js"></script>
-    <script type="text/babel" src="utils/chatService.js"></script>
-    <script type="text/babel" src="utils/billingService.js"></script>
-    <script type="text/babel" src="utils/routeService.js"></script>
-    <script type="text/babel" src="utils/geofencingService.js"></script>
-    <script type="text/babel" src="utils/aiPredictionService.js"></script>
-    <script type="text/babel" src="utils/inventoryService.js"></script>
-    <script type="text/babel" src="app.js"></script>
+    /* Smooth transitions */
+    * { transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms; }
+
+    /* Spinner animation */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+
+    /* Hide scrollbar for horizontal scroll */
+    .overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
+    .overflow-x-auto::-webkit-scrollbar { display: none; }
+
+    /* Focus ring */
+    *:focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
+
+    /* Number inputs: remove spinners */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+
+  <div id="root"></div>
+
+  <!-- Utility services (load first, no dependencies) -->
+  <script type="text/babel" src="utils/dataService.js"></script>
+  <script type="text/babel" src="utils/icons.js"></script>
+  <script type="text/babel" src="utils/whatsappService.js"></script>
+  <script type="text/babel" src="utils/pdfService.js"></script>
+
+  <!-- Shared UI primitives (Sidebar.js includes Modal, Btn, etc.) -->
+  <script type="text/babel" src="components/Sidebar.js"></script>
+
+  <!-- Feature modules -->
+  <script type="text/babel" src="components/Dashboard.js"></script>
+  <script type="text/babel" src="components/Clients.js"></script>
+  <script type="text/babel" src="components/Orders.js"></script>
+  <script type="text/babel" src="components/Delivery.js"></script>
+  <script type="text/babel" src="components/Zones.js"></script>
+  <script type="text/babel" src="components/Billing.js"></script>
+  <script type="text/babel" src="components/Loyalty.js"></script>
+  <script type="text/babel" src="components/Products.js"></script>
+  <script type="text/babel" src="components/Config.js"></script>
+
+  <!-- Root App -->
+  <script type="text/babel" src="app.js"></script>
 </head>
 <body>
 </body>
