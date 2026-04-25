@@ -213,14 +213,64 @@ function DeliveryRow({ order, onStatus, onCobro }) {
 
 function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivered }) {
   const [current, setCurrent] = React.useState(null);
+  const [gpsPos, setGpsPos] = React.useState(null);
+  const [gpsStatus, setGpsStatus] = React.useState('requesting');
+  const [distances, setDistances] = React.useState({});
+  const watchRef = React.useRef(null);
+  const geocodedRef = React.useRef(false);
 
-  const pendingOrders = orders.filter(o => o.status === 'pendiente');
+  React.useEffect(() => {
+    watchRef.current = GeoService.watchPosition(
+      (pos) => {
+        setGpsStatus('active');
+        setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy) });
+      },
+      () => setGpsStatus('error')
+    );
+    return () => GeoService.clearWatch(watchRef.current);
+  }, []);
+
+  // Geocode addresses once when GPS first becomes available
+  React.useEffect(() => {
+    if (!gpsPos || geocodedRef.current) return;
+    geocodedRef.current = true;
+    const pending = orders.filter(o => o.status === 'pendiente' && o.client?.address);
+    (async () => {
+      for (const order of pending) {
+        const coords = await GeoService.geocode(order.client.address);
+        if (coords) {
+          const d = GeoService.distance(gpsPos.lat, gpsPos.lng, coords.lat, coords.lng);
+          setDistances(prev => ({ ...prev, [order.id]: d }));
+        }
+        await new Promise(r => setTimeout(r, 1100)); // Nominatim rate limit: 1 req/s
+      }
+    })();
+  }, [gpsPos]);
+
+  // Update distances from cached coords on every position update
+  React.useEffect(() => {
+    if (!gpsPos) return;
+    const cache = GeoService._getCache();
+    orders.forEach(order => {
+      if (!order.client?.address) return;
+      const coords = cache[order.client.address];
+      if (coords) {
+        const d = GeoService.distance(gpsPos.lat, gpsPos.lng, coords.lat, coords.lng);
+        setDistances(prev => ({ ...prev, [order.id]: d }));
+      }
+    });
+  }, [gpsPos]);
+
+  const pendingOrders = orders
+    .filter(o => o.status === 'pendiente')
+    .sort((a, b) => (distances[a.id] ?? Infinity) - (distances[b.id] ?? Infinity));
   const deliveredOrders = orders.filter(o => o.status === 'entregado');
 
   if (current) {
     return (
       <DriverOrderDetail
         order={current}
+        distance={distances[current.id]}
         onBack={() => setCurrent(null)}
         onStatus={(id, status) => { onStatus(id, status); setCurrent(null); }}
         onCobro={onCobro}
@@ -230,7 +280,6 @@ function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivere
 
   return (
     <div className="min-h-screen" style={{ background: '#0f2142' }}>
-      {/* Driver header */}
       <div className="px-4 pt-6 pb-4">
         <div className="flex items-center justify-between mb-4">
           <button onClick={onBack} className="flex items-center gap-2 text-blue-300 hover:text-white">
@@ -243,6 +292,23 @@ function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivere
           </div>
         </div>
 
+        {/* GPS status bar */}
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-3 text-xs font-medium ${
+          gpsStatus === 'active' ? 'bg-emerald-500 bg-opacity-20 text-emerald-300' :
+          gpsStatus === 'error'  ? 'bg-red-500 bg-opacity-20 text-red-300' :
+                                   'bg-white bg-opacity-10 text-blue-300'
+        }`}>
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+            gpsStatus === 'active' ? 'bg-emerald-400 animate-pulse' :
+            gpsStatus === 'error'  ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'
+          }`} />
+          <span>{
+            gpsStatus === 'active' ? `GPS activo · ±${gpsPos?.accuracy} m` :
+            gpsStatus === 'error'  ? 'GPS no disponible — activá la ubicación' :
+                                     'Buscando señal GPS...'
+          }</span>
+        </div>
+
         {/* Progress */}
         <div className="bg-white bg-opacity-10 rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between mb-3">
@@ -250,10 +316,8 @@ function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivere
             <span className="text-blue-300 text-sm">{orders.length > 0 ? Math.round((delivered/orders.length)*100) : 0}%</span>
           </div>
           <div className="w-full bg-white bg-opacity-20 rounded-full h-2.5">
-            <div
-              className="h-2.5 rounded-full bg-emerald-400 transition-all duration-500"
-              style={{ width: `${orders.length > 0 ? (delivered/orders.length)*100 : 0}%` }}
-            />
+            <div className="h-2.5 rounded-full bg-emerald-400 transition-all duration-500"
+              style={{ width: `${orders.length > 0 ? (delivered/orders.length)*100 : 0}%` }} />
           </div>
         </div>
 
@@ -278,9 +342,10 @@ function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivere
           <>
             <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-3">
               Pendientes ({pendingOrders.length})
+              {gpsStatus === 'active' && <span className="ml-2 text-xs text-blue-500 font-normal normal-case">· ordenados por distancia</span>}
             </h3>
             <div className="space-y-3 mb-6">
-              {pendingOrders.map(o => <DriverCard key={o.id} order={o} onTap={() => setCurrent(o)} />)}
+              {pendingOrders.map(o => <DriverCard key={o.id} order={o} distance={distances[o.id]} onTap={() => setCurrent(o)} />)}
             </div>
           </>
         )}
@@ -304,31 +369,49 @@ function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivere
   );
 }
 
-function DriverCard({ order, onTap, dim = false }) {
+function DriverCard({ order, onTap, dim = false, distance }) {
+  const nearby = GeoService.isNearby(distance);
   return (
-    <button onClick={onTap} className={`w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-gray-100 transition-opacity ${dim ? 'opacity-50' : ''}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            {order.zone?.name && <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ background: order.zone.color || '#6B7280' }}>{order.zone.name}</span>}
-            {dim && <span className="text-xs text-emerald-600 font-medium">✓ Entregado</span>}
+    <div className={`bg-white rounded-2xl shadow-sm overflow-hidden transition-opacity ${dim ? 'opacity-50' : ''} ${nearby ? 'border-2 border-emerald-400' : 'border border-gray-100'}`}>
+      <button onClick={onTap} className="w-full text-left p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {order.zone?.name && <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ background: order.zone.color || '#6B7280' }}>{order.zone.name}</span>}
+              {dim && <span className="text-xs text-emerald-600 font-medium">✓ Entregado</span>}
+              {nearby && <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full animate-pulse">📍 ¡Estás cerca!</span>}
+            </div>
+            <p className="font-semibold text-slate-900 text-base">{order.client?.name || `#${order.clientId}`}</p>
+            <p className="text-sm text-slate-500 truncate">{order.client?.address || '—'}</p>
+            <p className="text-xs text-slate-400 mt-1 truncate">{(order.items||[]).map(i=>`${i.quantity}x ${i.productName}`).join(', ')}</p>
+            {distance !== undefined && (
+              <p className={`text-xs font-semibold mt-1 ${nearby ? 'text-emerald-600' : 'text-blue-500'}`}>
+                📍 {GeoService.formatDistance(distance)}
+              </p>
+            )}
           </div>
-          <p className="font-semibold text-slate-900 text-base">{order.client?.name || `#${order.clientId}`}</p>
-          <p className="text-sm text-slate-500 truncate">{order.client?.address || '—'}</p>
-          <p className="text-xs text-slate-400 mt-1 truncate">{(order.items||[]).map(i=>`${i.quantity}x ${i.productName}`).join(', ')}</p>
+          <div className="text-right flex-shrink-0">
+            <p className="text-lg font-bold text-slate-900">{DataService.formatCurrency(order.total)}</p>
+            <Icon name="chevRight" size={18} className="text-slate-400 ml-auto mt-1" />
+          </div>
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-lg font-bold text-slate-900">{DataService.formatCurrency(order.total)}</p>
-          <Icon name="chevRight" size={18} className="text-slate-400 ml-auto mt-1" />
+      </button>
+      {nearby && order.client?.phone && (
+        <div className="px-4 pb-4">
+          <a href={WhatsAppService.comingSoon(order.client)} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold">
+            <Icon name="messageCircle" size={16} />Avisar que llego
+          </a>
         </div>
-      </div>
-    </button>
+      )}
+    </div>
   );
 }
 
-function DriverOrderDetail({ order, onBack, onStatus, onCobro }) {
+function DriverOrderDetail({ order, distance, onBack, onStatus, onCobro }) {
   const invoice = DataService.getInvoices().find(i => i.orderId === order.id);
   const paid = invoice && invoice.paymentStatus === 'pagado';
+  const nearby = GeoService.isNearby(distance);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -338,7 +421,10 @@ function DriverOrderDetail({ order, onBack, onStatus, onCobro }) {
         </button>
         <div className="flex-1">
           <p className="font-bold text-slate-900">{order.client?.name}</p>
-          <p className="text-xs text-slate-500">{order.zone?.name || '—'}</p>
+          <p className="text-xs text-slate-500">
+            {order.zone?.name || '—'}
+            {distance !== undefined && <span className={`ml-2 font-semibold ${nearby ? 'text-emerald-600' : 'text-blue-500'}`}>· 📍 {GeoService.formatDistance(distance)}</span>}
+          </p>
         </div>
         <StatusBadge status={order.status} />
       </div>
@@ -372,6 +458,14 @@ function DriverOrderDetail({ order, onBack, onStatus, onCobro }) {
             <p className="text-xl font-bold text-slate-900">{DataService.formatCurrency(order.total)}</p>
           </div>
         </div>
+
+        {/* Proximity alert */}
+        {nearby && order.client?.phone && (
+          <a href={WhatsAppService.comingSoon(order.client)} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-3 w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-2xl shadow-sm">
+            <Icon name="messageCircle" size={24} />Avisar que llego · {GeoService.formatDistance(distance)}
+          </a>
+        )}
 
         {/* Contact */}
         {order.client?.phone && (

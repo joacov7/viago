@@ -38,6 +38,11 @@ const WhatsAppService = {
     return this.link(client.phone, msg);
   },
 
+  comingSoon(client) {
+    const msg = `¡Hola ${client.name}! 🚚\n\nSoy el repartidor de *NATIVA*. Estoy llegando a tu domicilio en los próximos minutos.\n\n📍 *${client.address || 'Tu dirección registrada'}*\n\nTené listo el pago por favor. ¡Hasta enseguida! 💧`;
+    return this.link(client.phone, msg);
+  },
+
   generic(client) {
     return this.link(client.phone, `¡Hola ${client.name}! 👋 Te contactamos desde NATIVA 💧`);
   },
