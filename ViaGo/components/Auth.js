@@ -17,7 +17,10 @@ function Auth({ onLogin }) {
       if (mode === 'login') {
         result = await SupabaseDB.auth.signInWithPassword({ email, password });
       } else {
-        result = await SupabaseDB.auth.signUp({ email, password });
+        result = await SupabaseDB.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: 'https://joacov7.github.io/viago/' },
+        });
         if (!result.error && result.data?.user && !result.data.session) {
           setInfo('Revisá tu email para confirmar la cuenta, luego volvé a iniciar sesión.');
           setLoading(false); return;

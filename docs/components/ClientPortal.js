@@ -33,7 +33,7 @@ function ClientLogin({ onLogin }) {
     setError(''); setLoading(true);
     const { error } = await SupabaseDB.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.href },
+      options: { emailRedirectTo: 'https://joacov7.github.io/viago/client.html' },
     });
     setLoading(false);
     if (error) setError(error.message);
