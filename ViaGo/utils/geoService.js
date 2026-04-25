@@ -31,7 +31,7 @@ const GeoService = {
     if (cache[address]) return cache[address];
 
     const config = DataService.getConfig();
-    const cityHint = config.address ? config.address.split(',').slice(1).join(',').trim() : '';
+    const cityHint = (config.city || '').trim();
     const q = cityHint ? `${address}, ${cityHint}` : address;
 
     try {

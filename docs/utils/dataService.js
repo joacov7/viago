@@ -32,6 +32,7 @@ const DataService = {
       phone: '',
       email: '',
       address: '',
+      city: '',
       primaryColor: '#2563EB',
       pointsPerOrder: 10,
       pointsForReward: 100,

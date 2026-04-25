@@ -51,19 +51,26 @@ const WhatsAppService = {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   },
 
+  _fullAddress(address) {
+    const city = (DataService.getConfig().city || '').trim();
+    return city ? `${address}, ${city}` : address;
+  },
+
   openMaps(address) {
-    const encoded = encodeURIComponent(address);
+    const encoded = encodeURIComponent(this._fullAddress(address));
     if (this._isIOS()) return `https://maps.apple.com/?q=${encoded}&dirflg=d`;
     return `https://www.google.com/maps/search/?api=1&query=${encoded}`;
   },
 
   openRoute(addresses) {
     if (!addresses || addresses.length === 0) return '#';
-    const origin = encodeURIComponent(addresses[0]);
-    const destination = encodeURIComponent(addresses[addresses.length - 1]);
-    const waypoints = addresses.slice(1, -1).map(a => encodeURIComponent(a)).join('|');
+    const full = addresses.map(a => this._fullAddress(a));
+    const origin = encodeURIComponent(full[0]);
+    const destination = encodeURIComponent(full[full.length - 1]);
+    const waypoints = full.slice(1, -1).map(a => encodeURIComponent(a)).join('|');
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
     if (waypoints) url += `&waypoints=optimize:true|${waypoints}`;
     return url;
   },
+
 };

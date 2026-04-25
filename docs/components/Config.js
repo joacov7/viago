@@ -76,6 +76,16 @@ function Config() {
                   </FormField>
                 </div>
 
+                <FormField label="Ciudad / Localidad" hint="Se agrega automáticamente a todas las direcciones al abrir en Maps y calcular distancias. Ej: Córdoba, Argentina">
+                  <input value={config.city || ''} onChange={e => set('city', e.target.value)} className={inputCls()} placeholder="Ej: Córdoba, Argentina" />
+                </FormField>
+                {config.city && (
+                  <div className="p-3 bg-blue-50 rounded-xl flex items-start gap-2">
+                    <Icon name="mapPin" size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700">Las direcciones se abrirán como: <strong>"Belgrano 526, {config.city}"</strong></p>
+                  </div>
+                )}
+
                 {/* Brand preview */}
                 <div className="mt-4 p-5 rounded-2xl border-2 border-dashed border-gray-200">
                   <p className="text-xs text-slate-400 uppercase font-semibold mb-3">Vista previa del encabezado</p>
