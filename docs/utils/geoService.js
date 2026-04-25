@@ -30,7 +30,7 @@ const GeoService = {
     const cache = this._getCache();
     if (cache[address]) return cache[address];
 
-    const config = DataService.getConfig();
+    const config = DataService.getConfigSync();
     const cityHint = (config.city || '').trim();
     const q = cityHint ? `${address}, ${cityHint}` : address;
 

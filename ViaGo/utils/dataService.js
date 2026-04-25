@@ -26,6 +26,11 @@ const DataService = {
     return out;
   },
 
+  // Sync version using cache (for non-async contexts like WhatsApp/Geo utils)
+  getConfigSync() {
+    return this._configCache || this._defaultConfig();
+  },
+
   // ─── CONFIG ──────────────────────────────────────────────────────────────
   _configCache: null,
   async getConfig() {

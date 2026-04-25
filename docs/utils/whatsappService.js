@@ -52,7 +52,7 @@ const WhatsAppService = {
   },
 
   _fullAddress(address, clientCity) {
-    const city = (clientCity || DataService.getConfig().city || '').trim();
+    const city = (clientCity || DataService.getConfigSync().city || '').trim();
     return city ? `${address}, ${city}` : address;
   },
 

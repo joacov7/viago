@@ -51,12 +51,26 @@ function App() {
   React.useEffect(() => {
     if (!user) return;
     (async () => {
-      const cfg = await DataService.getConfig();
-      // First login: register this user as admin if not set
-      if (!cfg.adminUserId) {
-        await DataService.setAdminUser(user.id);
+      try {
+        const cfg = await DataService.getConfig();
+        if (!cfg.adminUserId) {
+          // First login: try to claim admin role
+          // Requires the "config_initial_setup" RLS policy in Supabase
+          try {
+            await DataService.setAdminUser(user.id);
+            DataService._configCache = null;
+            const updated = await DataService.getConfig();
+            setConfig(updated);
+          } catch {
+            // RLS policy not yet added — show config anyway
+            setConfig(cfg);
+          }
+        } else {
+          setConfig(cfg);
+        }
+      } catch (e) {
+        console.error('Init error:', e);
       }
-      setConfig(cfg);
       setInitialized(true);
     })();
   }, [user]);
