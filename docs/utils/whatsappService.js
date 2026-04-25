@@ -53,7 +53,7 @@ const WhatsAppService = {
     const destination = encodeURIComponent(addresses[addresses.length - 1]);
     const waypoints = addresses.slice(1, -1).map(a => encodeURIComponent(a)).join('|');
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
-    if (waypoints) url += `&waypoints=${waypoints}`;
+    if (waypoints) url += `&waypoints=optimize:true|${waypoints}`;
     return url;
   },
 };
