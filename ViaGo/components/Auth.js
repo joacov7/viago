@@ -8,12 +8,17 @@ function Auth({ onLogin }) {
   const [confirmPass, setConfirmPass] = React.useState('');
   const [error, setError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  const [supabaseError, setSupabaseError] = React.useState(false);
 
   React.useEffect(() => {
     DataService.getConfig().then(cfg => {
       setIsFirstTime(!cfg.adminPassword);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(err => {
+      console.error('Supabase error:', err);
+      setSupabaseError(true);
+      setLoading(false);
+    });
   }, []);
 
   const hash = async (str) => {
@@ -26,6 +31,9 @@ function Auth({ onLogin }) {
     setError(''); setSaving(true);
     try {
       const cfg = await DataService.getConfig();
+      if (!cfg.adminPassword) {
+        setIsFirstTime(true); setSaving(false); return;
+      }
       const hashed = await hash(password);
       if (hashed === cfg.adminPassword) {
         sessionStorage.setItem('nativa_admin_ok', '1');
@@ -33,7 +41,10 @@ function Auth({ onLogin }) {
       } else {
         setError('Contraseña incorrecta');
       }
-    } catch { setError('Error al conectar. Revisá tu conexión.'); }
+    } catch (err) {
+      console.error(err);
+      setError('Error al conectar con Supabase. Verificá la clave en supabaseClient.js');
+    }
     setSaving(false);
   };
 
@@ -49,7 +60,10 @@ function Auth({ onLogin }) {
       await DataService.saveConfig({ ...cfg, adminPassword: hashed });
       sessionStorage.setItem('nativa_admin_ok', '1');
       onLogin();
-    } catch { setError('Error al guardar. Revisá la conexión con Supabase.'); }
+    } catch (err) {
+      console.error(err);
+      setError('Error al guardar en Supabase. Verificá la clave y que la tabla config exista.');
+    }
     setSaving(false);
   };
 
@@ -57,6 +71,42 @@ function Auth({ onLogin }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (supabaseError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
+              <Icon name="droplets" size={32} className="text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Icon name="alertCircle" size={20} className="text-red-500 flex-shrink-0" />
+              <h2 className="font-semibold text-slate-900">Error de conexión con Supabase</h2>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">
+              La clave de Supabase no es válida. Seguí estos pasos:
+            </p>
+            <ol className="text-sm text-slate-700 space-y-2 mb-4 list-decimal list-inside">
+              <li>Entrá a <strong>supabase.com/dashboard</strong></li>
+              <li>Seleccioná tu proyecto</li>
+              <li>Andá a <strong>Settings → API</strong></li>
+              <li>Copiá la clave <strong>"anon public"</strong> (empieza con <code className="bg-gray-100 px-1 rounded">eyJ...</code>)</li>
+              <li>Reemplazá el valor de <code className="bg-gray-100 px-1 rounded">SUPABASE_ANON_KEY</code> en <code className="bg-gray-100 px-1 rounded">utils/supabaseClient.js</code></li>
+            </ol>
+            <button onClick={() => window.location.reload()}
+              className="w-full py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700">
+              Recargar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
