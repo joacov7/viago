@@ -32,11 +32,15 @@ function Clients({ onNavigate, navParams }) {
   const openDetail = (c) => setDetail(c);
 
   const handleSave = async (data) => {
-    if (editing) await DataService.updateClient(editing.id, data);
-    else await DataService.createClient(data);
-    await reload();
-    setShowModal(false);
-    setEditing(null);
+    try {
+      if (editing) await DataService.updateClient(editing.id, data);
+      else await DataService.createClient(data);
+      await reload();
+      setShowModal(false);
+      setEditing(null);
+    } catch (err) {
+      alert('Error al guardar: ' + err.message);
+    }
   };
   const handleDelete = async (c) => {
     if (window.confirm(`¿Desactivar a ${c.name}? Sus pedidos quedarán en el historial.`)) {
@@ -212,8 +216,8 @@ function ClientFormModal({ isOpen, client, zones, onClose, onSave }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-  const handleReferral = () => {
-    const ref = DataService.getClientByReferral(form.referralCode);
+  const handleReferral = async () => {
+    const ref = await DataService.getClientByReferral(form.referralCode);
     if (ref) { alert(`Código válido. Referido por: ${ref.name} (${ref.code})`); set('referredBy', ref.id); }
     else alert('Código de referido no encontrado');
   };

@@ -146,7 +146,8 @@ const DataService = {
       deliveryDay: clientData.deliveryDay || '', points: 0, referralCode,
       referredBy: clientData.referredBy || null, active: true, notes: clientData.notes || '',
     });
-    const { data } = await this._sb.from('clients').insert(dbData).select().single();
+    const { data, error } = await this._sb.from('clients').insert(dbData).select().single();
+    if (error) throw new Error(error.message);
     const client = this._js(data);
     if (clientData.referredBy) {
       const cfg = await this.getConfig();
@@ -156,7 +157,8 @@ const DataService = {
   },
   async updateClient(id, clientData) {
     const { code, referralCode, ...rest } = clientData;
-    const { data } = await this._sb.from('clients').update(this._db(rest)).eq('id', id).select().single();
+    const { data, error } = await this._sb.from('clients').update(this._db(rest)).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
     return this._js(data);
   },
   async deleteClient(id) {
