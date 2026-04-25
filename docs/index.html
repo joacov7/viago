@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>NATIVA — Gestión de distribución de agua</title>
+  <meta name="description" content="Sistema de gestión para distribución de agua: clientes, pedidos, reparto, facturación y fidelización.">
+  <meta name="theme-color" content="#2563EB">
+
+  <!-- React 18 -->
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Base styles */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      background: #f8fafc;
+    }
+    #root { height: 100%; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Smooth transitions */
+    * { transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms; }
+
+    /* Spinner animation */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+
+    /* Hide scrollbar for horizontal scroll */
+    .overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
+    .overflow-x-auto::-webkit-scrollbar { display: none; }
+
+    /* Focus ring */
+    *:focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
+
+    /* Number inputs: remove spinners */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type=number] { -moz-appearance: textfield; }
+  </style>
+
+  <div id="root"></div>
+
+  <!-- Utility services (load first, no dependencies) -->
+  <script type="text/babel" src="utils/dataService.js"></script>
+  <script type="text/babel" src="utils/icons.js"></script>
+  <script type="text/babel" src="utils/whatsappService.js"></script>
+  <script type="text/babel" src="utils/pdfService.js"></script>
+
+  <!-- Shared UI primitives (Sidebar.js includes Modal, Btn, etc.) -->
+  <script type="text/babel" src="components/Sidebar.js"></script>
+
+  <!-- Feature modules -->
+  <script type="text/babel" src="components/Dashboard.js"></script>
+  <script type="text/babel" src="components/Clients.js"></script>
+  <script type="text/babel" src="components/Orders.js"></script>
+  <script type="text/babel" src="components/Delivery.js"></script>
+  <script type="text/babel" src="components/Zones.js"></script>
+  <script type="text/babel" src="components/Billing.js"></script>
+  <script type="text/babel" src="components/Loyalty.js"></script>
+  <script type="text/babel" src="components/Products.js"></script>
+  <script type="text/babel" src="components/Config.js"></script>
+
+  <!-- Root App -->
+  <script type="text/babel" src="app.js"></script>
+</head>
+<body>
+</body>
+</html>
