@@ -6,21 +6,21 @@ function Zones() {
   const [showModal, setShowModal] = React.useState(false);
   const [editing, setEditing] = React.useState(null);
 
-  const reload = () => {
-    setZones(DataService.getZones());
-    setClients(DataService.getClients());
+  const reload = async () => {
+    const [z, c] = await Promise.all([DataService.getZones(), DataService.getClients()]);
+    setZones(z); setClients(c);
   };
-  React.useEffect(reload, []);
+  React.useEffect(() => { reload(); }, []);
 
-  const handleSave = (data) => {
-    if (editing) DataService.updateZone(editing.id, data);
-    else DataService.createZone(data);
+  const handleSave = async (data) => {
+    if (editing) await DataService.updateZone(editing.id, data);
+    else await DataService.createZone(data);
     reload(); setShowModal(false); setEditing(null);
   };
-  const handleDelete = (z) => {
+  const handleDelete = async (z) => {
     const count = clients.filter(c => c.zoneId === z.id).length;
     if (count > 0 && !window.confirm(`Esta zona tiene ${count} clientes asignados. ¿Eliminarla de todas formas?`)) return;
-    DataService.deleteZone(z.id); reload();
+    await DataService.deleteZone(z.id); reload();
   };
 
   return (

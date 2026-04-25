@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>NATIVA — Portal del cliente</title>
+  <meta name="theme-color" content="#2563EB">
+
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    #root { height: 100%; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+  </style>
+
+  <div id="root"></div>
+
+  <script type="text/babel" src="utils/supabaseClient.js"></script>
+  <script type="text/babel" src="utils/dataService.js"></script>
+  <script type="text/babel" src="utils/icons.js"></script>
+  <script type="text/babel" src="components/ClientPortal.js"></script>
+</head>
+<body></body>
+</html>

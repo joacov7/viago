@@ -29,15 +29,37 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
+  const [user, setUser] = React.useState(undefined); // undefined=cargando, null=no logueado
+  const [config, setConfig] = React.useState({ companyName: 'NATIVA' });
   const [activeModule, setActiveModule] = React.useState('dashboard');
   const [navParams, setNavParams] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [initialized, setInitialized] = React.useState(false);
 
+  // Auth state listener
   React.useEffect(() => {
-    DataService.seedData();
-    setInitialized(true);
+    SupabaseDB.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = SupabaseDB.auth.onAuthStateChange((_, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Load config once logged in
+  React.useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const cfg = await DataService.getConfig();
+      // First login: register this user as admin if not set
+      if (!cfg.adminUserId) {
+        await DataService.setAdminUser(user.id);
+      }
+      setConfig(cfg);
+      setInitialized(true);
+    })();
+  }, [user]);
 
   const navigate = (module, params = null) => {
     setActiveModule(module);
@@ -46,16 +68,14 @@ function App() {
     window.scrollTo(0, 0);
   };
 
+  const handleLogout = async () => {
+    await SupabaseDB.auth.signOut();
+  };
+
   const moduleTitle = {
-    dashboard:  'Dashboard',
-    clients:    'Clientes',
-    orders:     'Pedidos',
-    delivery:   'Reparto',
-    zones:      'Zonas',
-    billing:    'Facturación',
-    loyalty:    'Fidelización',
-    products:   'Productos',
-    config:     'Configuración',
+    dashboard: 'Dashboard', clients: 'Clientes', orders: 'Pedidos',
+    delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
+    loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
   };
 
   const renderModule = () => {
@@ -68,11 +88,30 @@ function App() {
       case 'billing':    return <Billing navParams={navParams} />;
       case 'loyalty':    return <Loyalty />;
       case 'products':   return <Products />;
-      case 'config':     return <Config />;
+      case 'config':     return <Config onConfigChange={setConfig} />;
       default:           return <Dashboard onNavigate={navigate} />;
     }
   };
 
+  // Loading auth
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
+            <Icon name="droplets" size={32} className="text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
+          <div className="mt-4 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (user === null) return <Auth onLogin={setUser} />;
+
+  // Loading data after login
   if (!initialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -81,29 +120,19 @@ function App() {
             <Icon name="droplets" size={32} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
-          <p className="text-slate-400 text-sm mt-1">Iniciando sistema...</p>
+          <p className="text-slate-400 text-sm mt-1">Cargando datos...</p>
           <div className="mt-4 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       </div>
     );
   }
 
-  // Full-screen driver mode (Delivery module handles its own layout when in driver mode)
-  const isDriverMode = activeModule === 'delivery';
-
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
-        activeModule={activeModule}
-        onNavigate={navigate}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+      <Sidebar activeModule={activeModule} onNavigate={navigate} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top header (mobile) */}
+        {/* Mobile header */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-slate-600">
             <Icon name="menu" size={22} />
@@ -123,21 +152,22 @@ function App() {
 
         {/* Desktop header */}
         <header className="hidden lg:flex items-center justify-between px-6 py-3.5 bg-white border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <nav className="flex items-center gap-1 text-sm text-slate-400">
-              <span className="font-medium text-blue-600">{DataService.getConfig().companyName}</span>
-              <Icon name="chevRight" size={14} />
-              <span className="font-medium text-slate-700">{moduleTitle[activeModule]}</span>
-            </nav>
-          </div>
+          <nav className="flex items-center gap-1 text-sm text-slate-400">
+            <span className="font-medium text-blue-600">{config.companyName}</span>
+            <Icon name="chevRight" size={14} />
+            <span className="font-medium text-slate-700">{moduleTitle[activeModule]}</span>
+          </nav>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400">{DataService.formatDate(DataService.today())}</span>
             <div className="w-px h-4 bg-gray-200" />
             <QuickStats />
+            <div className="w-px h-4 bg-gray-200" />
+            <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
+              <Icon name="logout" size={14} />Salir
+            </button>
           </div>
         </header>
 
-        {/* Module content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6 max-w-7xl mx-auto">
             {renderModule()}
@@ -149,20 +179,21 @@ function App() {
 }
 
 function QuickStats() {
-  const pending = DataService.getTodayOrders().filter(o => o.status === 'pendiente').length;
+  const [pending, setPending] = React.useState(0);
+  React.useEffect(() => {
+    DataService.getTodayOrders().then(orders => {
+      setPending(orders.filter(o => o.status === 'pendiente').length);
+    });
+  }, []);
+  if (pending === 0) return null;
   return (
-    <div className="flex items-center gap-3 text-xs">
-      {pending > 0 && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-full text-amber-700 font-medium">
-          <Icon name="truck" size={12} />
-          {pending} pendiente{pending !== 1 ? 's' : ''} hoy
-        </div>
-      )}
+    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-full text-amber-700 font-medium text-xs">
+      <Icon name="truck" size={12} />
+      {pending} pendiente{pending !== 1 ? 's' : ''} hoy
     </div>
   );
 }
 
-// Mount the app
 const rootEl = document.getElementById('root');
 const root = ReactDOM.createRoot(rootEl);
 root.render(

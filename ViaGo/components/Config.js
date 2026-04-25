@@ -1,14 +1,27 @@
 // NATIVA - Configuration / Settings module
 
-function Config() {
-  const [config, setConfig] = React.useState(DataService.getConfig());
+function Config({ onConfigChange }) {
+  const [config, setConfig] = React.useState({});
   const [activeTab, setActiveTab] = React.useState('empresa');
   const [saved, setSaved] = React.useState(false);
 
+  const [stats, setStats] = React.useState({ clients: 0, orders: 0 });
+  React.useEffect(() => {
+    (async () => {
+      const [cfg, prods, clients, orders] = await Promise.all([
+        DataService.getConfig(), DataService.getProducts(),
+        DataService.getClients(), DataService.getOrders(),
+      ]);
+      setConfig({ ...cfg, _products: prods });
+      setStats({ clients: clients.length, orders: orders.length });
+    })();
+  }, []);
+
   const set = (k, v) => setConfig(c => ({ ...c, [k]: v }));
 
-  const saveConfig = () => {
-    DataService.saveConfig(config);
+  const saveConfig = async () => {
+    await DataService.saveConfig(config);
+    if (onConfigChange) onConfigChange(config);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -148,7 +161,7 @@ function Config() {
                   <FormField label="Producto gratuito (premio)" hint="ID del producto que se entrega como premio">
                     <select value={config.freeProductId || ''} onChange={e => set('freeProductId', parseInt(e.target.value))} className={inputCls()}>
                       <option value="">Seleccionar producto</option>
-                      {DataService.getProducts().map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {(config._products || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </FormField>
                 </div>
@@ -227,9 +240,8 @@ function Config() {
                   <p className="text-sm text-slate-500 mb-3">Elimina todos los clientes, pedidos, facturas y configuración. Recarga los datos de ejemplo.</p>
                   <Btn
                     onClick={() => {
-                      if (window.confirm('⚠️ ¿Estás SEGURO? Esto eliminará TODOS los datos de NATIVA. Esta acción NO se puede deshacer.')) {
-                        DataService.resetData();
-                        window.location.reload();
+                      if (window.confirm('⚠️ ¿Estás SEGURO? Esto eliminará TODOS los datos. Esta acción NO se puede deshacer.')) {
+                        alert('Para reiniciar los datos, eliminá las tablas desde el panel de Supabase y volvé a crear el esquema.');
                       }
                     }}
                     variant="danger"
@@ -243,16 +255,13 @@ function Config() {
                   <p className="font-medium text-slate-900 mb-1">Exportar datos (JSON)</p>
                   <p className="text-sm text-slate-500 mb-3">Descarga todos tus datos en formato JSON para respaldo.</p>
                   <Btn
-                    onClick={() => {
-                      const data = {
-                        clients: DataService.getClients(true),
-                        orders: DataService.getOrders(),
-                        zones: DataService.getZones(),
-                        products: DataService.getProducts(true),
-                        invoices: DataService.getInvoices(),
-                        config: DataService.getConfig(),
-                        exportedAt: new Date().toISOString(),
-                      };
+                    onClick={async () => {
+                      const [clients, orders, zones, products, invoices, cfg] = await Promise.all([
+                        DataService.getClients(true), DataService.getOrders(),
+                        DataService.getZones(), DataService.getProducts(true),
+                        DataService.getInvoices(), DataService.getConfig(),
+                      ]);
+                      const data = { clients, orders, zones, products, invoices, config: cfg, exportedAt: new Date().toISOString() };
                       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement('a');
@@ -269,10 +278,10 @@ function Config() {
                 <div className="border border-gray-200 rounded-xl p-4">
                   <p className="font-medium text-slate-900 mb-1">Acerca de NATIVA</p>
                   <div className="text-sm text-slate-500 space-y-1">
-                    <p>Versión: MVP 1.0</p>
-                    <p>Almacenamiento: localStorage del navegador</p>
-                    <p>Clientes: {DataService.getClients().length} · Pedidos: {DataService.getOrders().length}</p>
-                    <p className="text-xs text-slate-400 mt-2">Desarrollado como MVP escalable. Podés migrar a backend Node.js + PostgreSQL para producción.</p>
+                    <p>Versión: 2.0 — Supabase</p>
+                    <p>Almacenamiento: Supabase (PostgreSQL)</p>
+                    <p>Clientes: {stats.clients} · Pedidos: {stats.orders}</p>
+                    <p className="text-xs text-slate-400 mt-2">Sistema conectado a base de datos en la nube.</p>
                   </div>
                 </div>
               </div>
@@ -293,7 +302,8 @@ function Config() {
 }
 
 function ProductsQuickList() {
-  const products = DataService.getProducts(true);
+  const [products, setProducts] = React.useState([]);
+  React.useEffect(() => { DataService.getProducts(true).then(setProducts); }, []);
   return (
     <div className="space-y-2 max-h-64 overflow-y-auto">
       {products.map(p => (

@@ -9,13 +9,17 @@ function Loyalty() {
   const [showPromoModal, setShowPromoModal] = React.useState(false);
   const [showAdjustModal, setShowAdjustModal] = React.useState(null);
 
-  const reload = () => {
-    setClients(DataService.getClients().sort((a, b) => (b.points || 0) - (a.points || 0)));
-    setPromotion(DataService.getPromotions());
-    setPointsHistory(DataService.getPointsHistory().slice().reverse().slice(0, 50));
-    setConfig(DataService.getConfig());
+  const reload = async () => {
+    const [clients, promos, history, cfg] = await Promise.all([
+      DataService.getClients(), DataService.getPromotions(),
+      DataService.getPointsHistory(), DataService.getConfig(),
+    ]);
+    setClients(clients.sort((a, b) => (b.points || 0) - (a.points || 0)));
+    setPromotion(promos);
+    setPointsHistory(history.slice(0, 50));
+    setConfig(cfg);
   };
-  React.useEffect(reload, []);
+  React.useEffect(() => { reload(); }, []);
 
   const topClients = clients.filter(c => (c.points || 0) > 0).slice(0, 10);
   const referrers = clients.filter(c => clients.some(r => r.referredBy === c.id));
@@ -179,11 +183,11 @@ function Loyalty() {
                           {zone && <p className="text-xs text-slate-400">Zona: {zone.name}</p>}
                         </div>
                         <div className="flex gap-1">
-                          <button onClick={() => DataService.updatePromotion(p.id, { active: !p.active }) || reload()}
+                          <button onClick={async () => { await DataService.updatePromotion(p.id, { active: !p.active }); reload(); }}
                             className={`p-1.5 rounded-lg transition-colors ${p.active ? 'hover:bg-red-50 text-emerald-500 hover:text-red-500' : 'hover:bg-emerald-50 text-slate-400 hover:text-emerald-600'}`}>
                             <Icon name={p.active ? 'xCircle' : 'checkCircle'} size={16} />
                           </button>
-                          <button onClick={() => { if(window.confirm('¿Eliminar esta promoción?')) { DataService.deletePromotion(p.id); reload(); } }}
+                          <button onClick={async () => { if(window.confirm('¿Eliminar esta promoción?')) { await DataService.deletePromotion(p.id); reload(); } }}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500">
                             <Icon name="trash" size={16} />
                           </button>
@@ -226,7 +230,7 @@ function Loyalty() {
         </div>
       </div>
 
-      <PromoFormModal isOpen={showPromoModal} onClose={() => setShowPromoModal(false)} onSave={(data) => { DataService.createPromotion(data); reload(); setShowPromoModal(false); }} />
+      <PromoFormModal isOpen={showPromoModal} onClose={() => setShowPromoModal(false)} onSave={async (data) => { await DataService.createPromotion(data); reload(); setShowPromoModal(false); }} />
       <PointsAdjustModal client={showAdjustModal} clients={clients} onClose={() => { setShowAdjustModal(null); reload(); }} />
     </div>
   );
@@ -296,12 +300,12 @@ function PointsAdjustModal({ client, clients, onClose }) {
   if (!client) return null;
   const selectedClient = clients.find(c => c.id == selectedId);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!selectedId) return;
     const pts = parseInt(amount);
-    if (action === 'add') DataService.addPoints(selectedId, pts, 'earned', desc || 'Ajuste manual');
-    else { const ok = DataService.redeemPoints(selectedId, pts, desc || 'Canje manual'); if (!ok) { alert('Puntos insuficientes'); return; } }
+    if (action === 'add') await DataService.addPoints(selectedId, pts, 'earned', desc || 'Ajuste manual');
+    else { const ok = await DataService.redeemPoints(selectedId, pts, desc || 'Canje manual'); if (!ok) { alert('Puntos insuficientes'); return; } }
     onClose();
   };
 

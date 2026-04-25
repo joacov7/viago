@@ -10,15 +10,14 @@ function Clients({ onNavigate, navParams }) {
   const [editing, setEditing] = React.useState(null);
   const [detail, setDetail] = React.useState(null);
 
-  const reload = () => {
-    setClients(DataService.getClients());
-    setZones(DataService.getZones());
+  const reload = async () => {
+    const [c, z] = await Promise.all([DataService.getClients(), DataService.getZones()]);
+    setClients(c); setZones(z);
   };
   React.useEffect(() => {
     reload();
     if (navParams && navParams.clientId) {
-      const c = DataService.getClient(navParams.clientId);
-      if (c) setDetail(c);
+      DataService.getClient(navParams.clientId).then(c => { if (c) setDetail(c); });
     }
   }, []);
 
@@ -32,16 +31,16 @@ function Clients({ onNavigate, navParams }) {
   const openEdit = (c) => { setEditing(c); setShowModal(true); };
   const openDetail = (c) => setDetail(c);
 
-  const handleSave = (data) => {
-    if (editing) DataService.updateClient(editing.id, data);
-    else DataService.createClient(data);
-    reload();
+  const handleSave = async (data) => {
+    if (editing) await DataService.updateClient(editing.id, data);
+    else await DataService.createClient(data);
+    await reload();
     setShowModal(false);
     setEditing(null);
   };
-  const handleDelete = (c) => {
+  const handleDelete = async (c) => {
     if (window.confirm(`¿Desactivar a ${c.name}? Sus pedidos quedarán en el historial.`)) {
-      DataService.deleteClient(c.id); reload();
+      await DataService.deleteClient(c.id); reload();
     }
   };
 
@@ -301,20 +300,24 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
   const [activeTab, setActiveTab] = React.useState('pedidos');
 
   React.useEffect(() => {
-    const allOrders = DataService.getClientOrders(client.id);
-    const allClients = DataService.getClients(true);
-    const allInvoices = DataService.getClientInvoices(client.id);
-    const history = DataService.getPointsHistory(client.id);
-    const refs = allClients.filter(c => c.referredBy === client.id);
-    setOrders(allOrders);
-    setInvoices(allInvoices);
-    setPointsHistory(history);
-    setReferrals(refs);
+    (async () => {
+      const [allOrders, allClients, allInvoices, history] = await Promise.all([
+        DataService.getClientOrders(client.id),
+        DataService.getClients(true),
+        DataService.getClientInvoices(client.id),
+        DataService.getPointsHistory(client.id),
+      ]);
+      setOrders(allOrders);
+      setInvoices(allInvoices);
+      setPointsHistory(history);
+      setReferrals(allClients.filter(c => c.referredBy === client.id));
+    })();
   }, [client.id]);
 
+  const [config, setConfig] = React.useState({ pointsForReward: 100 });
+  React.useEffect(() => { DataService.getConfig().then(setConfig); }, []);
   const zone = zones.find(z => z.id === client.zoneId);
   const totalSpent = invoices.filter(i => i.paymentStatus === 'pagado').reduce((s, i) => s + i.total, 0);
-  const config = DataService.getConfig();
   const pointsNeeded = config.pointsForReward;
 
   const tabs = [

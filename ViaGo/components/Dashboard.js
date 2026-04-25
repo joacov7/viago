@@ -5,15 +5,20 @@ function Dashboard({ onNavigate }) {
   const [todayOrders, setTodayOrders] = React.useState([]);
 
   React.useEffect(() => {
-    setStats(DataService.getDashboardStats());
-    const orders = DataService.getTodayOrders();
-    const clients = DataService.getClients(true);
-    const zones = DataService.getZones();
-    setTodayOrders(orders.map(o => ({
-      ...o,
-      client: clients.find(c => c.id === o.clientId),
-      zone: zones.find(z => z.id === (clients.find(c => c.id === o.clientId) || {}).zoneId),
-    })));
+    (async () => {
+      const [stats, orders, clients, zones] = await Promise.all([
+        DataService.getDashboardStats(),
+        DataService.getTodayOrders(),
+        DataService.getClients(true),
+        DataService.getZones(),
+      ]);
+      setStats(stats);
+      setTodayOrders(orders.map(o => ({
+        ...o,
+        client: clients.find(c => c.id === o.clientId),
+        zone: zones.find(z => z.id === (clients.find(c => c.id === o.clientId) || {}).zoneId),
+      })));
+    })();
   }, []);
 
   if (!stats) return (

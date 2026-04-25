@@ -12,11 +12,11 @@ function Orders({ onNavigate, navParams }) {
   const [showModal, setShowModal] = React.useState(false);
   const [detail, setDetail] = React.useState(null);
 
-  const reload = () => {
-    const allOrders = DataService.getOrders().slice().reverse();
-    const allClients = DataService.getClients(true);
-    const allZones = DataService.getZones();
-    const allProducts = DataService.getProducts();
+  const reload = async () => {
+    const [allOrders, allClients, allZones, allProducts] = await Promise.all([
+      DataService.getOrders(), DataService.getClients(true),
+      DataService.getZones(), DataService.getProducts(),
+    ]);
     setOrders(allOrders);
     setClients(allClients);
     setZones(allZones);
@@ -42,14 +42,14 @@ function Orders({ onNavigate, navParams }) {
       && (!filterZone || o.zone.id == filterZone);
   });
 
-  const handleStatus = (id, status) => {
-    DataService.updateOrder(id, { status });
-    reload();
-    if (detail && detail.id === id) setDetail({ ...DataService.getOrder(id) });
+  const handleStatus = async (id, status) => {
+    await DataService.updateOrder(id, { status });
+    await reload();
+    if (detail && detail.id === id) DataService.getOrder(id).then(o => setDetail(o));
   };
 
-  const handleDelete = (o) => {
-    if (window.confirm('¿Cancelar este pedido?')) { DataService.deleteOrder(o.id); reload(); }
+  const handleDelete = async (o) => {
+    if (window.confirm('¿Cancelar este pedido?')) { await DataService.deleteOrder(o.id); reload(); }
   };
 
   const tabCounts = {
@@ -116,7 +116,7 @@ function Orders({ onNavigate, navParams }) {
         zones={zones}
         products={products}
         onClose={() => setShowModal(false)}
-        onSave={(data) => { DataService.createOrder(data); reload(); setShowModal(false); }}
+        onSave={async (data) => { await DataService.createOrder(data); reload(); setShowModal(false); }}
         preClientId={navParams && navParams.clientId}
       />
     </div>
@@ -186,7 +186,10 @@ function OrderCard({ order, onStatus, onDelete, onDetail, onNavigate }) {
 }
 
 function OrderDetail({ order, client, zone, products, onBack, onStatus, onNavigate }) {
-  const invoice = DataService.getInvoices().find(i => i.orderId === order.id);
+  const [invoice, setInvoice] = React.useState(null);
+  React.useEffect(() => {
+    DataService.getInvoices().then(invs => setInvoice(invs.find(i => i.orderId === order.id) || null));
+  }, [order.id]);
   return (
     <div>
       <Btn onClick={onBack} variant="ghost" icon="arrowLeft" size="sm" className="mb-5">Volver a pedidos</Btn>

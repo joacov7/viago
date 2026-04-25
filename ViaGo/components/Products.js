@@ -5,15 +5,15 @@ function Products() {
   const [showModal, setShowModal] = React.useState(false);
   const [editing, setEditing] = React.useState(null);
 
-  const reload = () => setProducts(DataService.getProducts(true));
-  React.useEffect(reload, []);
+  const reload = async () => setProducts(await DataService.getProducts(true));
+  React.useEffect(() => { reload(); }, []);
 
-  const handleSave = (data) => {
-    if (editing) DataService.updateProduct(editing.id, data);
-    else DataService.createProduct(data);
+  const handleSave = async (data) => {
+    if (editing) await DataService.updateProduct(editing.id, data);
+    else await DataService.createProduct(data);
     reload(); setShowModal(false); setEditing(null);
   };
-  const toggleActive = (p) => { DataService.updateProduct(p.id, { active: !p.active }); reload(); };
+  const toggleActive = async (p) => { await DataService.updateProduct(p.id, { active: !p.active }); reload(); };
 
   const active = products.filter(p => p.active);
   const inactive = products.filter(p => !p.active);

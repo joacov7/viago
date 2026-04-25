@@ -9,10 +9,12 @@ function Delivery({ onNavigate }) {
   const [driverMode, setDriverMode] = React.useState(false);
   const [showCobro, setShowCobro] = React.useState(null);
 
-  const reload = () => {
-    const allOrders = DataService.getOrdersByDate(date);
-    const allClients = DataService.getClients(true);
-    const allZones = DataService.getZones();
+  const reload = async () => {
+    const [allOrders, allClients, allZones] = await Promise.all([
+      DataService.getOrdersByDate(date),
+      DataService.getClients(true),
+      DataService.getZones(),
+    ]);
     const enriched = allOrders.map(o => {
       const client = allClients.find(c => c.id === o.clientId) || {};
       const zone = allZones.find(z => z.id === client.zoneId) || {};
@@ -34,8 +36,8 @@ function Delivery({ onNavigate }) {
   const delivered = filtered.filter(o => o.status === 'entregado');
   const total = filtered.reduce((s, o) => s + o.total, 0);
 
-  const handleStatus = (id, status) => {
-    DataService.updateOrder(id, { status });
+  const handleStatus = async (id, status) => {
+    await DataService.updateOrder(id, { status });
     reload();
   };
 

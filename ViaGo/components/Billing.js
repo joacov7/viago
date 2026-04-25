@@ -10,36 +10,41 @@ function Billing({ navParams }) {
   const [detail, setDetail] = React.useState(null);
   const [showPayModal, setShowPayModal] = React.useState(null);
 
-  const reload = () => {
-    const allInvoices = DataService.getInvoices().slice().reverse();
-    const allClients = DataService.getClients(true);
+  const [config, setConfig] = React.useState({ paymentMethods: ['efectivo', 'transferencia', 'mercadopago'] });
+
+  const reload = async () => {
+    const [allInvoices, allClients] = await Promise.all([
+      DataService.getInvoices(), DataService.getClients(true),
+    ]);
     setInvoices(allInvoices.map(inv => ({ ...inv, client: allClients.find(c => c.id === inv.clientId) || {} })));
     setClients(allClients);
   };
 
   React.useEffect(() => {
     reload();
+    DataService.getConfig().then(setConfig);
     if (navParams && (navParams.orderId || navParams.clientId)) {
       setShowModal(true);
     }
     if (navParams && navParams.invoiceId) {
-      const inv = DataService.getInvoice(navParams.invoiceId);
-      if (inv) { const client = DataService.getClient(inv.clientId); setDetail({ ...inv, client: client || {} }); }
+      (async () => {
+        const inv = await DataService.getInvoice(navParams.invoiceId);
+        if (inv) { const client = await DataService.getClient(inv.clientId); setDetail({ ...inv, client: client || {} }); }
+      })();
     }
   }, []);
 
   const filtered = invoices.filter(inv =>
     (!filterStatus || inv.paymentStatus === filterStatus) &&
     (!filterMethod || inv.paymentMethod === filterMethod) &&
-    (!filterMonth || inv.createdAt.startsWith(filterMonth))
+    (!filterMonth || (inv.createdAt || '').startsWith(filterMonth))
   );
 
   const totalPaid = filtered.filter(i => i.paymentStatus === 'pagado').reduce((s, i) => s + i.total, 0);
   const totalPending = filtered.filter(i => i.paymentStatus === 'pendiente').reduce((s, i) => s + i.total, 0);
-  const config = DataService.getConfig();
 
-  const handleMarkPaid = (id, method) => {
-    DataService.updateInvoice(id, { paymentStatus: 'pagado', paymentMethod: method });
+  const handleMarkPaid = async (id, method) => {
+    await DataService.updateInvoice(id, { paymentStatus: 'pagado', paymentMethod: method });
     reload();
     setShowPayModal(null);
   };
@@ -113,7 +118,7 @@ function Billing({ navParams }) {
         clients={clients}
         navParams={navParams}
         onClose={() => setShowModal(false)}
-        onSave={(data) => { DataService.createInvoice(data); reload(); setShowModal(false); }}
+        onSave={async (data) => { await DataService.createInvoice(data); reload(); setShowModal(false); }}
       />
 
       <PayModal invoice={showPayModal} onClose={() => { setShowPayModal(null); reload(); }} onConfirm={handleMarkPaid} />
@@ -122,7 +127,8 @@ function Billing({ navParams }) {
 }
 
 function InvoiceCard({ invoice, onDetail, onPay }) {
-  const config = DataService.getConfig();
+  const [config, setConfig] = React.useState({});
+  React.useEffect(() => { DataService.getConfig().then(setConfig); }, []);
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
       <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
@@ -283,7 +289,8 @@ function InvoiceFormModal({ isOpen, clients, navParams, onClose, onSave }) {
   const [items, setItems] = React.useState([{ productId: '', quantity: 1, price: 0, subtotal: 0, productName: '' }]);
   const [method, setMethod] = React.useState('efectivo');
   const [notes, setNotes] = React.useState('');
-  const products = DataService.getProducts();
+  const [products, setProducts] = React.useState([]);
+  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
 
   React.useEffect(() => {
     if (!isOpen) return;
