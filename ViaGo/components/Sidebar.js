@@ -90,7 +90,10 @@ function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
 }
 
 function TodayBadge() {
-  const count = DataService.getTodayOrders().filter(o => o.status === 'pendiente').length;
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
+    DataService.getTodayOrders().then(orders => setCount(orders.filter(o => o.status === 'pendiente').length));
+  }, []);
   if (count === 0) return null;
   return (
     <span className="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold text-white bg-red-500">
