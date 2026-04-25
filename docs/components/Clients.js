@@ -207,7 +207,7 @@ function Clients({ onNavigate, navParams }) {
 function ClientFormModal({ isOpen, client, zones, onClose, onSave }) {
   const [form, setForm] = React.useState({});
   React.useEffect(() => {
-    setForm(client ? { ...client } : { name: '', address: '', phone: '', email: '', zoneId: '', type: 'hogar', frequency: 'semanal', deliveryDay: '', notes: '', referralCode: '' });
+    setForm(client ? { ...client } : { name: '', address: '', city: '', phone: '', email: '', zoneId: '', type: 'hogar', frequency: 'semanal', deliveryDay: '', notes: '', referralCode: '' });
   }, [client, isOpen]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -237,6 +237,9 @@ function ClientFormModal({ isOpen, client, zones, onClose, onSave }) {
           </FormField>
           <FormField label="Dirección" >
             <input value={form.address || ''} onChange={e => set('address', e.target.value)} className={inputCls()} placeholder="Av. San Martín 123" />
+          </FormField>
+          <FormField label="Ciudad / Localidad" hint="Dejá vacío para usar la ciudad de configuración">
+            <input value={form.city || ''} onChange={e => set('city', e.target.value)} className={inputCls()} placeholder="Ej: Villa María, Córdoba..." />
           </FormField>
           <FormField label="Email">
             <input type="email" value={form.email || ''} onChange={e => set('email', e.target.value)} className={inputCls()} placeholder="juan@mail.com" />
@@ -347,7 +350,7 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
                 {zone && <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ background: zone.color }}>{zone.name}</span>}
                 {client.deliveryDay && <span className="text-xs text-slate-500 capitalize">{client.deliveryDay}</span>}
               </div>
-              {client.address && <p className="text-sm text-slate-500 mt-2"><Icon name="mapPin" size={12} className="inline mr-1"/>{client.address}</p>}
+              {client.address && <p className="text-sm text-slate-500 mt-2"><Icon name="mapPin" size={12} className="inline mr-1"/>{client.address}{client.city ? `, ${client.city}` : ''}</p>}
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
