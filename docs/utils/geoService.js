@@ -65,4 +65,23 @@ const GeoService = {
   },
 
   isNearby(m) { return m != null && m <= this.PROXIMITY_METERS; },
+
+  nearestNeighborSort(startLat, startLng, orders, coordsMap) {
+    const withCoords = orders.filter(o => coordsMap[o.id]);
+    const noCoords = orders.filter(o => !coordsMap[o.id]);
+    const remaining = [...withCoords];
+    const route = [];
+    let lat = startLat, lng = startLng;
+    while (remaining.length > 0) {
+      let minD = Infinity, idx = 0;
+      remaining.forEach((o, i) => {
+        const d = this.distance(lat, lng, coordsMap[o.id].lat, coordsMap[o.id].lng);
+        if (d < minD) { minD = d; idx = i; }
+      });
+      const [next] = remaining.splice(idx, 1);
+      lat = coordsMap[next.id].lat; lng = coordsMap[next.id].lng;
+      route.push(next);
+    }
+    return [...route, ...noCoords];
+  },
 };

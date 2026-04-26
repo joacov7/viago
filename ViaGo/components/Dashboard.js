@@ -174,6 +174,8 @@ function Dashboard({ onNavigate }) {
         )}
       </div>
 
+      <InactiveClientsWidget onNavigate={onNavigate} />
+
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <h3 className="font-semibold text-slate-900 mb-4">Acciones rápidas</h3>
@@ -194,6 +196,62 @@ function Dashboard({ onNavigate }) {
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function InactiveClientsWidget({ onNavigate }) {
+  const [inactive, setInactive] = React.useState([]);
+  const [days, setDays] = React.useState(21);
+  const [loaded, setLoaded] = React.useState(false);
+  React.useEffect(() => {
+    DataService.getInactiveClients(days).then(r => { setInactive(r); setLoaded(true); }).catch(() => setLoaded(true));
+  }, [days]);
+  if (!loaded || inactive.length === 0) return null;
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-amber-100">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-amber-100">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <Icon name="alertCircle" size={16} className="text-amber-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-900">Clientes sin pedir</h3>
+            <p className="text-xs text-slate-500">{inactive.length} cliente{inactive.length !== 1 ? 's' : ''} inactivo{inactive.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <select value={days} onChange={e => setDays(Number(e.target.value))}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white">
+          <option value={14}>+14 días</option>
+          <option value={21}>+21 días</option>
+          <option value={30}>+30 días</option>
+        </select>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {inactive.slice(0, 5).map(c => (
+          <div key={c.id} className="flex items-center gap-3 px-6 py-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900 truncate">{c.name}</p>
+              <p className="text-xs text-slate-400">{c.daysSince ? `${c.daysSince} días sin pedir` : 'Sin pedidos registrados'}</p>
+            </div>
+            <div className="flex items-center gap-1">
+              {c.phone && (
+                <a href={`https://wa.me/${c.phone.replace(/\D/g,'')}?text=${encodeURIComponent(`Hola ${c.name}! 👋 ¿Necesitás reponer agua? 💧`)}`}
+                  target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="WhatsApp">
+                  <Icon name="messageCircle" size={14} />
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+        {inactive.length > 5 && (
+          <div className="px-6 py-3 text-center">
+            <button onClick={() => onNavigate('clients')} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+              Ver {inactive.length - 5} más en Clientes
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

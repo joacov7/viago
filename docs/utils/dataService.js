@@ -164,6 +164,30 @@ const DataService = {
   async deleteClient(id) {
     await this._sb.from('clients').update({ active: false }).eq('id', id);
   },
+  async getInactiveClients(days = 21) {
+    const [clients, { data: orders }] = await Promise.all([
+      this.getClients(),
+      this._sb.from('orders').select('client_id, created_at').order('created_at', { ascending: false }),
+    ]);
+    const cutoff = new Date(Date.now() - days * 86400000);
+    return clients.map(c => {
+      const last = (orders || []).find(o => o.client_id === c.id);
+      const lastDate = last ? new Date(last.created_at) : null;
+      return { ...c, lastOrderDate: lastDate?.toISOString() || null, daysSince: lastDate ? Math.floor((Date.now() - lastDate) / 86400000) : null };
+    }).filter(c => !c.lastOrderDate || new Date(c.lastOrderDate) < cutoff);
+  },
+  async adjustClientBalance(clientId, amount, description) {
+    const client = await this.getClient(clientId);
+    const newBalance = parseFloat(((client.balance || 0) + amount).toFixed(2));
+    const { error } = await this._sb.from('clients').update({ balance: newBalance }).eq('id', clientId);
+    if (error) throw new Error(error.message);
+    await this._sb.from('balance_movements').insert({ client_id: clientId, amount, description });
+    return newBalance;
+  },
+  async getClientBalanceMovements(clientId) {
+    const { data } = await this._sb.from('balance_movements').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(20);
+    return this._jsMany(data);
+  },
 
   // ─── LEADS ───────────────────────────────────────────────────────────────
   async getLeads() {

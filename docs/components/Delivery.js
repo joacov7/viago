@@ -9,6 +9,8 @@ function Delivery({ onNavigate }) {
   const [filterZone, setFilterZone] = React.useState('');
   const [driverMode, setDriverMode] = React.useState(false);
   const [showCobro, setShowCobro] = React.useState(null);
+  const [routeOrder, setRouteOrder] = React.useState(null);
+  const [optimizing, setOptimizing] = React.useState(false);
 
   const reload = async () => {
     const [allOrders, allClients, allZones, allInvoices] = await Promise.all([
@@ -34,7 +36,8 @@ function Delivery({ onNavigate }) {
 
   React.useEffect(() => { reload(); }, [date]);
 
-  const filtered = orders.filter(o => !filterZone || o.zone.id == filterZone);
+  const filteredRaw = orders.filter(o => !filterZone || o.zone.id == filterZone);
+  const filtered = routeOrder ? routeOrder.map(id => filteredRaw.find(o => o.id === id)).filter(Boolean) : filteredRaw;
   const pending = filtered.filter(o => o.status === 'pendiente');
   const delivered = filtered.filter(o => o.status === 'entregado');
   const total = filtered.reduce((s, o) => s + o.total, 0);
@@ -45,6 +48,31 @@ function Delivery({ onNavigate }) {
   };
 
   const handleCobro = (order) => setShowCobro(order);
+
+  const optimizeRoute = async () => {
+    setOptimizing(true);
+    try {
+      let startLat, startLng;
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+        startLat = pos.coords.latitude; startLng = pos.coords.longitude;
+      } catch {
+        const cfg = DataService.getConfigSync();
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cfg.city || cfg.companyName || 'Argentina')}&format=json&limit=1`).then(r => r.json());
+        if (!geo.length) { alert('No se pudo obtener la ubicación de inicio.'); setOptimizing(false); return; }
+        startLat = parseFloat(geo[0].lat); startLng = parseFloat(geo[0].lon);
+      }
+      const pending = filtered.filter(o => o.status === 'pendiente');
+      const coordsMap = {};
+      await Promise.all(pending.map(async o => {
+        if (o.client?.address) { const c = await GeoService.geocode(o.client.address); if (c) coordsMap[o.id] = c; }
+      }));
+      const sorted = GeoService.nearestNeighborSort(startLat, startLng, pending, coordsMap);
+      const rest = filtered.filter(o => o.status !== 'pendiente');
+      setRouteOrder([...sorted, ...rest].map(o => o.id));
+    } catch (err) { alert('Error: ' + err.message); }
+    setOptimizing(false);
+  };
 
   const allAddresses = filtered.map(o => o.client.address).filter(Boolean);
   const allCities = filtered.filter(o => o.client.address).map(o => o.client.city || '');
@@ -74,7 +102,14 @@ function Delivery({ onNavigate }) {
         title="Reparto"
         subtitle={`${filtered.length} entregas · ${pending.length} pendientes`}
         action={
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {routeOrder ? (
+              <Btn onClick={() => setRouteOrder(null)} variant="secondary" icon="refresh">Restablecer orden</Btn>
+            ) : (
+              <Btn onClick={optimizeRoute} disabled={optimizing} variant="secondary" icon="navigation">
+                {optimizing ? 'Optimizando...' : 'Optimizar ruta'}
+              </Btn>
+            )}
             <Btn onClick={() => setDriverMode(true)} variant="success" icon="truck">Modo repartidor</Btn>
           </div>
         }
@@ -122,8 +157,8 @@ function Delivery({ onNavigate }) {
         <EmptyState icon="truck" title="Sin entregas para este día" description="No hay pedidos programados para la fecha seleccionada" action={<Btn onClick={() => onNavigate('orders', { openNew: true })} icon="plus" variant="primary">Crear pedido</Btn>} />
       ) : (
         <div className="space-y-3">
-          {filtered.map(order => (
-            <DeliveryRow key={order.id} order={order} invoices={invoices} onStatus={handleStatus} onCobro={handleCobro} />
+          {filtered.map((order, idx) => (
+            <DeliveryRow key={order.id} order={order} invoices={invoices} routeNum={routeOrder && order.status === 'pendiente' ? idx + 1 : null} onStatus={handleStatus} onCobro={handleCobro} />
           ))}
         </div>
       )}
@@ -133,7 +168,7 @@ function Delivery({ onNavigate }) {
   );
 }
 
-function DeliveryRow({ order, invoices = [], onStatus, onCobro }) {
+function DeliveryRow({ order, invoices = [], routeNum, onStatus, onCobro }) {
   const [expanded, setExpanded] = React.useState(false);
   const borderColor = { pendiente: '#F59E0B', entregado: '#10B981', cancelado: '#EF4444' };
   const invoice = invoices.find(i => i.orderId === order.id);
@@ -145,6 +180,7 @@ function DeliveryRow({ order, invoices = [], onStatus, onCobro }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {routeNum && <span className="text-xs font-bold w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">{routeNum}</span>}
               {order.zone?.name && <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ background: order.zone.color || '#6B7280' }}>{order.zone.name}</span>}
               <StatusBadge status={order.status} />
               {paid && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Cobrado</span>}
@@ -522,6 +558,7 @@ function DriverOrderDetail({ order, invoices = [], distance, onBack, onStatus, o
 function CobroModal({ order, invoices = [], onClose }) {
   const [method, setMethod] = React.useState('efectivo');
   const [notes, setNotes] = React.useState('');
+  const [cuentaCorriente, setCuentaCorriente] = React.useState(false);
   const [config, setConfig] = React.useState({});
   const [saving, setSaving] = React.useState(false);
 
@@ -533,12 +570,17 @@ function CobroModal({ order, invoices = [], onClose }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const existing = invoices.find(i => i.orderId === order.id);
-      if (existing) {
-        await DataService.updateInvoice(existing.id, { paymentStatus: 'pagado', paymentMethod: method, notes });
+      if (cuentaCorriente) {
+        await DataService.adjustClientBalance(order.clientId, order.total, `Entrega sin cobrar - ${DataService.formatDate(DataService.today())}`);
+        await DataService.updateOrder(order.id, { status: 'entregado' });
       } else {
-        const inv = await DataService.createInvoice({ orderId: order.id, clientId: order.clientId, total: order.total, paymentMethod: method, notes, items: order.items });
-        await DataService.updateInvoice(inv.id, { paymentStatus: 'pagado' });
+        const existing = invoices.find(i => i.orderId === order.id);
+        if (existing) {
+          await DataService.updateInvoice(existing.id, { paymentStatus: 'pagado', paymentMethod: method, notes });
+        } else {
+          const inv = await DataService.createInvoice({ orderId: order.id, clientId: order.clientId, total: order.total, paymentMethod: method, notes, items: order.items });
+          await DataService.updateInvoice(inv.id, { paymentStatus: 'pagado' });
+        }
       }
       onClose();
     } catch (err) {
@@ -556,7 +598,15 @@ function CobroModal({ order, invoices = [], onClose }) {
           <p className="text-sm text-slate-600">{order.client?.name || `#${order.clientId}`}</p>
           <p className="text-xl font-bold text-slate-900">{DataService.formatCurrency(order.total)}</p>
         </div>
-        <FormField label="Forma de pago">
+        <label className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200 cursor-pointer">
+          <input type="checkbox" checked={cuentaCorriente} onChange={e => setCuentaCorriente(e.target.checked)} className="w-4 h-4 rounded" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">Cargar a cuenta corriente</p>
+            <p className="text-xs text-amber-600">Se entrega ahora, se cobra después</p>
+          </div>
+        </label>
+
+        {!cuentaCorriente && <FormField label="Forma de pago">
           <div className="grid grid-cols-3 gap-2">
             {['efectivo', 'transferencia', 'mercadopago'].map(m => (
               <button key={m} type="button" onClick={() => setMethod(m)}
@@ -565,7 +615,7 @@ function CobroModal({ order, invoices = [], onClose }) {
               </button>
             ))}
           </div>
-        </FormField>
+        </FormField>}
         {method === 'mercadopago' && config.mpPublicKey && (
           <a href={`https://link.mercadopago.com.ar/${config.mpPublicKey}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium">

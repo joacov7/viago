@@ -404,6 +404,8 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
         </div>
       </div>
 
+      <BalanceCard client={client} />
+
       {/* Tabs */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex border-b border-gray-100 overflow-x-auto">
@@ -492,6 +494,82 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function BalanceCard({ client }) {
+  const [balance, setBalance] = React.useState(client.balance || 0);
+  const [movements, setMovements] = React.useState([]);
+  const [mode, setMode] = React.useState(null);
+  const [amount, setAmount] = React.useState('');
+  const [desc, setDesc] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    DataService.getClientBalanceMovements(client.id).then(setMovements).catch(() => {});
+  }, [client.id]);
+
+  const adjust = async () => {
+    const amt = parseFloat(amount);
+    if (isNaN(amt) || amt <= 0) { alert('Ingresá un monto válido'); return; }
+    setSaving(true);
+    try {
+      const newBal = await DataService.adjustClientBalance(client.id, mode === 'charge' ? amt : -amt, desc || (mode === 'charge' ? 'Cargo manual' : 'Pago recibido'));
+      setBalance(newBal);
+      const newAmt = mode === 'charge' ? amt : -amt;
+      setMovements(m => [{ amount: newAmt, description: desc || (mode === 'charge' ? 'Cargo manual' : 'Pago recibido'), createdAt: new Date().toISOString() }, ...m]);
+      setMode(null); setAmount(''); setDesc('');
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Cuenta corriente</p>
+          <p className={`text-2xl font-bold ${balance > 0 ? 'text-red-600' : balance < 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+            {DataService.formatCurrency(Math.abs(balance))}
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">{balance > 0 ? 'Debe' : balance < 0 ? 'A favor del cliente' : 'Sin saldo pendiente'}</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setMode(mode === 'charge' ? null : 'charge')} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">+ Cargo</button>
+          <button onClick={() => setMode(mode === 'payment' ? null : 'payment')} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">− Pago</button>
+        </div>
+      </div>
+
+      {mode && (
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 mb-3">
+          <p className="text-xs font-semibold text-slate-700 mb-2">{mode === 'charge' ? 'Registrar cargo' : 'Registrar pago'}</p>
+          <div className="flex gap-2 mb-2">
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Monto $"
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="Descripción"
+              className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { setMode(null); setAmount(''); setDesc(''); }} className="flex-1 py-2 text-xs rounded-lg bg-gray-200 text-slate-600 hover:bg-gray-300">Cancelar</button>
+            <button onClick={adjust} disabled={saving} className={`flex-1 py-2 text-xs rounded-lg font-medium text-white disabled:opacity-50 ${mode === 'charge' ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>
+              {saving ? 'Guardando...' : mode === 'charge' ? 'Cargar deuda' : 'Registrar pago'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {movements.length > 0 && (
+        <div className="space-y-1 border-t border-gray-100 pt-3">
+          {movements.slice(0, 4).map((m, i) => (
+            <div key={i} className="flex items-center justify-between text-xs py-0.5">
+              <span className="text-slate-500 truncate">{m.description}</span>
+              <span className={`font-semibold flex-shrink-0 ml-3 ${m.amount > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                {m.amount > 0 ? '+' : ''}{DataService.formatCurrency(m.amount)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
