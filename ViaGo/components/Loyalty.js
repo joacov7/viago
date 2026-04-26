@@ -5,19 +5,22 @@ function Loyalty() {
   const [promotions, setPromotion] = React.useState([]);
   const [pointsHistory, setPointsHistory] = React.useState([]);
   const [config, setConfig] = React.useState({});
+  const [zones, setZones] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('puntos');
   const [showPromoModal, setShowPromoModal] = React.useState(false);
   const [showAdjustModal, setShowAdjustModal] = React.useState(null);
 
   const reload = async () => {
-    const [clients, promos, history, cfg] = await Promise.all([
+    const [clientList, promos, history, cfg, zoneList] = await Promise.all([
       DataService.getClients(), DataService.getPromotions(),
       DataService.getPointsHistory(), DataService.getConfig(),
+      DataService.getZones(),
     ]);
-    setClients(clients.sort((a, b) => (b.points || 0) - (a.points || 0)));
+    setClients(clientList.sort((a, b) => (b.points || 0) - (a.points || 0)));
     setPromotion(promos);
     setPointsHistory(history.slice(0, 50));
     setConfig(cfg);
+    setZones(zoneList);
   };
   React.useEffect(() => { reload(); }, []);
 
@@ -170,7 +173,7 @@ function Loyalty() {
                   {promotions.map(p => {
                     const typeLabels = { primera_compra: '🎁 Primera compra', volumen: '📦 Volumen', zona: '📍 Por zona', referido: '👥 Referido' };
                     const discountLabels = { porcentaje: `${p.discountValue}% de descuento`, producto_gratis: `${p.discountValue} producto gratis`, descuento_fijo: `$${p.discountValue} de descuento` };
-                    const zone = p.zoneId ? DataService.getZone(p.zoneId) : null;
+                    const zone = p.zoneId ? zones.find(z => z.id === p.zoneId) : null;
                     return (
                       <div key={p.id} className={`flex items-center gap-4 p-4 rounded-xl border ${p.active ? 'border-emerald-200 bg-emerald-50' : 'border-gray-200 bg-gray-50 opacity-60'}`}>
                         <div className="flex-1">
@@ -230,15 +233,14 @@ function Loyalty() {
         </div>
       </div>
 
-      <PromoFormModal isOpen={showPromoModal} onClose={() => setShowPromoModal(false)} onSave={async (data) => { await DataService.createPromotion(data); reload(); setShowPromoModal(false); }} />
+      <PromoFormModal isOpen={showPromoModal} onClose={() => setShowPromoModal(false)} onSave={async (data) => { await DataService.createPromotion(data); reload(); setShowPromoModal(false); }} zones={zones} />
       <PointsAdjustModal client={showAdjustModal} clients={clients} onClose={() => { setShowAdjustModal(null); reload(); }} />
     </div>
   );
 }
 
-function PromoFormModal({ isOpen, onClose, onSave }) {
+function PromoFormModal({ isOpen, onClose, onSave, zones }) {
   const [form, setForm] = React.useState({ name: '', type: 'primera_compra', discountType: 'porcentaje', discountValue: 10, minQuantity: 0, zoneId: '' });
-  const zones = DataService.getZones();
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const submit = (e) => { e.preventDefault(); if (!form.name.trim()) return; onSave(form); };
   return (
