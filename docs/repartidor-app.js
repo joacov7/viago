@@ -111,6 +111,9 @@ function DeliveryApp({ config }) {
   const [active, setActive] = React.useState(null);
   const [showSummary, setShowSummary] = React.useState(false);
   const [online, setOnline] = React.useState(navigator.onLine);
+  const [routeOrder, setRouteOrder] = React.useState(null); // null = not optimized, array of ids = optimized
+  const [optimizing, setOptimizing] = React.useState(false);
+  const [optimizeMsg, setOptimizeMsg] = React.useState('');
 
   React.useEffect(() => {
     const on = () => setOnline(true);
@@ -148,6 +151,47 @@ function DeliveryApp({ config }) {
 
   React.useEffect(() => { load(); }, []);
 
+  const optimizeRoute = async () => {
+    setOptimizing(true);
+    setOptimizeMsg('Obteniendo tu ubicación...');
+    try {
+      // Get driver GPS position
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+      );
+      const startLat = pos.coords.latitude;
+      const startLng = pos.coords.longitude;
+
+      const pending = deliveries.filter(d => d.status === 'pendiente');
+      setOptimizeMsg(`Geocodificando ${pending.length} direcciones...`);
+
+      // Geocode all pending delivery addresses
+      const coordsMap = {};
+      for (let i = 0; i < pending.length; i++) {
+        const o = pending[i];
+        const addr = o.client?.address;
+        if (!addr) continue;
+        setOptimizeMsg(`Geocodificando ${i + 1}/${pending.length}...`);
+        const coords = await GeoService.geocode(addr);
+        if (coords) coordsMap[o.id] = coords;
+      }
+
+      setOptimizeMsg('Calculando ruta óptima...');
+      const sorted = GeoService.nearestNeighborSort(startLat, startLng, pending, coordsMap);
+      const ids = sorted.map(o => o.id);
+      setRouteOrder(ids);
+
+      const geocoded = Object.keys(coordsMap).length;
+      setOptimizeMsg(`Ruta optimizada: ${geocoded}/${pending.length} paradas con GPS`);
+      setTimeout(() => setOptimizeMsg(''), 3000);
+    } catch (e) {
+      setOptimizeMsg('');
+      if (e.code === 1) alert('Permití el acceso a la ubicación para optimizar la ruta.');
+      else alert('No se pudo optimizar la ruta: ' + e.message);
+    }
+    setOptimizing(false);
+  };
+
   const handleDeliver = async (order, method, amount) => {
     await DataService.updateOrder(order.id, { status: 'entregado' });
     await DataService.createInvoice({
@@ -159,17 +203,33 @@ function DeliveryApp({ config }) {
       paymentStatus: 'pagado',
     });
     setDeliveries(ds => ds.map(d => d.id === order.id ? { ...d, status: 'entregado' } : d));
-    setActive(null);
+    // Advance to next pending in route
+    if (routeOrder) {
+      const remaining = routeOrder.filter(id => id !== order.id);
+      const nextId = remaining[0];
+      const nextOrder = deliveries.find(d => d.id === nextId);
+      setActive(nextOrder || null);
+    } else {
+      setActive(null);
+    }
   };
 
-  const pending = deliveries.filter(d => d.status === 'pendiente');
-  const delivered = deliveries.filter(d => d.status === 'entregado');
+  const allDeliveries = deliveries;
+  const pending = allDeliveries.filter(d => d.status === 'pendiente');
+  const delivered = allDeliveries.filter(d => d.status === 'entregado');
   const totalCollected = delivered.reduce((s, d) => s + (d.total || 0), 0);
 
+  // Sort pending by route order if optimized
+  const pendingSorted = routeOrder
+    ? [...pending].sort((a, b) => {
+        const ai = routeOrder.indexOf(a.id);
+        const bi = routeOrder.indexOf(b.id);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      })
+    : pending;
+
   if (loading) return <Splash />;
-
-  if (showSummary) return <DaySummary deliveries={deliveries} config={config} onClose={() => setShowSummary(false)} />;
-
+  if (showSummary) return <DaySummary deliveries={allDeliveries} config={config} onClose={() => setShowSummary(false)} />;
   if (active) return (
     <DeliveryDetail
       order={active}
@@ -184,13 +244,13 @@ function DeliveryApp({ config }) {
   return (
     <div className="min-h-screen flex flex-col" style={{background:'#0f172a'}}>
       {/* Header */}
-      <div className="safe-top px-5 pb-6" style={{background:'#2563eb'}}>
+      <div className="safe-top px-5 pb-5" style={{background:'#2563eb'}}>
         {!online && (
           <div className="bg-amber-500 text-white text-xs text-center py-1.5 rounded-xl mb-3 font-semibold">
             Sin conexión — datos del caché
           </div>
         )}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-blue-200 text-sm capitalize">{dateStr}</p>
             <h1 className="text-white text-2xl font-bold">Mis entregas</h1>
@@ -201,23 +261,46 @@ function DeliveryApp({ config }) {
             📊
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {[
-            { label: 'Pendientes', value: pending.length, color: 'text-white' },
-            { label: 'Entregados', value: delivered.length, color: 'text-white' },
-            { label: 'Cobrado', value: DataService.formatCurrency(totalCollected), color: 'text-white' },
+            { label: 'Pendientes', value: pending.length },
+            { label: 'Entregados', value: delivered.length },
+            { label: 'Cobrado', value: DataService.formatCurrency(totalCollected), small: true },
           ].map((s, i) => (
             <div key={i} className="rounded-2xl p-3 text-center" style={{background:'rgba(255,255,255,0.15)'}}>
-              <p className={`font-bold ${i === 2 ? 'text-base' : 'text-2xl'} ${s.color}`}>{s.value}</p>
+              <p className={`font-bold text-white ${s.small ? 'text-base' : 'text-2xl'}`}>{s.value}</p>
               <p className="text-blue-200 text-xs mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
+
+        {/* Route optimize button */}
+        {pending.length > 1 && (
+          <button
+            onClick={optimizeRoute}
+            disabled={optimizing}
+            className="w-full rounded-xl py-2.5 text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60"
+            style={{background: routeOrder ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.2)', color: 'white', border: routeOrder ? '1px solid rgba(16,185,129,0.5)' : '1px solid rgba(255,255,255,0.3)'}}>
+            {optimizing ? (
+              <>
+                <span className="animate-spin">⟳</span>
+                {optimizeMsg || 'Optimizando...'}
+              </>
+            ) : routeOrder ? (
+              <><span>✓</span> Ruta optimizada — toca para recalcular</>
+            ) : (
+              <><span>🗺️</span> Optimizar ruta</>
+            )}
+          </button>
+        )}
+        {optimizeMsg && !optimizing && (
+          <p className="text-center text-xs mt-2" style={{color:'rgba(255,255,255,0.7)'}}>{optimizeMsg}</p>
+        )}
       </div>
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 safe-bottom">
-        {deliveries.length === 0 && (
+        {allDeliveries.length === 0 && (
           <div className="text-center py-20">
             <p className="text-5xl mb-4">📭</p>
             <p className="text-white font-semibold text-lg">Sin entregas para hoy</p>
@@ -225,17 +308,29 @@ function DeliveryApp({ config }) {
           </div>
         )}
 
-        {pending.length > 0 && (
+        {pendingSorted.length > 0 && (
           <>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Pendientes</p>
-            {pending.map(o => <DeliveryCard key={o.id} order={o} onTap={() => setActive(o)} />)}
+            <div className="flex items-center justify-between px-1">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pendientes</p>
+              {routeOrder && <p className="text-xs font-semibold" style={{color:'#34d399'}}>Ruta optimizada ✓</p>}
+            </div>
+            {pendingSorted.map((o, idx) => (
+              <DeliveryCard
+                key={o.id}
+                order={o}
+                stopNumber={routeOrder ? idx + 1 : null}
+                onTap={() => setActive(o)}
+              />
+            ))}
           </>
         )}
 
         {delivered.length > 0 && (
           <>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1 pt-3">Entregados</p>
-            {delivered.map(o => <DeliveryCard key={o.id} order={o} onTap={() => setActive(o)} />)}
+            {delivered.map(o => (
+              <DeliveryCard key={o.id} order={o} stopNumber={null} onTap={() => setActive(o)} />
+            ))}
           </>
         )}
 
@@ -255,15 +350,17 @@ function DeliveryApp({ config }) {
   );
 }
 
-function DeliveryCard({ order, onTap }) {
+function DeliveryCard({ order, onTap, stopNumber }) {
   const done = order.status === 'entregado';
   return (
     <button onClick={onTap} className="w-full text-left rounded-2xl p-4 active:scale-98 transition-all"
-      style={{background: done ? '#1e293b' : '#1e293b', border: done ? '1px solid #334155' : '1px solid #3b82f6', opacity: done ? 0.6 : 1}}>
+      style={{background:'#1e293b', border: done ? '1px solid #334155' : '1px solid #3b82f6', opacity: done ? 0.6 : 1}}>
       <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 relative"
           style={{background: done ? '#064e3b' : '#1e3a8a'}}>
-          {done ? '✅' : '📦'}
+          {done ? <span className="text-2xl">✅</span> : stopNumber ? (
+            <span className="text-white font-bold text-lg">{stopNumber}</span>
+          ) : <span className="text-2xl">📦</span>}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">

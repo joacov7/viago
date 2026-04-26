@@ -1,10 +1,11 @@
-const CACHE = 'nativa-driver-v1';
+const CACHE = 'nativa-driver-v2';
 const STATIC = [
   './repartidor.html',
   './repartidor-app.js',
   './manifest-driver.json',
   './utils/supabaseClient.js',
   './utils/dataService.js',
+  './utils/geoService.js',
 ];
 
 self.addEventListener('install', e => {
