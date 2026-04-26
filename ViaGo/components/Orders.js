@@ -455,7 +455,12 @@ function AgendaModal({ isOpen, clients, products, onClose, onCreated }) {
     setCreating(true);
     try {
       for (const s of toCreate) {
-        await DataService.createOrder({ clientId: s.clientId, deliveryDate: s.date, items: [], total: 0, status: 'pendiente', notes: 'Generado automáticamente' });
+        const clientAbono = (clients.find(c => c.id === s.clientId) || {}).abono || [];
+        const items = clientAbono
+          .filter(a => a.productId)
+          .map(a => ({ productId: a.productId, productName: a.productName, quantity: a.quantity, price: a.price, subtotal: (a.price || 0) * (a.quantity || 1) }));
+        const total = items.reduce((sum, i) => sum + i.subtotal, 0);
+        await DataService.createOrder({ clientId: s.clientId, deliveryDate: s.date, items, total, status: 'pendiente', notes: 'Generado automáticamente' });
       }
       onCreated();
     } catch (err) { alert('Error: ' + err.message); }

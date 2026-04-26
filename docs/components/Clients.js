@@ -309,20 +309,24 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
   const [invoices, setInvoices] = React.useState([]);
   const [pointsHistory, setPointsHistory] = React.useState([]);
   const [referrals, setReferrals] = React.useState([]);
+  const [products, setProducts] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('pedidos');
+  const [abono, setAbono] = React.useState(client.abono || []);
 
   React.useEffect(() => {
     (async () => {
-      const [allOrders, allClients, allInvoices, history] = await Promise.all([
+      const [allOrders, allClients, allInvoices, history, allProducts] = await Promise.all([
         DataService.getClientOrders(client.id),
         DataService.getClients(true),
         DataService.getClientInvoices(client.id),
         DataService.getPointsHistory(client.id),
+        DataService.getProducts(),
       ]);
       setOrders(allOrders);
       setInvoices(allInvoices);
       setPointsHistory(history);
       setReferrals(allClients.filter(c => c.referredBy === client.id));
+      setProducts(allProducts);
     })();
   }, [client.id]);
 
@@ -335,6 +339,7 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
   const tabs = [
     { id: 'pedidos', label: `Pedidos (${orders.length})` },
     { id: 'facturas', label: `Facturas (${invoices.length})` },
+    { id: 'abono', label: 'Abono' },
     { id: 'puntos', label: `Puntos (${pointsHistory.length})` },
     { id: 'referidos', label: `Referidos (${referrals.length})` },
   ];
@@ -461,6 +466,10 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
                 </div>
               ))}
             </div>
+          )}
+
+          {activeTab === 'abono' && (
+            <AbonoEditor client={client} products={products} abono={abono} onSave={setAbono} />
           )}
 
           {activeTab === 'puntos' && (
@@ -725,5 +734,98 @@ function CampaignModal({ isOpen, clients, zones, onClose }) {
         )}
       </div>
     </Modal>
+  );
+}
+
+function AbonoEditor({ client, products, abono, onSave }) {
+  const [items, setItems] = React.useState(abono.length ? abono : []);
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+
+  const addItem = () => setItems(i => [...i, { productId: '', productName: '', quantity: 1, price: 0 }]);
+  const removeItem = (idx) => { setItems(i => i.filter((_, j) => j !== idx)); setSaved(false); };
+  const updateItem = (idx, field, value) => {
+    setSaved(false);
+    setItems(i => i.map((item, j) => {
+      if (j !== idx) return item;
+      const u = { ...item, [field]: value };
+      if (field === 'productId') {
+        const p = products.find(p => String(p.id) === String(value));
+        if (p) { u.productName = p.name; u.price = p.price; }
+      }
+      if (field === 'quantity') u.quantity = parseInt(value) || 1;
+      return u;
+    }));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const valid = items.filter(i => i.productId);
+      await DataService.updateClient(client.id, { abono: valid });
+      onSave(valid);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(false);
+  };
+
+  const total = items.filter(i => i.productId).reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+
+  return (
+    <div>
+      <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-start gap-2">
+        <Icon name="info" size={15} className="text-blue-500 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700">
+          Definí qué productos lleva habitualmente este cliente. La Agenda del mes usará esto para armar los pedidos automáticamente.
+        </p>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-slate-400 text-center py-6">Sin abono configurado</p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {items.map((item, i) => (
+            <div key={i} className="flex gap-2 items-center p-2 bg-gray-50 rounded-xl">
+              <select
+                value={item.productId}
+                onChange={e => updateItem(i, 'productId', e.target.value)}
+                className="flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar producto...</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} — {DataService.formatCurrency(p.price)}</option>)}
+              </select>
+              <input
+                type="number" min="1" value={item.quantity}
+                onChange={e => updateItem(i, 'quantity', e.target.value)}
+                className="w-14 px-2 py-1.5 text-sm border border-gray-200 rounded-lg text-center bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-sm font-semibold text-slate-700 w-20 text-right">
+                {item.productId ? DataService.formatCurrency((item.price || 0) * item.quantity) : '—'}
+              </span>
+              <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-500 p-1">
+                <Icon name="x" size={14} />
+              </button>
+            </div>
+          ))}
+          {total > 0 && (
+            <div className="flex justify-end mt-1 px-2">
+              <span className="text-sm font-bold text-blue-700">Total habitual: {DataService.formatCurrency(total)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-3 mt-4">
+        <button onClick={addItem} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-gray-300 text-slate-500 hover:border-blue-400 hover:text-blue-600 text-sm transition-colors">
+          <Icon name="plus" size={14} />Agregar producto
+        </button>
+        {items.length > 0 && (
+          <Btn onClick={save} disabled={saving} variant={saved ? 'success' : 'primary'} icon={saved ? 'check' : 'download'} className="ml-auto">
+            {saving ? 'Guardando...' : saved ? '¡Guardado!' : 'Guardar abono'}
+          </Btn>
+        )}
+      </div>
+    </div>
   );
 }

@@ -192,13 +192,15 @@ function DeliveryApp({ config }) {
     setOptimizing(false);
   };
 
-  const handleDeliver = async (order, method, amount) => {
-    await DataService.updateOrder(order.id, { status: 'entregado' });
+  const handleDeliver = async (order, method, amount, deliveredItems) => {
+    const finalItems = deliveredItems || order.items || [];
+    const finalTotal = parseFloat(amount) || order.total;
+    await DataService.updateOrder(order.id, { status: 'entregado', items: finalItems, total: finalTotal });
     await DataService.createInvoice({
       clientId: order.clientId,
       orderId: order.id,
-      items: order.items || [],
-      total: parseFloat(amount) || order.total,
+      items: finalItems,
+      total: finalTotal,
       paymentMethod: method,
       paymentStatus: 'pagado',
     });
@@ -505,13 +507,24 @@ function DeliveryDetail({ order, config, onBack, onDeliver }) {
 
 function PayCollectModal({ order, onClose, onConfirm }) {
   const [method, setMethod] = React.useState('efectivo');
-  const [amount, setAmount] = React.useState(String(order.total || ''));
+  const [items, setItems] = React.useState(
+    (order.items || []).length > 0
+      ? order.items.map(i => ({ ...i }))
+      : []
+  );
   const [loading, setLoading] = React.useState(false);
+
+  const updateQty = (idx, qty) => {
+    setItems(its => its.map((it, i) => i === idx ? { ...it, quantity: Math.max(0, qty), subtotal: it.price * Math.max(0, qty) } : it));
+  };
+
+  const total = items.reduce((s, i) => s + (i.price || 0) * (i.quantity || 0), 0);
 
   const confirm = async () => {
     setLoading(true);
     try {
-      await onConfirm(order, method, parseFloat(amount) || order.total);
+      const delivered = items.filter(i => i.quantity > 0);
+      await onConfirm(order, method, total, delivered);
     } catch (e) {
       alert('Error al guardar: ' + e.message);
       setLoading(false);
@@ -529,37 +542,54 @@ function PayCollectModal({ order, onClose, onConfirm }) {
       <div className="w-full rounded-t-3xl p-6" style={{background:'#1e293b'}} onClick={e => e.stopPropagation()}>
         <div className="w-12 h-1.5 rounded-full mx-auto mb-6" style={{background:'#475569'}} />
         <h3 className="text-white font-bold text-xl mb-1">Registrar entrega</h3>
-        <p className="text-slate-400 text-sm mb-6">{order.client?.name}</p>
+        <p className="text-slate-400 text-sm mb-5">{order.client?.name}</p>
+
+        {/* Editable items */}
+        {items.length > 0 && (
+          <div className="mb-5">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Qué se entregó</p>
+            <div className="space-y-2">
+              {items.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl" style={{background:'#0f172a'}}>
+                  <p className="flex-1 text-white text-sm font-medium">{item.productName}</p>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => updateQty(i, (item.quantity || 0) - 1)}
+                      className="w-8 h-8 rounded-lg text-white font-bold text-lg flex items-center justify-center"
+                      style={{background:'#334155'}}>−</button>
+                    <span className="text-white font-bold w-6 text-center">{item.quantity}</span>
+                    <button onClick={() => updateQty(i, (item.quantity || 0) + 1)}
+                      className="w-8 h-8 rounded-lg text-white font-bold text-lg flex items-center justify-center"
+                      style={{background:'#334155'}}>+</button>
+                  </div>
+                  <span className="text-sm font-semibold w-16 text-right" style={{color:'#60a5fa'}}>
+                    {item.quantity > 0 ? DataService.formatCurrency(item.price * item.quantity) : <span style={{color:'#475569'}}>—</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center mt-3 px-1">
+              <span className="text-slate-400 text-sm">Total a cobrar</span>
+              <span className="text-white font-bold text-xl">{DataService.formatCurrency(total)}</span>
+            </div>
+          </div>
+        )}
 
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Forma de pago</p>
         <div className="grid grid-cols-3 gap-3 mb-6">
           {methods.map(m => (
             <button key={m.id} onClick={() => setMethod(m.id)}
               className="py-4 rounded-2xl flex flex-col items-center gap-1.5 transition-all active:scale-95 font-bold"
-              style={{
-                background: method === m.id ? '#2563eb' : '#334155',
-                color: method === m.id ? 'white' : '#94a3b8',
-              }}>
+              style={{background: method === m.id ? '#2563eb' : '#334155', color: method === m.id ? 'white' : '#94a3b8'}}>
               <span className="text-2xl">{m.emoji}</span>
               <span className="text-xs">{m.label}</span>
             </button>
           ))}
         </div>
 
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Monto cobrado</p>
-        <input
-          type="number"
-          inputMode="decimal"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          className="w-full text-white text-3xl font-bold text-center rounded-2xl py-4 mb-6 focus:outline-none"
-          style={{background:'#334155', border:'2px solid #475569'}}
-        />
-
-        <button onClick={confirm} disabled={loading}
+        <button onClick={confirm} disabled={loading || total === 0}
           className="w-full rounded-2xl py-5 text-white font-bold text-lg mb-3 disabled:opacity-50 active:opacity-80 transition-opacity"
           style={{background:'#16a34a'}}>
-          {loading ? 'Guardando...' : '✓ Confirmar entrega'}
+          {loading ? 'Guardando...' : `✓ Confirmar — ${DataService.formatCurrency(total)}`}
         </button>
         <button onClick={onClose} className="w-full py-3 text-sm" style={{color:'#64748b'}}>
           Cancelar
