@@ -5,15 +5,17 @@ function Delivery({ onNavigate }) {
   const [orders, setOrders] = React.useState([]);
   const [clients, setClients] = React.useState([]);
   const [zones, setZones] = React.useState([]);
+  const [invoices, setInvoices] = React.useState([]);
   const [filterZone, setFilterZone] = React.useState('');
   const [driverMode, setDriverMode] = React.useState(false);
   const [showCobro, setShowCobro] = React.useState(null);
 
   const reload = async () => {
-    const [allOrders, allClients, allZones] = await Promise.all([
+    const [allOrders, allClients, allZones, allInvoices] = await Promise.all([
       DataService.getOrdersByDate(date),
       DataService.getClients(true),
       DataService.getZones(),
+      DataService.getInvoices(),
     ]);
     const enriched = allOrders.map(o => {
       const client = allClients.find(c => c.id === o.clientId) || {};
@@ -27,6 +29,7 @@ function Delivery({ onNavigate }) {
     setOrders(enriched);
     setClients(allClients);
     setZones(allZones);
+    setInvoices(allInvoices);
   };
 
   React.useEffect(() => { reload(); }, [date]);
@@ -53,13 +56,14 @@ function Delivery({ onNavigate }) {
         <DriverMode
           date={date}
           orders={filtered}
+          invoices={invoices}
           onBack={() => setDriverMode(false)}
           onStatus={handleStatus}
           onCobro={handleCobro}
           pending={pending.length}
           delivered={delivered.length}
         />
-        <CobroModal order={showCobro} onClose={() => { setShowCobro(null); reload(); }} />
+        <CobroModal order={showCobro} invoices={invoices} onClose={() => { setShowCobro(null); reload(); }} />
       </>
     );
   }
@@ -111,7 +115,7 @@ function Delivery({ onNavigate }) {
       {/* Print/export row */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-slate-700">Lista de entregas — {DataService.formatDate(date)}</h3>
-        <Btn onClick={() => PDFService.printDailySummary(date, filtered, DataService.getInvoices(), clients, zones)} variant="ghost" size="sm" icon="printer">Imprimir resumen</Btn>
+        <Btn onClick={() => PDFService.printDailySummary(date, filtered, invoices, clients, zones)} variant="ghost" size="sm" icon="printer">Imprimir resumen</Btn>
       </div>
 
       {filtered.length === 0 ? (
@@ -119,20 +123,20 @@ function Delivery({ onNavigate }) {
       ) : (
         <div className="space-y-3">
           {filtered.map(order => (
-            <DeliveryRow key={order.id} order={order} onStatus={handleStatus} onCobro={handleCobro} />
+            <DeliveryRow key={order.id} order={order} invoices={invoices} onStatus={handleStatus} onCobro={handleCobro} />
           ))}
         </div>
       )}
 
-      <CobroModal order={showCobro} onClose={() => { setShowCobro(null); reload(); }} />
+      <CobroModal order={showCobro} invoices={invoices} onClose={() => { setShowCobro(null); reload(); }} />
     </div>
   );
 }
 
-function DeliveryRow({ order, onStatus, onCobro }) {
+function DeliveryRow({ order, invoices = [], onStatus, onCobro }) {
   const [expanded, setExpanded] = React.useState(false);
   const borderColor = { pendiente: '#F59E0B', entregado: '#10B981', cancelado: '#EF4444' };
-  const invoice = DataService.getInvoices().find(i => i.orderId === order.id);
+  const invoice = invoices.find(i => i.orderId === order.id);
   const paid = invoice && invoice.paymentStatus === 'pagado';
 
   return (
@@ -214,7 +218,7 @@ function DeliveryRow({ order, onStatus, onCobro }) {
   );
 }
 
-function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivered }) {
+function DriverMode({ date, orders, invoices = [], onBack, onStatus, onCobro, pending, delivered }) {
   const [current, setCurrent] = React.useState(null);
   const [gpsPos, setGpsPos] = React.useState(null);
   const [gpsStatus, setGpsStatus] = React.useState('requesting');
@@ -273,6 +277,7 @@ function DriverMode({ date, orders, onBack, onStatus, onCobro, pending, delivere
     return (
       <DriverOrderDetail
         order={current}
+        invoices={invoices}
         distance={distances[current.id]}
         onBack={() => setCurrent(null)}
         onStatus={(id, status) => { onStatus(id, status); setCurrent(null); }}
@@ -411,8 +416,8 @@ function DriverCard({ order, onTap, dim = false, distance }) {
   );
 }
 
-function DriverOrderDetail({ order, distance, onBack, onStatus, onCobro }) {
-  const invoice = DataService.getInvoices().find(i => i.orderId === order.id);
+function DriverOrderDetail({ order, invoices = [], distance, onBack, onStatus, onCobro }) {
+  const invoice = invoices.find(i => i.orderId === order.id);
   const paid = invoice && invoice.paymentStatus === 'pagado';
   const nearby = GeoService.isNearby(distance);
 
@@ -514,23 +519,32 @@ function DriverOrderDetail({ order, distance, onBack, onStatus, onCobro }) {
   );
 }
 
-function CobroModal({ order, onClose }) {
+function CobroModal({ order, invoices = [], onClose }) {
   const [method, setMethod] = React.useState('efectivo');
   const [notes, setNotes] = React.useState('');
-  const config = DataService.getConfig();
+  const [config, setConfig] = React.useState({});
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => { DataService.getConfig().then(setConfig); }, []);
 
   if (!order) return null;
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    const existing = DataService.getInvoices().find(i => i.orderId === order.id);
-    if (existing) {
-      DataService.updateInvoice(existing.id, { paymentStatus: 'pagado', paymentMethod: method, notes });
-    } else {
-      const inv = DataService.createInvoice({ orderId: order.id, clientId: order.clientId, total: order.total, paymentMethod: method, notes, items: order.items });
-      DataService.updateInvoice(inv.id, { paymentStatus: 'pagado' });
+    setSaving(true);
+    try {
+      const existing = invoices.find(i => i.orderId === order.id);
+      if (existing) {
+        await DataService.updateInvoice(existing.id, { paymentStatus: 'pagado', paymentMethod: method, notes });
+      } else {
+        const inv = await DataService.createInvoice({ orderId: order.id, clientId: order.clientId, total: order.total, paymentMethod: method, notes, items: order.items });
+        await DataService.updateInvoice(inv.id, { paymentStatus: 'pagado' });
+      }
+      onClose();
+    } catch (err) {
+      alert('Error al registrar cobro: ' + err.message);
     }
-    onClose();
+    setSaving(false);
   };
 
   const mpLink = method === 'mercadopago' ? `https://www.mercadopago.com.ar/tools/create` : null;
@@ -563,7 +577,7 @@ function CobroModal({ order, onClose }) {
         </FormField>
         <div className="flex gap-3 pt-2">
           <Btn type="button" onClick={onClose} variant="secondary" className="flex-1 justify-center">Cancelar</Btn>
-          <Btn type="submit" variant="success" className="flex-1 justify-center" icon="check">Confirmar cobro</Btn>
+          <Btn type="submit" variant="success" className="flex-1 justify-center" icon="check" disabled={saving}>{saving ? 'Guardando...' : 'Confirmar cobro'}</Btn>
         </div>
       </form>
     </Modal>
