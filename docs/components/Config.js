@@ -212,9 +212,12 @@ function Config({ onConfigChange }) {
                       <Icon name="share2" size={14} />Probar link de pago
                     </a>
                   )}
-                  <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-xs text-blue-700 font-medium mb-1">🚀 Integración avanzada MP</p>
-                    <p className="text-xs text-blue-600">Para una integración completa con la API de MercadoPago (notificaciones automáticas, webhook), podés conectar el backend de NATIVA con las credenciales de tu cuenta MP. Consultá la documentación de MP Checkout Pro.</p>
+                  <FormField label="Access Token MP" hint="Tu Access Token de producción de MercadoPago (empieza con APP_USR-...). Guardalo en Configuración para generar links de pago automáticos.">
+                    <input type="password" value={config.mpAccessToken || ''} onChange={e => set('mpAccessToken', e.target.value)} className={inputCls()} placeholder="APP_USR-..." />
+                  </FormField>
+                  <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <p className="text-xs text-blue-700 font-medium mb-1">¿Dónde conseguirlo?</p>
+                    <p className="text-xs text-blue-600">Entrá a mercadopago.com.ar → Tu negocio → Configuración → Credenciales → <strong>Access Token de producción</strong></p>
                   </div>
                 </div>
               </div>

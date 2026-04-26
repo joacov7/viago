@@ -158,6 +158,51 @@ function InvoiceCard({ invoice, onDetail, onPay }) {
 }
 
 function InvoiceDetail({ invoice, config, onBack, onPay }) {
+  const [mpLink, setMpLink] = React.useState(invoice.mpPaymentLink || '');
+  const [mpLoading, setMpLoading] = React.useState(false);
+
+  const generateMPLink = async () => {
+    if (!config.mpAccessToken) {
+      alert('Configurá el Access Token de MercadoPago en Configuración → Pagos');
+      return;
+    }
+    setMpLoading(true);
+    try {
+      const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.mpAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: [{
+            title: `Factura ${invoice.number}`,
+            quantity: 1,
+            unit_price: invoice.total,
+            currency_id: 'ARS',
+          }],
+          payer: { name: invoice.client?.name || '' },
+          back_urls: {
+            success: window.location.origin + window.location.pathname,
+            failure: window.location.origin + window.location.pathname,
+            pending: window.location.origin + window.location.pathname,
+          },
+          auto_return: 'approved',
+          external_reference: invoice.number,
+        }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || `Error ${res.status}`); }
+      const data = await res.json();
+      const link = data.init_point;
+      setMpLink(link);
+      await DataService.updateInvoice(invoice.id, { mpPaymentLink: link });
+    } catch (e) {
+      alert(`Error al generar link MP: ${e.message}`);
+    } finally {
+      setMpLoading(false);
+    }
+  };
+
   return (
     <div>
       <Btn onClick={onBack} variant="ghost" icon="arrowLeft" size="sm" className="mb-5">Volver a facturación</Btn>
@@ -239,6 +284,34 @@ function InvoiceDetail({ invoice, config, onBack, onPay }) {
             <a href={WhatsAppService.paymentRequest(invoice.client, invoice)} target="_blank" rel="noopener noreferrer">
               <Btn variant="secondary" icon="messageCircle" className="w-full justify-center">Enviar recordatorio WA</Btn>
             </a>
+          </div>
+        )}
+
+        {/* MercadoPago payment link */}
+        {invoice.paymentStatus === 'pendiente' && (
+          <div className="mb-4 p-4 bg-cyan-50 rounded-xl border border-cyan-100">
+            <p className="text-xs font-semibold text-cyan-700 uppercase mb-3 flex items-center gap-1.5">
+              <Icon name="creditCard" size={13} className="text-cyan-600" /> MercadoPago
+            </p>
+            {mpLink ? (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 break-all font-mono bg-white rounded-lg px-2 py-1.5 border border-cyan-100">{mpLink}</p>
+                <div className="flex gap-2">
+                  <Btn onClick={() => { navigator.clipboard.writeText(mpLink); }} variant="secondary" size="sm" icon="copy" className="flex-1 justify-center">Copiar link</Btn>
+                  {invoice.client?.phone && (
+                    <a href={`https://wa.me/${(invoice.client.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Hola ${invoice.client.name}! Para abonar la factura ${invoice.number} por ${DataService.formatCurrency(invoice.total)} hacé click acá 👉 ${mpLink}`)}`}
+                      target="_blank" rel="noopener noreferrer" className="flex-1">
+                      <Btn variant="secondary" size="sm" icon="messageCircle" className="w-full justify-center">Enviar WA</Btn>
+                    </a>
+                  )}
+                </div>
+                <button onClick={generateMPLink} className="text-xs text-cyan-600 underline">Regenerar link</button>
+              </div>
+            ) : (
+              <Btn onClick={generateMPLink} variant="secondary" size="sm" icon="creditCard" className="w-full justify-center" disabled={mpLoading}>
+                {mpLoading ? 'Generando...' : 'Generar link de pago MP'}
+              </Btn>
+            )}
           </div>
         )}
 

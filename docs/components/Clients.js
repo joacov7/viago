@@ -7,6 +7,7 @@ function Clients({ onNavigate, navParams }) {
   const [filterZone, setFilterZone] = React.useState('');
   const [filterType, setFilterType] = React.useState('');
   const [showModal, setShowModal] = React.useState(false);
+  const [showCampaign, setShowCampaign] = React.useState(false);
   const [editing, setEditing] = React.useState(null);
   const [detail, setDetail] = React.useState(null);
 
@@ -57,7 +58,12 @@ function Clients({ onNavigate, navParams }) {
       <PageHeader
         title="Clientes"
         subtitle={`${clients.length} clientes activos`}
-        action={<Btn onClick={openNew} icon="plus" variant="primary">Nuevo cliente</Btn>}
+        action={
+          <div className="flex gap-2">
+            <Btn onClick={() => setShowCampaign(true)} variant="secondary" icon="messageCircle">Campaña WA</Btn>
+            <Btn onClick={() => setShowModal(true)} icon="plus" variant="primary">Nuevo cliente</Btn>
+          </div>
+        }
       />
 
       {/* Filters */}
@@ -194,6 +200,8 @@ function Clients({ onNavigate, navParams }) {
           </div>
         </>
       )}
+
+      <CampaignModal isOpen={showCampaign} clients={clients} zones={zones} onClose={() => setShowCampaign(false)} />
 
       {/* Client Form Modal */}
       <ClientFormModal
@@ -618,5 +626,104 @@ function ClientAccessBtn({ client }) {
         Copiar link
       </button>
     </div>
+  );
+}
+
+function CampaignModal({ isOpen, clients, zones, onClose }) {
+  const [filter, setFilter] = React.useState('todos');
+  const [zoneFilter, setZoneFilter] = React.useState('');
+  const [message, setMessage] = React.useState('Hola {nombre}! 👋 Te contactamos de NATIVA 💧');
+  const [currentIdx, setCurrentIdx] = React.useState(null);
+
+  const getRecipients = () => {
+    let list = clients.filter(c => c.phone);
+    if (filter === 'zona' && zoneFilter) list = list.filter(c => c.zoneId == zoneFilter);
+    if (filter === 'hogar') list = list.filter(c => c.type === 'hogar');
+    if (filter === 'empresa') list = list.filter(c => c.type === 'empresa');
+    return list;
+  };
+  const recipients = getRecipients();
+
+  const buildMsg = (client) => message.replace(/{nombre}/g, client.name.split(' ')[0]);
+
+  const openNext = () => {
+    const idx = currentIdx === null ? 0 : currentIdx + 1;
+    if (idx >= recipients.length) { setCurrentIdx(null); alert('¡Listo! Se abrieron todos los chats.'); return; }
+    const client = recipients[idx];
+    const url = `https://wa.me/${client.phone.replace(/\D/g,'')}?text=${encodeURIComponent(buildMsg(client))}`;
+    window.open(url, '_blank');
+    setCurrentIdx(idx);
+  };
+
+  const templates = [
+    { label: 'Recordatorio pedido', msg: 'Hola {nombre}! 👋 ¿Necesitás reponer agua esta semana? Avisanos y te programamos la entrega 💧' },
+    { label: 'Cobro pendiente', msg: 'Hola {nombre}! Te recordamos que tenés un saldo pendiente con NATIVA 💧 Cuando puedas coordinar el pago, avisanos 🙏' },
+    { label: 'Promoción', msg: 'Hola {nombre}! 🎉 Tenemos una promo especial para vos. Consultanos por WhatsApp 💧 *NATIVA*' },
+    { label: 'Nuevo producto', msg: 'Hola {nombre}! 💧 Incorporamos nuevos productos a nuestro catálogo. ¡Consultanos las novedades!' },
+  ];
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Campaña WhatsApp" size="lg">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Destinatarios">
+            <select value={filter} onChange={e => { setFilter(e.target.value); setZoneFilter(''); }}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="todos">Todos los clientes con teléfono</option>
+              <option value="hogar">Solo hogares</option>
+              <option value="empresa">Solo empresas</option>
+              <option value="zona">Por zona</option>
+            </select>
+          </FormField>
+          {filter === 'zona' && (
+            <FormField label="Zona">
+              <select value={zoneFilter} onChange={e => setZoneFilter(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Seleccioná una zona</option>
+                {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+              </select>
+            </FormField>
+          )}
+        </div>
+
+        <FormField label="Plantillas rápidas">
+          <div className="flex gap-2 flex-wrap">
+            {templates.map(t => (
+              <button key={t.label} onClick={() => setMessage(t.msg)}
+                className="px-3 py-1.5 text-xs rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors">
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </FormField>
+
+        <FormField label="Mensaje" hint="Usá {nombre} para personalizar con el nombre del cliente">
+          <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4}
+            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+        </FormField>
+
+        <div className="p-3 bg-gray-50 rounded-xl">
+          <p className="text-xs font-semibold text-slate-600 mb-1">{recipients.length} destinatario{recipients.length !== 1 ? 's' : ''} con teléfono</p>
+          <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+            {recipients.map(c => (
+              <span key={c.id} className="text-xs bg-white border border-gray-200 px-2 py-0.5 rounded-full text-slate-600">{c.name.split(' ')[0]}</span>
+            ))}
+          </div>
+        </div>
+
+        {recipients.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-2">No hay clientes con teléfono en este filtro.</p>
+        ) : (
+          <div className="flex gap-3 pt-2">
+            <Btn type="button" onClick={onClose} variant="secondary" className="flex-1 justify-center">Cancelar</Btn>
+            <button onClick={openNext}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-colors">
+              <Icon name="messageCircle" size={16} />
+              {currentIdx === null ? `Iniciar campaña (${recipients.length})` : `Siguiente (${currentIdx + 1}/${recipients.length})`}
+            </button>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

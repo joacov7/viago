@@ -10,6 +10,7 @@ function Orders({ onNavigate, navParams }) {
   const [filterZone, setFilterZone] = React.useState('');
   const [query, setQuery] = React.useState('');
   const [showModal, setShowModal] = React.useState(false);
+  const [showAgenda, setShowAgenda] = React.useState(false);
   const [detail, setDetail] = React.useState(null);
 
   const reload = async () => {
@@ -70,7 +71,12 @@ function Orders({ onNavigate, navParams }) {
       <PageHeader
         title="Pedidos"
         subtitle={`${orders.length} pedidos en total`}
-        action={<Btn onClick={() => setShowModal(true)} icon="plus" variant="primary">Nuevo pedido</Btn>}
+        action={
+          <div className="flex gap-2">
+            <Btn onClick={() => setShowAgenda(true)} variant="secondary" icon="calendar">Agenda del mes</Btn>
+            <Btn onClick={() => setShowModal(true)} icon="plus" variant="primary">Nuevo pedido</Btn>
+          </div>
+        }
       />
 
       {/* Status tabs */}
@@ -119,6 +125,7 @@ function Orders({ onNavigate, navParams }) {
         onSave={async (data) => { await DataService.createOrder(data); reload(); setShowModal(false); }}
         preClientId={navParams && navParams.clientId}
       />
+      <AgendaModal isOpen={showAgenda} clients={clients} products={products} onClose={() => setShowAgenda(false)} onCreated={() => { reload(); setShowAgenda(false); }} />
     </div>
   );
 }
@@ -392,6 +399,146 @@ function OrderFormModal({ isOpen, clients, zones, products, onClose, onSave, pre
           <Btn type="submit" variant="primary" icon="plus">Crear pedido</Btn>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function AgendaModal({ isOpen, clients, products, onClose, onCreated }) {
+  const now = new Date();
+  const [year, setYear] = React.useState(now.getFullYear());
+  const [month, setMonth] = React.useState(now.getMonth() + 1);
+  const [schedule, setSchedule] = React.useState([]);
+  const [existing, setExisting] = React.useState([]);
+  const [creating, setCreating] = React.useState(false);
+  const [generated, setGenerated] = React.useState(false);
+
+  const DAY_NUM = { domingo:0, lunes:1, martes:2, 'miércoles':3, jueves:4, viernes:5, sábado:6 };
+  const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  const generate = async () => {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const pad = n => String(n).padStart(2, '0');
+    const existingOrders = await DataService.getOrders();
+    const existingSet = new Set(existingOrders.filter(o => o.deliveryDate && o.deliveryDate.startsWith(`${year}-${pad(month)}`)).map(o => `${o.clientId}-${o.deliveryDate}`));
+    setExisting(existingSet);
+
+    const sched = [];
+    for (const client of clients) {
+      if (!client.deliveryDay || !client.active) continue;
+      const targetDay = DAY_NUM[client.deliveryDay.toLowerCase()];
+      if (targetDay === undefined) continue;
+      const dates = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        if (new Date(year, month - 1, d).getDay() === targetDay)
+          dates.push(`${year}-${pad(month)}-${pad(d)}`);
+      }
+      let deliveryDates = [];
+      if (client.frequency === 'semanal') deliveryDates = dates;
+      else if (client.frequency === 'quincenal') deliveryDates = dates.filter((_,i) => i % 2 === 0);
+      else if (client.frequency === 'mensual') deliveryDates = dates.slice(0, 1);
+      else if (client.frequency === 'diario') {
+        for (let d = 1; d <= daysInMonth; d++) deliveryDates.push(`${year}-${pad(month)}-${pad(d)}`);
+      } else deliveryDates = dates;
+
+      for (const date of deliveryDates) {
+        const key = `${client.id}-${date}`;
+        sched.push({ clientId: client.id, clientName: client.name, date, key, isDuplicate: existingSet.has(key) });
+      }
+    }
+    setSchedule(sched.sort((a, b) => a.date.localeCompare(b.date)));
+    setGenerated(true);
+  };
+
+  const createAll = async () => {
+    const toCreate = schedule.filter(s => !s.isDuplicate);
+    if (!toCreate.length) { alert('No hay pedidos nuevos para crear.'); return; }
+    setCreating(true);
+    try {
+      for (const s of toCreate) {
+        await DataService.createOrder({ clientId: s.clientId, deliveryDate: s.date, items: [], total: 0, status: 'pendiente', notes: 'Generado automáticamente' });
+      }
+      onCreated();
+    } catch (err) { alert('Error: ' + err.message); }
+    setCreating(false);
+  };
+
+  const newCount = schedule.filter(s => !s.isDuplicate).length;
+  const dupCount = schedule.filter(s => s.isDuplicate).length;
+
+  const byDate = schedule.reduce((acc, s) => {
+    if (!acc[s.date]) acc[s.date] = [];
+    acc[s.date].push(s);
+    return acc;
+  }, {});
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Generar agenda del mes" size="lg">
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <FormField label="Mes" className="flex-1">
+            <select value={month} onChange={e => { setMonth(Number(e.target.value)); setGenerated(false); }}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {MONTH_NAMES.map((n, i) => <option key={i} value={i+1}>{n}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Año" className="flex-1">
+            <select value={year} onChange={e => { setYear(Number(e.target.value)); setGenerated(false); }}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </FormField>
+          <div className="flex items-end">
+            <Btn onClick={generate} variant="secondary" icon="search">Previsualizar</Btn>
+          </div>
+        </div>
+
+        {generated && (
+          <>
+            <div className="flex gap-3">
+              <div className="flex-1 p-3 bg-blue-50 rounded-xl text-center">
+                <p className="text-xl font-bold text-blue-700">{newCount}</p>
+                <p className="text-xs text-blue-600">pedidos a crear</p>
+              </div>
+              <div className="flex-1 p-3 bg-gray-50 rounded-xl text-center">
+                <p className="text-xl font-bold text-slate-400">{dupCount}</p>
+                <p className="text-xs text-slate-400">ya existentes</p>
+              </div>
+              <div className="flex-1 p-3 bg-gray-50 rounded-xl text-center">
+                <p className="text-xl font-bold text-slate-700">{schedule.length}</p>
+                <p className="text-xs text-slate-500">total entregas</p>
+              </div>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto space-y-3">
+              {Object.entries(byDate).map(([date, items]) => (
+                <div key={date}>
+                  <p className="text-xs font-semibold text-slate-500 mb-1 sticky top-0 bg-white py-1">{DataService.formatDate(date)}</p>
+                  <div className="space-y-1">
+                    {items.map((s, i) => (
+                      <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${s.isDuplicate ? 'bg-gray-50 text-slate-400 line-through' : 'bg-blue-50 text-slate-700'}`}>
+                        <Icon name={s.isDuplicate ? 'check' : 'package'} size={12} className={s.isDuplicate ? 'text-slate-400' : 'text-blue-600'} />
+                        {s.clientName}
+                        {s.isDuplicate && <span className="text-xs ml-auto">ya existe</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Btn onClick={onClose} variant="secondary" className="flex-1 justify-center">Cancelar</Btn>
+              <Btn onClick={createAll} disabled={creating || newCount === 0} variant="primary" icon="plus" className="flex-1 justify-center">
+                {creating ? 'Creando pedidos...' : `Crear ${newCount} pedidos`}
+              </Btn>
+            </div>
+          </>
+        )}
+
+        {!generated && (
+          <p className="text-sm text-slate-400 text-center py-4">Seleccioná un mes y hacé clic en "Previsualizar" para ver los pedidos que se generarán basados en la frecuencia de cada cliente.</p>
+        )}
+      </div>
     </Modal>
   );
 }
