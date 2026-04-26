@@ -84,4 +84,46 @@ const GeoService = {
     }
     return [...route, ...noCoords];
   },
+
+  // Zone-aware sort: groups by zone, visits nearest zone first,
+  // applies nearest-neighbor within each zone, then chains zones together.
+  zoneAwareSort(startLat, startLng, orders, coordsMap) {
+    const withCoords = orders.filter(o => coordsMap[o.id]);
+    const noCoords = orders.filter(o => !coordsMap[o.id]);
+
+    // Group by zone (fall back to '__none__' for unzoned orders)
+    const zoneGroups = {};
+    for (const o of withCoords) {
+      const zId = (o.zone && o.zone.id) ? String(o.zone.id) : '__none__';
+      if (!zoneGroups[zId]) zoneGroups[zId] = [];
+      zoneGroups[zId].push(o);
+    }
+
+    const result = [];
+    let lat = startLat, lng = startLng;
+    const remaining = Object.keys(zoneGroups);
+
+    while (remaining.length > 0) {
+      // Pick the zone whose nearest order is closest to current position
+      let bestZoneKey = null, bestDist = Infinity;
+      for (const zId of remaining) {
+        for (const o of zoneGroups[zId]) {
+          const d = this.distance(lat, lng, coordsMap[o.id].lat, coordsMap[o.id].lng);
+          if (d < bestDist) { bestDist = d; bestZoneKey = zId; }
+        }
+      }
+
+      // Sort within the chosen zone using nearest-neighbor
+      const zoneSorted = this.nearestNeighborSort(lat, lng, zoneGroups[bestZoneKey], coordsMap);
+      result.push(...zoneSorted);
+
+      // Advance position to last delivery in this zone
+      const last = zoneSorted.filter(o => coordsMap[o.id]).pop();
+      if (last) { lat = coordsMap[last.id].lat; lng = coordsMap[last.id].lng; }
+
+      remaining.splice(remaining.indexOf(bestZoneKey), 1);
+    }
+
+    return [...result, ...noCoords];
+  },
 };

@@ -177,12 +177,12 @@ function DeliveryApp({ config }) {
       }
 
       setOptimizeMsg('Calculando ruta óptima...');
-      const sorted = GeoService.nearestNeighborSort(startLat, startLng, pending, coordsMap);
+      const sorted = GeoService.zoneAwareSort(startLat, startLng, pending, coordsMap);
       const ids = sorted.map(o => o.id);
       setRouteOrder(ids);
 
       const geocoded = Object.keys(coordsMap).length;
-      setOptimizeMsg(`Ruta optimizada: ${geocoded}/${pending.length} paradas con GPS`);
+      setOptimizeMsg(`Ruta optimizada por zonas: ${geocoded}/${pending.length} paradas con GPS`);
       setTimeout(() => setOptimizeMsg(''), 3000);
     } catch (e) {
       setOptimizeMsg('');
@@ -312,16 +312,29 @@ function DeliveryApp({ config }) {
           <>
             <div className="flex items-center justify-between px-1">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pendientes</p>
-              {routeOrder && <p className="text-xs font-semibold" style={{color:'#34d399'}}>Ruta optimizada ✓</p>}
+              {routeOrder && <p className="text-xs font-semibold" style={{color:'#34d399'}}>Por zonas ✓</p>}
             </div>
-            {pendingSorted.map((o, idx) => (
-              <DeliveryCard
-                key={o.id}
-                order={o}
-                stopNumber={routeOrder ? idx + 1 : null}
-                onTap={() => setActive(o)}
-              />
-            ))}
+            {(() => {
+              const items = [];
+              let lastZone = null;
+              pendingSorted.forEach((o, idx) => {
+                const zName = o.zone?.name || null;
+                if (routeOrder && zName && zName !== lastZone) {
+                  items.push(
+                    <div key={`z-${zName}`} className="flex items-center gap-2 px-1 pt-2">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background: o.zone?.color || '#6b7280'}} />
+                      <p className="text-xs font-bold uppercase tracking-widest" style={{color: o.zone?.color || '#94a3b8'}}>{zName}</p>
+                      <div className="flex-1 h-px" style={{background: o.zone?.color ? o.zone.color + '40' : '#334155'}} />
+                    </div>
+                  );
+                  lastZone = zName;
+                }
+                items.push(
+                  <DeliveryCard key={o.id} order={o} stopNumber={routeOrder ? idx + 1 : null} onTap={() => setActive(o)} />
+                );
+              });
+              return items;
+            })()}
           </>
         )}
 
