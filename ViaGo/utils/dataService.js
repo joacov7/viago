@@ -165,6 +165,29 @@ const DataService = {
     await this._sb.from('clients').update({ active: false }).eq('id', id);
   },
 
+  // ─── LEADS ───────────────────────────────────────────────────────────────
+  async getLeads() {
+    const { data } = await this._sb.from('leads').select('*').order('created_at', { ascending: false });
+    return this._jsMany(data);
+  },
+  async createLead(leadData) {
+    const { data, error } = await this._sb.from('leads').insert(this._db({
+      name: leadData.name, phone: leadData.phone || '', address: leadData.address || '',
+      city: leadData.city || '', type: leadData.type || 'empresa', source: leadData.source || 'manual',
+      notes: leadData.notes || '', status: 'nuevo', osmId: leadData.osmId || '', website: leadData.website || '',
+    })).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(data);
+  },
+  async updateLead(id, data) {
+    const { data: row, error } = await this._sb.from('leads').update(this._db(data)).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(row);
+  },
+  async deleteLead(id) {
+    await this._sb.from('leads').delete().eq('id', id);
+  },
+
   // ─── ORDERS ──────────────────────────────────────────────────────────────
   async getOrders() {
     const { data } = await this._sb.from('orders').select('*').order('created_at', { ascending: false });

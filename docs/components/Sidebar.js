@@ -1,13 +1,14 @@
 // NATIVA - Sidebar navigation component
 
 function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
-  const config = DataService.getConfig();
+  const config = DataService.getConfigSync();
 
   const navItems = [
-    { id: 'dashboard',  icon: 'dashboard',    label: 'Dashboard' },
-    { id: 'clients',    icon: 'users',        label: 'Clientes' },
-    { id: 'orders',     icon: 'package',      label: 'Pedidos' },
-    { id: 'delivery',   icon: 'truck',        label: 'Reparto' },
+    { id: 'dashboard',    icon: 'dashboard',    label: 'Dashboard' },
+    { id: 'clients',      icon: 'users',        label: 'Clientes' },
+    { id: 'prospecting',  icon: 'search',       label: 'Captación' },
+    { id: 'orders',       icon: 'package',      label: 'Pedidos' },
+    { id: 'delivery',     icon: 'truck',        label: 'Reparto' },
     { id: 'zones',      icon: 'mapPin',       label: 'Zonas' },
     { id: 'billing',    icon: 'fileText',     label: 'Facturación' },
     { id: 'loyalty',    icon: 'star',         label: 'Fidelización' },

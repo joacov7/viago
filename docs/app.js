@@ -55,15 +55,16 @@ function App() {
   };
 
   const moduleTitle = {
-    dashboard: 'Dashboard', clients: 'Clientes', orders: 'Pedidos',
-    delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
+    dashboard: 'Dashboard', clients: 'Clientes', prospecting: 'Captación',
+    orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
   };
 
   const renderModule = () => {
     switch (activeModule) {
-      case 'dashboard': return <Dashboard onNavigate={navigate} />;
-      case 'clients':   return <Clients onNavigate={navigate} navParams={navParams} />;
+      case 'dashboard':    return <Dashboard onNavigate={navigate} />;
+      case 'clients':      return <Clients onNavigate={navigate} navParams={navParams} />;
+      case 'prospecting':  return <Prospecting />;
       case 'orders':    return <Orders onNavigate={navigate} navParams={navParams} />;
       case 'delivery':  return <Delivery onNavigate={navigate} />;
       case 'zones':     return <Zones />;
