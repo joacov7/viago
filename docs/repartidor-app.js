@@ -1,0 +1,547 @@
+// NATIVA - Repartidor PWA app
+
+const PIN_KEY = 'nativa_driver_pin_ok';
+const PIN_DATE_KEY = 'nativa_driver_pin_date';
+
+function DriverApp() {
+  const [pinOk, setPinOk] = React.useState(false);
+  const [config, setConfig] = React.useState(null);
+
+  React.useEffect(() => {
+    DataService.getConfig().then(cfg => {
+      setConfig(cfg);
+      const today = new Date().toISOString().slice(0, 10);
+      if (sessionStorage.getItem(PIN_KEY) === 'true' && sessionStorage.getItem(PIN_DATE_KEY) === today) {
+        setPinOk(true);
+      }
+    }).catch(() => setConfig({}));
+  }, []);
+
+  const handlePinOk = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    sessionStorage.setItem(PIN_KEY, 'true');
+    sessionStorage.setItem(PIN_DATE_KEY, today);
+    setPinOk(true);
+  };
+
+  if (!config) return <Splash />;
+  if (!pinOk) return <PinScreen config={config} onSuccess={handlePinOk} />;
+  return <DeliveryApp config={config} />;
+}
+
+function Splash() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{background:'#1e3a8a'}}>
+      <div className="text-center text-white">
+        <div className="text-6xl mb-4">💧</div>
+        <p className="text-xl font-bold">NATIVA</p>
+        <p className="text-blue-300 text-sm mt-1">Cargando...</p>
+      </div>
+    </div>
+  );
+}
+
+function PinScreen({ config, onSuccess }) {
+  const [pin, setPin] = React.useState('');
+  const [shake, setShake] = React.useState(false);
+  const [error, setError] = React.useState(false);
+
+  const handleDigit = (d) => {
+    if (pin.length >= 4) return;
+    const next = pin + d;
+    setPin(next);
+    setError(false);
+    if (next.length === 4) {
+      const stored = String(config.driverPin || '0000');
+      if (next === stored) {
+        onSuccess();
+      } else {
+        setTimeout(() => { setPin(''); setError(true); setShake(false); }, 500);
+        setShake(true);
+      }
+    }
+  };
+
+  const handleDel = () => { setPin(p => p.slice(0, -1)); setError(false); };
+
+  const digits = [1,2,3,4,5,6,7,8,9,'',0,'⌫'];
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{background:'#0f172a'}}>
+      <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6" style={{background:'#2563eb'}}>
+        <span className="text-4xl">💧</span>
+      </div>
+      <h1 className="text-white text-2xl font-bold mb-1">{config.companyName || 'NATIVA'}</h1>
+      <p className="text-slate-400 text-sm mb-10">Ingresá tu PIN de acceso</p>
+
+      <div className={`flex gap-5 mb-4 transition-all ${shake ? 'translate-x-2' : ''}`}>
+        {[0,1,2,3].map(i => (
+          <div key={i} className={`w-5 h-5 rounded-full transition-all duration-200 ${
+            pin.length > i ? (error ? 'bg-red-500' : 'bg-blue-500') : 'bg-slate-700'
+          }`} />
+        ))}
+      </div>
+      {error && <p className="text-red-400 text-sm mb-4">PIN incorrecto, intentá de nuevo</p>}
+      {!error && <div className="h-6 mb-4" />}
+
+      <div className="grid grid-cols-3 gap-4 w-72">
+        {digits.map((d, i) => (
+          <button
+            key={i}
+            onClick={() => d === '⌫' ? handleDel() : d !== '' ? handleDigit(String(d)) : null}
+            disabled={d === ''}
+            className={`py-5 rounded-2xl text-xl font-bold transition-all active:scale-90 ${
+              d === '' ? 'invisible' :
+              d === '⌫' ? 'text-slate-300' :
+              'text-white'
+            }`}
+            style={{ background: d === '' ? 'transparent' : d === '⌫' ? '#334155' : '#1e293b' }}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryApp({ config }) {
+  const [deliveries, setDeliveries] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [active, setActive] = React.useState(null);
+  const [showSummary, setShowSummary] = React.useState(false);
+  const [online, setOnline] = React.useState(navigator.onLine);
+
+  React.useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [orders, clients, zones] = await Promise.all([
+        DataService.getTodayOrders(),
+        DataService.getClients(true),
+        DataService.getZones(),
+      ]);
+      const enriched = orders.map(o => ({
+        ...o,
+        client: clients.find(c => c.id === o.clientId) || {},
+        zone: zones.find(z => z.id === (clients.find(c => c.id === o.clientId) || {}).zoneId) || {},
+      }));
+      setDeliveries(enriched);
+      const today = new Date().toISOString().slice(0, 10);
+      localStorage.setItem('nativa_driver_cache', JSON.stringify(enriched));
+      localStorage.setItem('nativa_driver_cache_date', today);
+    } catch {
+      const today = new Date().toISOString().slice(0, 10);
+      const cached = localStorage.getItem('nativa_driver_cache');
+      const cacheDate = localStorage.getItem('nativa_driver_cache_date');
+      if (cached && cacheDate === today) setDeliveries(JSON.parse(cached));
+    }
+    setLoading(false);
+  };
+
+  React.useEffect(() => { load(); }, []);
+
+  const handleDeliver = async (order, method, amount) => {
+    await DataService.updateOrder(order.id, { status: 'entregado' });
+    await DataService.createInvoice({
+      clientId: order.clientId,
+      orderId: order.id,
+      items: order.items || [],
+      total: parseFloat(amount) || order.total,
+      paymentMethod: method,
+      paymentStatus: 'pagado',
+    });
+    setDeliveries(ds => ds.map(d => d.id === order.id ? { ...d, status: 'entregado' } : d));
+    setActive(null);
+  };
+
+  const pending = deliveries.filter(d => d.status === 'pendiente');
+  const delivered = deliveries.filter(d => d.status === 'entregado');
+  const totalCollected = delivered.reduce((s, d) => s + (d.total || 0), 0);
+
+  if (loading) return <Splash />;
+
+  if (showSummary) return <DaySummary deliveries={deliveries} config={config} onClose={() => setShowSummary(false)} />;
+
+  if (active) return (
+    <DeliveryDetail
+      order={active}
+      config={config}
+      onBack={() => setActive(null)}
+      onDeliver={handleDeliver}
+    />
+  );
+
+  const dateStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{background:'#0f172a'}}>
+      {/* Header */}
+      <div className="safe-top px-5 pb-6" style={{background:'#2563eb'}}>
+        {!online && (
+          <div className="bg-amber-500 text-white text-xs text-center py-1.5 rounded-xl mb-3 font-semibold">
+            Sin conexión — datos del caché
+          </div>
+        )}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-blue-200 text-sm capitalize">{dateStr}</p>
+            <h1 className="text-white text-2xl font-bold">Mis entregas</h1>
+          </div>
+          <button onClick={() => setShowSummary(true)}
+            className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
+            style={{background:'rgba(255,255,255,0.2)'}}>
+            📊
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Pendientes', value: pending.length, color: 'text-white' },
+            { label: 'Entregados', value: delivered.length, color: 'text-white' },
+            { label: 'Cobrado', value: DataService.formatCurrency(totalCollected), color: 'text-white' },
+          ].map((s, i) => (
+            <div key={i} className="rounded-2xl p-3 text-center" style={{background:'rgba(255,255,255,0.15)'}}>
+              <p className={`font-bold ${i === 2 ? 'text-base' : 'text-2xl'} ${s.color}`}>{s.value}</p>
+              <p className="text-blue-200 text-xs mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 safe-bottom">
+        {deliveries.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-5xl mb-4">📭</p>
+            <p className="text-white font-semibold text-lg">Sin entregas para hoy</p>
+            <p className="text-slate-500 text-sm mt-1">El dueño aún no cargó pedidos</p>
+          </div>
+        )}
+
+        {pending.length > 0 && (
+          <>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1">Pendientes</p>
+            {pending.map(o => <DeliveryCard key={o.id} order={o} onTap={() => setActive(o)} />)}
+          </>
+        )}
+
+        {delivered.length > 0 && (
+          <>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest px-1 pt-3">Entregados</p>
+            {delivered.map(o => <DeliveryCard key={o.id} order={o} onTap={() => setActive(o)} />)}
+          </>
+        )}
+
+        {pending.length === 0 && delivered.length > 0 && (
+          <div className="text-center py-8">
+            <p className="text-5xl mb-3">🎉</p>
+            <p className="text-white font-bold text-lg">¡Listo! Todas entregadas</p>
+            <button onClick={() => setShowSummary(true)}
+              className="mt-5 px-8 py-3 rounded-2xl text-white font-semibold text-sm"
+              style={{background:'#2563eb'}}>
+              Ver resumen del día
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DeliveryCard({ order, onTap }) {
+  const done = order.status === 'entregado';
+  return (
+    <button onClick={onTap} className="w-full text-left rounded-2xl p-4 active:scale-98 transition-all"
+      style={{background: done ? '#1e293b' : '#1e293b', border: done ? '1px solid #334155' : '1px solid #3b82f6', opacity: done ? 0.6 : 1}}>
+      <div className="flex items-start gap-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+          style={{background: done ? '#064e3b' : '#1e3a8a'}}>
+          {done ? '✅' : '📦'}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <p className="font-bold text-white truncate">{order.client?.name || `Cliente #${order.clientId}`}</p>
+            {order.zone?.name && (
+              <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium flex-shrink-0"
+                style={{background: order.zone.color || '#475569'}}>
+                {order.zone.name}
+              </span>
+            )}
+          </div>
+          <p className="text-slate-400 text-sm truncate">{order.client?.address || 'Sin dirección'}</p>
+          {(order.items || []).length > 0 && (
+            <p className="text-slate-600 text-xs mt-1 truncate">
+              {order.items.map(i => `${i.quantity}× ${i.productName}`).join(' · ')}
+            </p>
+          )}
+        </div>
+        <div className="text-right flex-shrink-0 ml-2">
+          <p className="font-bold text-white">{DataService.formatCurrency(order.total)}</p>
+          <p className="text-slate-600 text-lg mt-1">›</p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function DeliveryDetail({ order, config, onBack, onDeliver }) {
+  const [showPay, setShowPay] = React.useState(false);
+  const done = order.status === 'entregado';
+  const city = (config.city || '').trim();
+  const addr = order.client?.address || '';
+  const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(city ? `${addr}, ${city}` : addr)}`;
+  const waAviso = order.client?.phone
+    ? `https://wa.me/${(order.client.phone).replace(/\D/g,'')}?text=${encodeURIComponent(`Hola ${(order.client.name||'').split(' ')[0]}! Ya voy para tu domicilio con tu pedido de agua 💧`)}`
+    : null;
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{background:'#0f172a'}}>
+      {/* Header */}
+      <div className="safe-top px-4 pb-4 flex items-center gap-3" style={{background:'#1e293b'}}>
+        <button onClick={onBack} className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl text-white"
+          style={{background:'#334155'}}>
+          ‹
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-white font-bold text-lg truncate">{order.client?.name}</p>
+          <p className="text-slate-400 text-xs">{order.client?.code}</p>
+        </div>
+        {done && (
+          <span className="text-xs font-bold px-3 py-1 rounded-full" style={{background:'#064e3b', color:'#34d399'}}>
+            Entregado
+          </span>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Address card */}
+        <div className="rounded-2xl p-4" style={{background:'#1e293b'}}>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Dirección</p>
+          <p className="text-white font-semibold text-base">{addr || 'Sin dirección registrada'}</p>
+          {order.client?.city && <p className="text-slate-400 text-sm mt-0.5">{order.client.city}</p>}
+          {order.client?.phone && (
+            <p className="text-slate-400 text-sm mt-2">📞 {order.client.phone}</p>
+          )}
+        </div>
+
+        {/* Navigate */}
+        {addr && (
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-3 rounded-2xl py-4 text-white font-bold text-base active:opacity-80 transition-opacity"
+            style={{background:'#2563eb'}}>
+            <span className="text-2xl">🗺️</span> Navegar con Maps
+          </a>
+        )}
+
+        {/* WhatsApp notify */}
+        {waAviso && (
+          <a href={waAviso} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-3 rounded-2xl py-4 text-white font-bold text-base active:opacity-80 transition-opacity"
+            style={{background:'#16a34a'}}>
+            <span className="text-2xl">💬</span> Avisar por WhatsApp
+          </a>
+        )}
+
+        {/* Items */}
+        <div className="rounded-2xl p-4" style={{background:'#1e293b'}}>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Pedido</p>
+          {(order.items || []).length === 0 ? (
+            <p className="text-slate-500 text-sm">Sin productos cargados</p>
+          ) : (order.items || []).map((item, i) => (
+            <div key={i} className="flex justify-between items-center py-2.5 border-b last:border-0" style={{borderColor:'#334155'}}>
+              <span className="text-white text-sm">{item.productName}</span>
+              <span className="text-slate-300 font-semibold">{item.quantity}×</span>
+            </div>
+          ))}
+          <div className="flex justify-between items-center pt-3 mt-1">
+            <span className="text-white font-bold">Total</span>
+            <span className="font-bold text-lg" style={{color:'#60a5fa'}}>{DataService.formatCurrency(order.total)}</span>
+          </div>
+        </div>
+
+        {/* Notes */}
+        {order.notes && (
+          <div className="rounded-2xl p-4 border" style={{background:'#451a03', borderColor:'#92400e'}}>
+            <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:'#fbbf24'}}>Nota</p>
+            <p className="text-sm" style={{color:'#fde68a'}}>{order.notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom action */}
+      {!done && (
+        <div className="p-4 safe-bottom">
+          <button onClick={() => setShowPay(true)}
+            className="w-full rounded-2xl py-5 text-white font-bold text-xl active:opacity-80 transition-opacity"
+            style={{background:'#16a34a'}}>
+            ✓ Entregar y cobrar
+          </button>
+        </div>
+      )}
+
+      {showPay && (
+        <PayCollectModal order={order} onClose={() => setShowPay(false)} onConfirm={onDeliver} />
+      )}
+    </div>
+  );
+}
+
+function PayCollectModal({ order, onClose, onConfirm }) {
+  const [method, setMethod] = React.useState('efectivo');
+  const [amount, setAmount] = React.useState(String(order.total || ''));
+  const [loading, setLoading] = React.useState(false);
+
+  const confirm = async () => {
+    setLoading(true);
+    try {
+      await onConfirm(order, method, parseFloat(amount) || order.total);
+    } catch (e) {
+      alert('Error al guardar: ' + e.message);
+      setLoading(false);
+    }
+  };
+
+  const methods = [
+    { id: 'efectivo', label: 'Efectivo', emoji: '💵' },
+    { id: 'transferencia', label: 'Transfer.', emoji: '🏦' },
+    { id: 'mercadopago', label: 'MP', emoji: '💳' },
+  ];
+
+  return (
+    <div className="fixed inset-0 flex items-end z-50" style={{background:'rgba(0,0,0,0.8)'}} onClick={onClose}>
+      <div className="w-full rounded-t-3xl p-6" style={{background:'#1e293b'}} onClick={e => e.stopPropagation()}>
+        <div className="w-12 h-1.5 rounded-full mx-auto mb-6" style={{background:'#475569'}} />
+        <h3 className="text-white font-bold text-xl mb-1">Registrar entrega</h3>
+        <p className="text-slate-400 text-sm mb-6">{order.client?.name}</p>
+
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Forma de pago</p>
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {methods.map(m => (
+            <button key={m.id} onClick={() => setMethod(m.id)}
+              className="py-4 rounded-2xl flex flex-col items-center gap-1.5 transition-all active:scale-95 font-bold"
+              style={{
+                background: method === m.id ? '#2563eb' : '#334155',
+                color: method === m.id ? 'white' : '#94a3b8',
+              }}>
+              <span className="text-2xl">{m.emoji}</span>
+              <span className="text-xs">{m.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Monto cobrado</p>
+        <input
+          type="number"
+          inputMode="decimal"
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+          className="w-full text-white text-3xl font-bold text-center rounded-2xl py-4 mb-6 focus:outline-none"
+          style={{background:'#334155', border:'2px solid #475569'}}
+        />
+
+        <button onClick={confirm} disabled={loading}
+          className="w-full rounded-2xl py-5 text-white font-bold text-lg mb-3 disabled:opacity-50 active:opacity-80 transition-opacity"
+          style={{background:'#16a34a'}}>
+          {loading ? 'Guardando...' : '✓ Confirmar entrega'}
+        </button>
+        <button onClick={onClose} className="w-full py-3 text-sm" style={{color:'#64748b'}}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DaySummary({ deliveries, config, onClose }) {
+  const delivered = deliveries.filter(d => d.status === 'entregado');
+  const pending = deliveries.filter(d => d.status === 'pendiente');
+  const total = delivered.reduce((s, d) => s + (d.total || 0), 0);
+
+  const byMethod = delivered.reduce((acc, d) => {
+    const m = d.paymentMethod || 'efectivo';
+    acc[m] = (acc[m] || 0) + (d.total || 0);
+    return acc;
+  }, {});
+
+  const methodLabels = { efectivo: '💵 Efectivo', transferencia: '🏦 Transferencia', mercadopago: '💳 MercadoPago' };
+
+  const logout = () => {
+    sessionStorage.removeItem(PIN_KEY);
+    sessionStorage.removeItem(PIN_DATE_KEY);
+    window.location.reload();
+  };
+
+  return (
+    <div className="min-h-screen p-5" style={{background:'#0f172a'}}>
+      <div className="flex items-center gap-3 pt-10 mb-8">
+        <button onClick={onClose} className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl text-white"
+          style={{background:'#1e293b'}}>
+          ‹
+        </button>
+        <h1 className="text-white text-xl font-bold">Resumen del día</h1>
+      </div>
+
+      {/* Total */}
+      <div className="rounded-3xl p-6 text-center mb-5" style={{background:'#2563eb'}}>
+        <p className="text-blue-200 text-sm mb-1">Total cobrado</p>
+        <p className="text-white text-4xl font-bold">{DataService.formatCurrency(total)}</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="rounded-2xl p-4 text-center" style={{background:'#1e293b'}}>
+          <p className="font-bold text-3xl" style={{color:'#34d399'}}>{delivered.length}</p>
+          <p className="text-slate-400 text-sm mt-1">Entregados</p>
+        </div>
+        <div className="rounded-2xl p-4 text-center" style={{background:'#1e293b'}}>
+          <p className="font-bold text-3xl" style={{color:'#fbbf24'}}>{pending.length}</p>
+          <p className="text-slate-400 text-sm mt-1">Pendientes</p>
+        </div>
+      </div>
+
+      {/* By method */}
+      {Object.keys(byMethod).length > 0 && (
+        <div className="rounded-2xl p-4 mb-5" style={{background:'#1e293b'}}>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Por forma de pago</p>
+          {Object.entries(byMethod).map(([m, amt]) => (
+            <div key={m} className="flex justify-between items-center py-2.5 border-b last:border-0" style={{borderColor:'#334155'}}>
+              <span className="text-slate-300 text-sm">{methodLabels[m] || m}</span>
+              <span className="text-white font-bold">{DataService.formatCurrency(amt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Delivered list */}
+      {delivered.length > 0 && (
+        <div className="rounded-2xl p-4 mb-5" style={{background:'#1e293b'}}>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Entregas realizadas</p>
+          {delivered.map(d => (
+            <div key={d.id} className="flex justify-between items-center py-2.5 border-b last:border-0" style={{borderColor:'#334155'}}>
+              <p className="text-white text-sm font-medium truncate flex-1">{d.client?.name}</p>
+              <p className="text-sm font-bold ml-3 flex-shrink-0" style={{color:'#34d399'}}>
+                {DataService.formatCurrency(d.total)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button onClick={logout}
+        className="w-full py-4 rounded-2xl text-sm font-medium mt-2"
+        style={{background:'#1e293b', color:'#64748b'}}>
+        🔒 Cerrar sesión
+      </button>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<DriverApp />);

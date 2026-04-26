@@ -228,6 +228,38 @@ function Config({ onConfigChange }) {
               <div className="space-y-5">
                 <h3 className="font-semibold text-slate-900 text-base pb-3 border-b border-gray-100">Configuración avanzada</h3>
 
+                {/* Driver PIN */}
+                <div className="border border-gray-200 rounded-xl p-4">
+                  <p className="font-medium text-slate-900 mb-1">App del repartidor</p>
+                  <p className="text-sm text-slate-500 mb-4">PIN de 4 dígitos para acceder a la app instalable del repartidor.</p>
+                  <div className="flex items-end gap-4 mb-4">
+                    <FormField label="PIN (4 dígitos)" className="mb-0">
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        value={config.driverPin || ''}
+                        onChange={e => set('driverPin', e.target.value.replace(/\D/g,'').slice(0,4))}
+                        className={inputCls('w-32')}
+                        placeholder="0000"
+                        maxLength="4"
+                      />
+                    </FormField>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <a href="../repartidor.html" target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors">
+                      <Icon name="truck" size={15} />Abrir app del repartidor
+                    </a>
+                    {config.phone && (
+                      <a href={`https://wa.me/${(config.whatsappNumber||config.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Acá está el link de la app para el reparto: ${window.location.origin}${window.location.pathname.replace('index.html','').replace(/\/$/,'')}/../repartidor.html\n\nPIN de acceso: ${config.driverPin||'0000'}`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium transition-colors">
+                        <Icon name="messageCircle" size={15} />Enviar link al repartidor
+                      </a>
+                    )}
+                  </div>
+                </div>
+
                 <div className="p-4 bg-red-50 rounded-xl border border-red-200">
                   <div className="flex items-start gap-3">
                     <Icon name="alertCircle" size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
