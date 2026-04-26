@@ -213,6 +213,7 @@ function Prospecting() {
 
 function LeadsList({ leads, onReload }) {
   const [filter, setFilter] = React.useState('');
+  const [showForm, setShowForm] = React.useState(false);
   const counts = ['nuevo','contactado','convertido','descartado'].reduce((acc, s) => ({ ...acc, [s]: leads.filter(l => l.status === s).length }), {});
   const filtered = filter ? leads.filter(l => l.status === filter) : leads;
 
@@ -244,65 +245,131 @@ function LeadsList({ leads, onReload }) {
     onReload();
   };
 
-  if (!leads.length) return (
-    <EmptyState icon="search" title="Sin leads todavía"
-      description="Buscá negocios en la otra pestaña y agregalos acá para hacer seguimiento" />
-  );
-
   return (
     <div>
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {[['','Todos',leads.length],['nuevo','Nuevos',counts.nuevo],['contactado','Contactados',counts.contactado],['convertido','Convertidos',counts.convertido],['descartado','Descartados',counts.descartado]].map(([val,label,count]) => (
-          <button key={val} onClick={() => setFilter(val)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === val ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}>
-            {label} <span className="opacity-70">({count})</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="divide-y divide-gray-50">
-          {filtered.map(lead => (
-            <div key={lead.id} className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <p className="text-sm font-semibold text-slate-900">{lead.name}</p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[lead.status] || statusColors.nuevo}`}>{lead.status}</span>
-                  {lead.source === 'openstreetmap' && <span className="text-xs text-slate-400">OSM</span>}
-                </div>
-                <p className="text-xs text-slate-400 truncate">
-                  {lead.type} · {[lead.address, lead.city].filter(Boolean).join(', ')}
-                  {lead.phone && <span className="ml-2">· {lead.phone}</span>}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {lead.status !== 'convertido' && lead.status !== 'descartado' && (
-                  <select value={lead.status} onChange={e => updateStatus(lead, e.target.value)}
-                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white mr-1">
-                    <option value="nuevo">Nuevo</option>
-                    <option value="contactado">Contactado</option>
-                    <option value="descartado">Descartar</option>
-                  </select>
-                )}
-                {lead.phone && (
-                  <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}?text=${encodeURIComponent(`¡Hola ${lead.name}! Te contactamos de NATIVA 💧 ¿Te interesa el servicio de agua a domicilio?`)}`}
-                    target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="WhatsApp">
-                    <Icon name="messageCircle" size={15} />
-                  </a>
-                )}
-                {lead.status !== 'convertido' && (
-                  <button onClick={() => convertToClient(lead)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600" title="Convertir en cliente">
-                    <Icon name="userPlus" size={15} />
-                  </button>
-                )}
-                <button onClick={() => deleteLead(lead)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title="Eliminar">
-                  <Icon name="trash" size={15} />
-                </button>
-              </div>
-            </div>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex gap-2 flex-wrap">
+          {[['','Todos',leads.length],['nuevo','Nuevos',counts.nuevo],['contactado','Contactados',counts.contactado],['convertido','Convertidos',counts.convertido],['descartado','Descartados',counts.descartado]].map(([val,label,count]) => (
+            <button key={val} onClick={() => setFilter(val)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === val ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}>
+              {label} <span className="opacity-70">({count})</span>
+            </button>
           ))}
         </div>
+        <Btn onClick={() => setShowForm(true)} icon="plus" variant="primary" size="sm">Nuevo lead</Btn>
       </div>
+
+      {leads.length === 0 ? (
+        <EmptyState icon="search" title="Sin leads todavía"
+          description="Buscá negocios en la otra pestaña o agregá un lead manualmente"
+          action={<Btn onClick={() => setShowForm(true)} icon="plus" variant="primary">Agregar lead</Btn>} />
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="divide-y divide-gray-50">
+            {filtered.map(lead => (
+              <div key={lead.id} className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <p className="text-sm font-semibold text-slate-900">{lead.name}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[lead.status] || statusColors.nuevo}`}>{lead.status}</span>
+                    {lead.source === 'openstreetmap' && <span className="text-xs text-slate-400">OSM</span>}
+                  </div>
+                  <p className="text-xs text-slate-400 truncate">
+                    {lead.type} · {[lead.address, lead.city].filter(Boolean).join(', ')}
+                    {lead.phone && <span className="ml-2">· {lead.phone}</span>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {lead.status !== 'convertido' && lead.status !== 'descartado' && (
+                    <select value={lead.status} onChange={e => updateStatus(lead, e.target.value)}
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white mr-1">
+                      <option value="nuevo">Nuevo</option>
+                      <option value="contactado">Contactado</option>
+                      <option value="descartado">Descartar</option>
+                    </select>
+                  )}
+                  {lead.phone && (
+                    <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}?text=${encodeURIComponent(`¡Hola ${lead.name}! Te contactamos de NATIVA 💧 ¿Te interesa el servicio de agua a domicilio?`)}`}
+                      target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="WhatsApp">
+                      <Icon name="messageCircle" size={15} />
+                    </a>
+                  )}
+                  {lead.status !== 'convertido' && (
+                    <button onClick={() => convertToClient(lead)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600" title="Convertir en cliente">
+                      <Icon name="userPlus" size={15} />
+                    </button>
+                  )}
+                  <button onClick={() => deleteLead(lead)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title="Eliminar">
+                    <Icon name="trash" size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <LeadFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={async (data) => {
+        await DataService.createLead({ ...data, source: 'manual' });
+        setShowForm(false);
+        onReload();
+      }} />
     </div>
+  );
+}
+
+function LeadFormModal({ isOpen, onClose, onSave }) {
+  const [form, setForm] = React.useState({ name: '', phone: '', address: '', city: '', type: 'empresa', notes: '' });
+  const [saving, setSaving] = React.useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  React.useEffect(() => {
+    if (isOpen) setForm({ name: '', phone: '', address: '', city: '', type: 'empresa', notes: '' });
+  }, [isOpen]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { alert('El nombre es obligatorio'); return; }
+    setSaving(true);
+    try { await onSave(form); }
+    catch (err) { alert('Error al guardar: ' + err.message); }
+    setSaving(false);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Nuevo lead" size="md">
+      <form onSubmit={submit} className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Nombre / Empresa" required>
+            <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls()} placeholder="Gym Centro, Farmacia López..." autoFocus required />
+          </FormField>
+          <FormField label="Teléfono">
+            <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls()} placeholder="1123456789" />
+          </FormField>
+          <FormField label="Dirección">
+            <input value={form.address} onChange={e => set('address', e.target.value)} className={inputCls()} placeholder="Av. San Martín 123" />
+          </FormField>
+          <FormField label="Ciudad">
+            <input value={form.city} onChange={e => set('city', e.target.value)} className={inputCls()} placeholder="Villa María" />
+          </FormField>
+          <FormField label="Tipo">
+            <select value={form.type} onChange={e => set('type', e.target.value)} className={inputCls()}>
+              <option value="empresa">Empresa / Oficina</option>
+              <option value="gimnasio">Gimnasio / Fitness</option>
+              <option value="restaurante">Restaurante / Bar</option>
+              <option value="comercio">Comercio</option>
+              <option value="otro">Otro</option>
+            </select>
+          </FormField>
+        </div>
+        <FormField label="Notas">
+          <textarea value={form.notes} onChange={e => set('notes', e.target.value)} className={inputCls('resize-none')} rows="2" placeholder="Contacto, horarios, observaciones..." />
+        </FormField>
+        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+          <Btn type="button" onClick={onClose} variant="secondary">Cancelar</Btn>
+          <Btn type="submit" variant="primary" icon="plus" disabled={saving}>{saving ? 'Guardando...' : 'Agregar lead'}</Btn>
+        </div>
+      </form>
+    </Modal>
   );
 }
