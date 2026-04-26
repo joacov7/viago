@@ -245,19 +245,27 @@ function Config({ onConfigChange }) {
                       />
                     </FormField>
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    <a href="../repartidor.html" target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors">
-                      <Icon name="truck" size={15} />Abrir app del repartidor
-                    </a>
-                    {config.phone && (
-                      <a href={`https://wa.me/${(config.whatsappNumber||config.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Acá está el link de la app para el reparto: ${window.location.origin}${window.location.pathname.replace('index.html','').replace(/\/$/,'')}/../repartidor.html\n\nPIN de acceso: ${config.driverPin||'0000'}`)}`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium transition-colors">
-                        <Icon name="messageCircle" size={15} />Enviar link al repartidor
-                      </a>
-                    )}
-                  </div>
+                  {(() => {
+                    const driverUrl = window.location.href.split('?')[0].replace(/index\.html$/, '').replace(/\/$/, '') + '/repartidor.html';
+                    const waNum = (config.whatsappNumber || config.phone || '').replace(/\D/g, '');
+                    const waText = encodeURIComponent(`Acá está tu app de reparto 📦\n${driverUrl}\n\nPIN: ${config.driverPin || '0000'}`);
+                    return (
+                      <div className="flex flex-wrap gap-3">
+                        <a href={driverUrl} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors">
+                          <Icon name="truck" size={15} />Abrir app del repartidor
+                        </a>
+                        <a href={`https://wa.me/${waNum}?text=${waText}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 text-sm font-medium transition-colors">
+                          <Icon name="messageCircle" size={15} />Enviar link al repartidor
+                        </a>
+                        <button onClick={() => navigator.clipboard.writeText(driverUrl)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-600 text-sm font-medium transition-colors">
+                          <Icon name="copy" size={15} />Copiar link
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="p-4 bg-red-50 rounded-xl border border-red-200">
