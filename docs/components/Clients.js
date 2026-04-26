@@ -364,7 +364,6 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
             {client.phone && <a href={WhatsAppService.generic(client)} target="_blank" rel="noopener noreferrer" className="p-2.5 rounded-xl bg-green-50 hover:bg-green-100 text-green-600 transition-colors" title="WhatsApp"><Icon name="messageCircle" size={18} /></a>}
             {client.phone && <a href={`tel:${client.phone}`} className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-600 transition-colors" title="Llamar"><Icon name="phone" size={18} /></a>}
             <button onClick={() => onEdit(client)} className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-600 transition-colors" title="Editar"><Icon name="edit" size={18} /></button>
-            <ClientAccessBtn client={client} />
           </div>
         </div>
 
@@ -396,6 +395,12 @@ function ClientDetail({ client, zones, onBack, onEdit, onNavigate }) {
           <button onClick={() => { navigator.clipboard.writeText(client.referralCode); }} className="ml-auto p-1 hover:bg-blue-100 rounded text-blue-500" title="Copiar">
             <Icon name="copy" size={12} />
           </button>
+        </div>
+
+        {/* Portal access */}
+        <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <p className="text-xs font-semibold text-slate-600 mb-3">Acceso del cliente al portal</p>
+          <ClientAccessBtn client={client} />
         </div>
       </div>
 
@@ -523,16 +528,16 @@ function ClientAccessBtn({ client }) {
   };
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-2 flex-wrap">
       <button onClick={sendAccess} disabled={loading}
-        className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors disabled:opacity-50"
-        title="Enviar acceso por WhatsApp">
-        <Icon name="share2" size={18} />
+        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors disabled:opacity-50">
+        <Icon name="messageCircle" size={16} />
+        {loading ? 'Generando...' : 'Enviar por WhatsApp'}
       </button>
       <button onClick={copyLink} disabled={loading}
-        className="p-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-slate-500 transition-colors disabled:opacity-50"
-        title="Copiar link de acceso">
-        <Icon name="copy" size={18} />
+        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-sm font-medium transition-colors disabled:opacity-50">
+        <Icon name="copy" size={16} />
+        Copiar link
       </button>
     </div>
   );
