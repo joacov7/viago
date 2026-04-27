@@ -394,13 +394,18 @@ const DataService = {
       const dayRevenue = invoices.filter(inv => (inv.createdAt || '').startsWith(dateStr) && inv.paymentStatus === 'pagado').reduce((s, inv) => s + (inv.total || 0), 0);
       return { date: dateStr, day: d.toLocaleDateString('es-AR', { weekday: 'short' }), orders: orders.filter(o => o.deliveryDate === dateStr && o.status === 'entregado').length, revenue: dayRevenue };
     });
+    const ordersByClient = {};
+    orders.forEach(o => { ordersByClient[o.clientId] = (ordersByClient[o.clientId] || 0) + 1; });
+    const clientsWithOrders = clients.filter(c => ordersByClient[c.id] >= 1).length;
+    const clientsWithRepeat = clients.filter(c => ordersByClient[c.id] >= 2).length;
+    const repurchaseRate = clientsWithOrders > 0 ? Math.round(clientsWithRepeat / clientsWithOrders * 100) : 0;
     return {
       totalClients: clients.length,
       newClientsThisMonth: clients.filter(c => (c.createdAt || '').startsWith(monthStart)).length,
       todayOrdersCount: todayOrders.length,
       todayPendingCount: todayOrders.filter(o => o.status === 'pendiente').length,
       todayDeliveredCount: todayOrders.filter(o => o.status === 'entregado').length,
-      todayRevenue, monthRevenue, monthOrdersCount: monthOrders.length, pendingPayments, weekData,
+      todayRevenue, monthRevenue, monthOrdersCount: monthOrders.length, pendingPayments, weekData, repurchaseRate,
     };
   },
 

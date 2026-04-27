@@ -489,12 +489,21 @@ function DeliveryDetail({ order, config, onBack, onDeliver }) {
 
       {/* Bottom action */}
       {!done && (
-        <div className="p-4 safe-bottom">
+        <div className="p-4 safe-bottom space-y-3">
           <button onClick={() => setShowPay(true)}
             className="w-full rounded-2xl py-5 text-white font-bold text-xl active:opacity-80 transition-opacity"
             style={{background:'#16a34a'}}>
             ✓ Entregar y cobrar
           </button>
+          {order.client?.phone && (
+            <a href={`https://wa.me/${order.client.phone.replace(/\D/g,'')}?text=${encodeURIComponent(
+              `Hola ${(order.client.name||'').split(' ')[0]}! 🚚 Pasamos por tu domicilio para entregar tu agua pero no encontramos a nadie. ¿Coordinamos una nueva entrega?`
+            )}`} target="_blank" rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-white font-bold text-base active:opacity-80 transition-opacity"
+              style={{background:'#b45309'}}>
+              😔 No había nadie — avisar por WA
+            </a>
+          )}
         </div>
       )}
 

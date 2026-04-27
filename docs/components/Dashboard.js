@@ -28,10 +28,11 @@ function Dashboard({ onNavigate }) {
   );
 
   const statCards = [
-    { label: 'Pedidos hoy', value: stats.todayOrdersCount, sub: `${stats.todayDeliveredCount} entregados`, icon: 'package', color: 'blue', bg: 'bg-blue-50', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-    { label: 'Ingresos del día', value: DataService.formatCurrency(stats.todayRevenue), sub: `${DataService.formatCurrency(stats.monthRevenue)} este mes`, icon: 'dollarSign', color: 'emerald', bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
-    { label: 'Clientes activos', value: stats.totalClients, sub: `+${stats.newClientsThisMonth} este mes`, icon: 'users', color: 'violet', bg: 'bg-violet-50', iconBg: 'bg-violet-100', iconColor: 'text-violet-600' },
-    { label: 'Cobros pendientes', value: DataService.formatCurrency(stats.pendingPayments), sub: 'Por cobrar', icon: 'wallet', color: 'amber', bg: 'bg-amber-50', iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
+    { label: 'Pedidos hoy', value: stats.todayOrdersCount, sub: `${stats.todayDeliveredCount} entregados`, icon: 'package', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
+    { label: 'Ingresos del día', value: DataService.formatCurrency(stats.todayRevenue), sub: `${DataService.formatCurrency(stats.monthRevenue)} este mes`, icon: 'dollarSign', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
+    { label: 'Clientes activos', value: stats.totalClients, sub: `+${stats.newClientsThisMonth} este mes`, icon: 'users', iconBg: 'bg-violet-100', iconColor: 'text-violet-600' },
+    { label: 'Cobros pendientes', value: DataService.formatCurrency(stats.pendingPayments), sub: 'Por cobrar', icon: 'wallet', iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
+    { label: 'Tasa de recompra', value: `${stats.repurchaseRate}%`, sub: 'Clientes con 2+ pedidos', icon: 'trendingUp', iconBg: 'bg-rose-100', iconColor: 'text-rose-600' },
   ];
 
   const maxRevenue = Math.max(...stats.weekData.map(d => d.revenue), 1);
@@ -40,7 +41,7 @@ function Dashboard({ onNavigate }) {
     <div className="space-y-6">
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((card, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <div className="flex items-start justify-between mb-4">

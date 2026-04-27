@@ -681,12 +681,20 @@ function CampaignModal({ isOpen, clients, zones, onClose }) {
   const [zoneFilter, setZoneFilter] = React.useState('');
   const [message, setMessage] = React.useState('Hola {nombre}! 👋 Te contactamos de NATIVA 💧');
   const [currentIdx, setCurrentIdx] = React.useState(null);
+  const [inactiveIds, setInactiveIds] = React.useState(null);
+
+  React.useEffect(() => {
+    if (filter === 'inactivos' && inactiveIds === null) {
+      DataService.getInactiveClients(21).then(list => setInactiveIds(new Set(list.map(c => c.id))));
+    }
+  }, [filter]);
 
   const getRecipients = () => {
     let list = clients.filter(c => c.phone);
     if (filter === 'zona' && zoneFilter) list = list.filter(c => c.zoneId == zoneFilter);
     if (filter === 'hogar') list = list.filter(c => c.type === 'hogar');
     if (filter === 'empresa') list = list.filter(c => c.type === 'empresa');
+    if (filter === 'inactivos') list = inactiveIds ? list.filter(c => inactiveIds.has(c.id)) : [];
     return list;
   };
   const recipients = getRecipients();
@@ -704,6 +712,7 @@ function CampaignModal({ isOpen, clients, zones, onClose }) {
 
   const templates = [
     { label: 'Recordatorio pedido', msg: 'Hola {nombre}! 👋 ¿Necesitás reponer agua esta semana? Avisanos y te programamos la entrega 💧' },
+    { label: 'Reactivar cliente', msg: 'Hola {nombre}! 💧 Hace un tiempo que no te vemos. ¿Necesitás reponer agua? Coordinamos la entrega cuando quieras 🚰' },
     { label: 'Cobro pendiente', msg: 'Hola {nombre}! Te recordamos que tenés un saldo pendiente con NATIVA 💧 Cuando puedas coordinar el pago, avisanos 🙏' },
     { label: 'Promoción', msg: 'Hola {nombre}! 🎉 Tenemos una promo especial para vos. Consultanos por WhatsApp 💧 *NATIVA*' },
     { label: 'Nuevo producto', msg: 'Hola {nombre}! 💧 Incorporamos nuevos productos a nuestro catálogo. ¡Consultanos las novedades!' },
@@ -717,6 +726,7 @@ function CampaignModal({ isOpen, clients, zones, onClose }) {
             <select value={filter} onChange={e => { setFilter(e.target.value); setZoneFilter(''); }}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="todos">Todos los clientes con teléfono</option>
+              <option value="inactivos">Sin compras hace +21 días</option>
               <option value="hogar">Solo hogares</option>
               <option value="empresa">Solo empresas</option>
               <option value="zona">Por zona</option>
