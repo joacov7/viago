@@ -135,7 +135,9 @@ function NotificationBell({ onNavigate }) {
       setItems(leads.filter(l => l.createdAt > since));
     });
 
-    const channel = DataService._sb.channel('admin-notifs')
+    const channelName = `admin-notifs-${Math.random().toString(36).slice(2)}`;
+    const channel = DataService._sb.channel(channelName);
+    channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'leads' }, ({ new: row }) => {
         const lead = DataService._js(row);
         setItems(prev => [lead, ...prev]);
