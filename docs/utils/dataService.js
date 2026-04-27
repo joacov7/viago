@@ -41,9 +41,11 @@ const DataService = {
   },
   async saveConfig(config) {
     this._configCache = config;
-    const dbData = this._db(config);
+    const clean = Object.fromEntries(Object.entries(config).filter(([k]) => !k.startsWith('_')));
+    const dbData = this._db(clean);
     dbData.id = 1;
-    await this._sb.from('config').upsert(dbData);
+    const { error } = await this._sb.from('config').upsert(dbData);
+    if (error) throw new Error(error.message);
   },
   _defaultConfig() {
     return {

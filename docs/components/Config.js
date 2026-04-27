@@ -20,10 +20,14 @@ function Config({ onConfigChange }) {
   const set = (k, v) => setConfig(c => ({ ...c, [k]: v }));
 
   const saveConfig = async () => {
-    await DataService.saveConfig(config);
-    if (onConfigChange) onConfigChange(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    try {
+      await DataService.saveConfig(config);
+      if (onConfigChange) onConfigChange(config);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      alert('Error al guardar: ' + err.message);
+    }
   };
 
   const tabs = [
