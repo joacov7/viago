@@ -362,11 +362,13 @@ function PortalInvoices({ client }) {
 // ─── Referrals ───────────────────────────────────────────────────────────────
 
 function PortalReferrals({ client, config }) {
-  const defaultMsg =
-    `Hola! Te recomiendo el servicio de agua de ${config.companyName || 'NATIVA'} 💧\n` +
-    `Me tienen re bien surtido. Llamalos al ${config.phone || config.whatsappNumber || ''} ` +
-    `y mencioná mi código *${client.referralCode || client.code || ''}* ` +
-    `para que los dos ganemos crédito 🎁`;
+  const template = config.referralShareMessage ||
+    'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Llamalos al {telefono} y mencioná mi código *{codigo}* para que los dos ganemos crédito 🎁';
+  const defaultMsg = template
+    .replace(/{empresa}/g, config.companyName || 'NATIVA')
+    .replace(/{telefono}/g, config.phone || config.whatsappNumber || '')
+    .replace(/{codigo}/g, client.referralCode || client.code || '')
+    .replace(/{nombre}/g, client.name || '');
 
   const [msg, setMsg] = React.useState(defaultMsg);
   const [copied, setCopied] = React.useState(false);

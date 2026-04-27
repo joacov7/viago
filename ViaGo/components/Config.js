@@ -208,10 +208,17 @@ function Config({ onConfigChange }) {
                             className={inputCls()} min="0" max="100" />
                         </FormField>
                       </div>
-                      <FormField label="Mensaje visible en la app del cliente" hint="Texto motivacional que ve el cliente en la sección Referidos">
+                      <FormField label="Texto del banner en la app del cliente" hint="Frase motivacional que aparece en la sección Referidos">
                         <input type="text" value={config.referralMessage || ''}
                           onChange={e => set('referralMessage', e.target.value)}
                           className={inputCls()} placeholder="Referí a un amigo y ambos ganan crédito en su cuenta." />
+                      </FormField>
+                      <FormField label="Mensaje de WhatsApp" hint="Plantilla editable que el cliente puede personalizar antes de compartir. Usá {codigo}, {empresa}, {telefono}, {nombre}.">
+                        <textarea rows={5} value={config.referralShareMessage || ''}
+                          onChange={e => set('referralShareMessage', e.target.value)}
+                          className={inputCls('resize-none leading-relaxed')}
+                          placeholder={`Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Llamalos al {telefono} y mencioná mi código *{codigo}* para que los dos ganemos crédito 🎁`} />
+                        <p className="text-xs text-slate-400 mt-1">Variables: <code>{'{codigo}'}</code> · <code>{'{empresa}'}</code> · <code>{'{telefono}'}</code> · <code>{'{nombre}'}</code></p>
                       </FormField>
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-sm text-green-800">
                         <strong>Ejemplo:</strong> Juan refiere a María. María paga su primera factura de $3.000.
