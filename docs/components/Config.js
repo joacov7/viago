@@ -218,7 +218,7 @@ function Config({ onConfigChange }) {
                           onChange={e => set('referralShareMessage', e.target.value)}
                           className={inputCls('resize-none leading-relaxed')}
                           placeholder={`Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Llamalos al {telefono} y mencioná mi código *{codigo}* para que los dos ganemos crédito 🎁`} />
-                        <p className="text-xs text-slate-400 mt-1">Variables: <code>{'{codigo}'}</code> · <code>{'{empresa}'}</code> · <code>{'{telefono}'}</code> · <code>{'{nombre}'}</code></p>
+                        <p className="text-xs text-slate-400 mt-1">Variables: <code>{'{link}'}</code> · <code>{'{empresa}'}</code> · <code>{'{telefono}'}</code> · <code>{'{codigo}'}</code> · <code>{'{nombre}'}</code></p>
                       </FormField>
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-sm text-green-800">
                         <strong>Ejemplo:</strong> Juan refiere a María. María paga su primera factura de $3.000.

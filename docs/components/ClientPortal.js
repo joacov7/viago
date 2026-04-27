@@ -362,13 +362,15 @@ function PortalInvoices({ client }) {
 // ─── Referrals ───────────────────────────────────────────────────────────────
 
 function PortalReferrals({ client, config }) {
+  const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
   const template = config.referralShareMessage ||
-    'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Llamalos al {telefono} y mencioná mi código *{codigo}* para que los dos ganemos crédito 🎁';
+    'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁';
   const defaultMsg = template
     .replace(/{empresa}/g, config.companyName || 'NATIVA')
     .replace(/{telefono}/g, config.phone || config.whatsappNumber || '')
     .replace(/{codigo}/g, client.referralCode || client.code || '')
-    .replace(/{nombre}/g, client.name || '');
+    .replace(/{nombre}/g, client.name || '')
+    .replace(/{link}/g, referralLink);
 
   const [msg, setMsg] = React.useState(defaultMsg);
   const [copied, setCopied] = React.useState(false);
@@ -451,16 +453,113 @@ function PortalReferrals({ client, config }) {
     </div>
   );
 }
+// ─── Referral Landing (amigo que recibió el link) ────────────────────────────
+
+function ReferralLanding({ refCode, config }) {
+  const [referrer, setReferrer] = React.useState(null);
+  const [form, setForm] = React.useState({ name: '', phone: '', address: '' });
+  const [state, setState] = React.useState('form'); // form | sending | done
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  React.useEffect(() => {
+    DataService.getClientByReferral(refCode).then(c => setReferrer(c));
+  }, [refCode]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setState('sending');
+    try {
+      await DataService.createLead({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        source: 'referido',
+        notes: referrer ? `Referido por: ${referrer.name} (ID:${referrer.id})` : `Código referido: ${refCode}`,
+      });
+      setState('done');
+    } catch (err) {
+      alert('Error: ' + err.message);
+      setState('form');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)' }}>
+            <span className="text-3xl">💧</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900">{config.companyName || 'NATIVA'}</h1>
+          {referrer && (
+            <p className="text-sm text-slate-500 mt-1">
+              <span className="font-semibold text-green-700">{referrer.name}</span> te recomienda nuestro servicio 🎁
+            </p>
+          )}
+        </div>
+
+        {state === 'done' ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">¡Gracias!</h2>
+            <p className="text-sm text-slate-500">
+              Recibimos tus datos. Te contactamos a la brevedad para coordinar tu primer pedido.
+            </p>
+            {referrer && (
+              <p className="text-xs text-green-600 mt-3 font-medium">
+                Acordate de mencionar que te recomendó {referrer.name} para recibir tu descuento.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="font-bold text-slate-900 mb-1">Solicitá tu servicio</h2>
+            <p className="text-xs text-slate-400 mb-4">
+              Completá tus datos y te llamamos para coordinar.
+              {config.referralReferredDiscount > 0 && ` Recibís ${config.referralReferredDiscount}% de descuento en tu primera factura.`}
+            </p>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <input value={form.name} onChange={e => set('name', e.target.value)} required
+                placeholder="Nombre completo *"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <input value={form.phone} onChange={e => set('phone', e.target.value)} type="tel"
+                placeholder="Teléfono"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <input value={form.address} onChange={e => set('address', e.target.value)}
+                placeholder="Dirección de entrega"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <button type="submit" disabled={state === 'sending' || !form.name.trim()}
+                className="w-full py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors">
+                {state === 'sending' ? 'Enviando...' : 'Quiero el servicio'}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 function ClientPortalRoot() {
-  const [state, setState] = React.useState('loading'); // loading | no-token | not-found | ready
+  const [state, setState] = React.useState('loading'); // loading | referral | no-token | not-found | ready
   const [client, setClient] = React.useState(null);
   const [config, setConfig] = React.useState({});
+  const [refCode, setRefCode] = React.useState('');
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
+    const ref = params.get('ref');
+
+    if (!token && ref) {
+      setRefCode(ref);
+      DataService.getConfig().then(cfg => { setConfig(cfg); setState('referral'); });
+      return;
+    }
     if (!token) { setState('no-token'); return; }
 
     Promise.all([
@@ -474,7 +573,8 @@ function ClientPortalRoot() {
     }).catch(() => setState('not-found'));
   }, []);
 
-  if (state === 'loading') return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
+  if (state === 'loading')  return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
+  if (state === 'referral') return <ReferralLanding refCode={refCode} config={config} />;
   if (state === 'no-token') return <NoAccess />;
   if (state === 'not-found') return <ClientNotFound />;
   return <ClientPortalApp client={client} config={config} />;

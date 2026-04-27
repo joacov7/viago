@@ -54,7 +54,7 @@ const DataService = {
       pointsPerOrder: 10, pointsForReward: 100, freeProductId: 1, referralBonus: 50,
       referralsEnabled: false, referralReferrerReward: 500, referralReferredDiscount: 10,
       referralMessage: 'Referí a un amigo y ambos ganan crédito en su cuenta.',
-      referralShareMessage: 'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Llamalos al {telefono} y mencioná mi código *{codigo}* para que los dos ganemos crédito 🎁',
+      referralShareMessage: 'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁',
       mpPublicKey: '', whatsappNumber: '',
       paymentMethods: ['efectivo', 'transferencia', 'mercadopago'],
     };
