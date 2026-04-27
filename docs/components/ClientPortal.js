@@ -365,12 +365,13 @@ function PortalReferrals({ client, config }) {
   const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
   const template = config.referralShareMessage ||
     'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁';
-  const defaultMsg = template
+  const resolved = template
     .replace(/{empresa}/g, config.companyName || 'NATIVA')
     .replace(/{telefono}/g, config.phone || config.whatsappNumber || '')
     .replace(/{codigo}/g, client.referralCode || client.code || '')
     .replace(/{nombre}/g, client.name || '')
     .replace(/{link}/g, referralLink);
+  const defaultMsg = resolved.includes(referralLink) ? resolved : `${resolved}\n${referralLink}`;
 
   const [msg, setMsg] = React.useState(defaultMsg);
   const [copied, setCopied] = React.useState(false);
