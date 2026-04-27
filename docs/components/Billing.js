@@ -43,8 +43,9 @@ function Billing({ navParams }) {
   const totalPaid = filtered.filter(i => i.paymentStatus === 'pagado').reduce((s, i) => s + i.total, 0);
   const totalPending = filtered.filter(i => i.paymentStatus === 'pendiente').reduce((s, i) => s + i.total, 0);
 
-  const handleMarkPaid = async (id, method) => {
-    await DataService.updateInvoice(id, { paymentStatus: 'pagado', paymentMethod: method });
+  const handleMarkPaid = async (inv, method) => {
+    await DataService.updateInvoice(inv.id, { paymentStatus: 'pagado', paymentMethod: method });
+    await DataService.processReferralReward(inv.clientId, inv.total);
     reload();
     setShowPayModal(null);
   };
@@ -349,7 +350,7 @@ function PayModal({ invoice, onClose, onConfirm }) {
         </FormField>
         <div className="flex gap-3 pt-2">
           <Btn onClick={onClose} variant="secondary" className="flex-1 justify-center">Cancelar</Btn>
-          <Btn onClick={() => onConfirm(invoice.id, method)} variant="success" icon="check" className="flex-1 justify-center">Confirmar</Btn>
+          <Btn onClick={() => onConfirm(invoice, method)} variant="success" icon="check" className="flex-1 justify-center">Confirmar</Btn>
         </div>
       </div>
     </Modal>

@@ -62,6 +62,7 @@ function ClientPortalApp({ client, config }) {
     { id: 'order',    label: 'Pedir',       icon: '💧' },
     { id: 'orders',   label: 'Mis pedidos', icon: '📦' },
     { id: 'invoices', label: 'Facturas',    icon: '📄' },
+    ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', icon: '🎁' }] : []),
   ];
 
   return (
@@ -84,10 +85,11 @@ function ClientPortalApp({ client, config }) {
       </header>
 
       <div className="p-4 max-w-lg mx-auto">
-        {tab === 'home'     && <PortalHome     client={client} config={config} onTab={setTab} />}
-        {tab === 'order'    && <PortalOrder    client={client} onDone={() => setTab('orders')} />}
-        {tab === 'orders'   && <PortalOrders   client={client} />}
-        {tab === 'invoices' && <PortalInvoices client={client} />}
+        {tab === 'home'      && <PortalHome      client={client} config={config} onTab={setTab} />}
+        {tab === 'order'     && <PortalOrder     client={client} onDone={() => setTab('orders')} />}
+        {tab === 'orders'    && <PortalOrders    client={client} />}
+        {tab === 'invoices'  && <PortalInvoices  client={client} />}
+        {tab === 'referrals' && <PortalReferrals client={client} config={config} />}
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-10">
@@ -353,6 +355,119 @@ function PortalInvoices({ client }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Referrals ───────────────────────────────────────────────────────────────
+
+function PortalReferrals({ client, config }) {
+  const [name, setName] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [sending, setSending] = React.useState(false);
+  const [sent, setSent] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+
+  const waText = encodeURIComponent(
+    `Hola! Te recomiendo el servicio de agua de ${config.companyName || 'NATIVA'} 💧\n` +
+    `Llamá al ${config.phone || config.whatsappNumber || ''} y mencioná mi nombre: ${client.name}.\n` +
+    `¡Los dos ganamos crédito!`
+  );
+  const waPhone = (config.whatsappNumber || config.phone || '').replace(/\D/g, '');
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(client.referralCode || client.code || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setSending(true);
+    try {
+      await DataService.createLead({
+        name: name.trim(), phone: phone.trim(),
+        source: 'referido', referrerClientId: client.id,
+        notes: `Referido por ${client.name}`,
+      });
+      setSent(true);
+      setName(''); setPhone('');
+    } catch (err) {
+      alert('Error al enviar: ' + err.message);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="space-y-4 pt-2">
+      {/* Banner */}
+      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
+        <p className="text-green-100 text-sm mb-1">Programa de referidos</p>
+        <h2 className="text-xl font-bold">Referí y ganás</h2>
+        <p className="text-green-100 text-sm mt-1">
+          {config.referralMessage || 'Referí a un amigo y ambos ganan crédito en su cuenta.'}
+        </p>
+      </div>
+
+      {/* Beneficios */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+          <p className="text-2xl font-bold text-green-600">${config.referralReferrerReward || 500}</p>
+          <p className="text-xs text-slate-500 mt-1">crédito para vos</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+          <p className="text-2xl font-bold text-blue-600">{config.referralReferredDiscount || 10}%</p>
+          <p className="text-xs text-slate-500 mt-1">descuento para tu amigo</p>
+        </div>
+      </div>
+
+      {/* Código de referido */}
+      {client.referralCode && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tu código</p>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-lg font-bold text-slate-900 flex-1">{client.referralCode}</span>
+            <button onClick={handleCopyCode}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-slate-700 hover:bg-gray-200'}`}>
+              {copied ? '✓ Copiado' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Compartir por WA */}
+      {waPhone && (
+        <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3.5 rounded-2xl transition-colors text-sm">
+          <span>💬</span> Compartir por WhatsApp
+        </a>
+      )}
+
+      {/* Formulario para ingresar amigo */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+        <h3 className="font-semibold text-slate-900 mb-1">Ingresá los datos de tu amigo</h3>
+        <p className="text-xs text-slate-400 mb-4">Nosotros lo contactamos y te acreditamos el premio al primer pago.</p>
+        {sent ? (
+          <div className="text-center py-4">
+            <p className="text-2xl mb-2">🎉</p>
+            <p className="font-semibold text-green-700">¡Enviado!</p>
+            <p className="text-xs text-slate-500 mt-1">Te avisamos cuando tu amigo se una.</p>
+            <button onClick={() => setSent(false)} className="mt-3 text-xs text-blue-600 hover:underline">Referir a otro</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input value={name} onChange={e => setName(e.target.value)} required placeholder="Nombre completo *"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Teléfono (opcional)" type="tel"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <button type="submit" disabled={sending || !name.trim()}
+              className="w-full py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors">
+              {sending ? 'Enviando...' : 'Enviar referido'}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

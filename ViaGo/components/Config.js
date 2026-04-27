@@ -175,6 +175,48 @@ function Config({ onConfigChange }) {
                     Si refiere un amigo, recibe <strong>{config.referralBonus} puntos extra</strong>.
                   </p>
                 </div>
+
+                {/* REFERIDOS */}
+                <div className="border-t border-gray-100 pt-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="font-semibold text-slate-900 text-sm">Sistema de referidos</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">El cliente refiere un amigo; al primer pago ambos reciben crédito en cuenta corriente.</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={!!config.referralsEnabled}
+                        onChange={e => set('referralsEnabled', e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600" />
+                      <span className="text-sm font-medium text-slate-700">{config.referralsEnabled ? 'Activo' : 'Inactivo'}</span>
+                    </label>
+                  </div>
+                  {config.referralsEnabled && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField label="Premio al referidor ($)" hint="Crédito en cuenta corriente que recibe quien trajo el cliente">
+                          <input type="number" value={config.referralReferrerReward || 500}
+                            onChange={e => set('referralReferrerReward', parseFloat(e.target.value))}
+                            className={inputCls()} min="0" step="50" />
+                        </FormField>
+                        <FormField label="Descuento al referido (%)" hint="% del total de su primera factura que se acredita en su cuenta">
+                          <input type="number" value={config.referralReferredDiscount || 10}
+                            onChange={e => set('referralReferredDiscount', parseFloat(e.target.value))}
+                            className={inputCls()} min="0" max="100" />
+                        </FormField>
+                      </div>
+                      <FormField label="Mensaje visible en la app del cliente" hint="Texto motivacional que ve el cliente en la sección Referidos">
+                        <input type="text" value={config.referralMessage || ''}
+                          onChange={e => set('referralMessage', e.target.value)}
+                          className={inputCls()} placeholder="Referí a un amigo y ambos ganan crédito en su cuenta." />
+                      </FormField>
+                      <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-sm text-green-800">
+                        <strong>Ejemplo:</strong> Juan refiere a María. María paga su primera factura de $3.000.
+                        María recibe <strong>${((config.referralReferredDiscount || 10) / 100 * 3000).toFixed(0)} de crédito</strong>.
+                        Juan recibe <strong>${config.referralReferrerReward || 500} de crédito</strong> en su cuenta corriente.
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

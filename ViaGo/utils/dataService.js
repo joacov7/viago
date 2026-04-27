@@ -50,6 +50,8 @@ const DataService = {
       companyName: 'NATIVA', tagline: 'Agua que llega. Siempre.',
       phone: '', email: '', address: '', city: '', primaryColor: '#2563EB',
       pointsPerOrder: 10, pointsForReward: 100, freeProductId: 1, referralBonus: 50,
+      referralsEnabled: false, referralReferrerReward: 500, referralReferredDiscount: 10,
+      referralMessage: 'Referí a un amigo y ambos ganan crédito en su cuenta.',
       mpPublicKey: '', whatsappNumber: '',
       paymentMethods: ['efectivo', 'transferencia', 'mercadopago'],
     };
@@ -189,16 +191,40 @@ const DataService = {
     return this._jsMany(data);
   },
 
+  async processReferralReward(clientId, invoiceTotal) {
+    const client = await this.getClient(clientId);
+    if (!client || !client.referredBy || client.referralDiscountUsed) return;
+    const cfg = await this.getConfig();
+    if (!cfg.referralsEnabled) return;
+
+    const discountAmt = parseFloat(((cfg.referralReferredDiscount || 0) / 100 * invoiceTotal).toFixed(2));
+    if (discountAmt > 0) {
+      await this.adjustClientBalance(clientId, discountAmt,
+        `Descuento referido - ${cfg.referralReferredDiscount}% de primera factura`);
+    }
+
+    const referrerReward = parseFloat(cfg.referralReferrerReward || 0);
+    if (referrerReward > 0) {
+      await this.adjustClientBalance(client.referredBy, referrerReward,
+        `Premio por referir a ${client.name}`);
+    }
+
+    await this._sb.from('clients').update({ referral_discount_used: true }).eq('id', clientId);
+  },
+
   // ─── LEADS ───────────────────────────────────────────────────────────────
   async getLeads() {
     const { data } = await this._sb.from('leads').select('*').order('created_at', { ascending: false });
     return this._jsMany(data);
   },
   async createLead(leadData) {
+    const notes = leadData.referrerClientId
+      ? `[Referido por cliente ID:${leadData.referrerClientId}] ${leadData.notes || ''}`.trim()
+      : (leadData.notes || '');
     const { data, error } = await this._sb.from('leads').insert(this._db({
       name: leadData.name, phone: leadData.phone || '', address: leadData.address || '',
       city: leadData.city || '', type: leadData.type || 'empresa', source: leadData.source || 'manual',
-      notes: leadData.notes || '', status: 'nuevo', osmId: leadData.osmId || '', website: leadData.website || '',
+      notes, status: 'nuevo', osmId: leadData.osmId || '', website: leadData.website || '',
     })).select().single();
     if (error) throw new Error(error.message);
     return this._js(data);
