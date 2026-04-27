@@ -217,17 +217,34 @@ function Clients({ onNavigate, navParams }) {
 
 function ClientFormModal({ isOpen, client, zones, onClose, onSave }) {
   const [form, setForm] = React.useState({});
+  const [allClients, setAllClients] = React.useState([]);
+  const [referrerSearch, setReferrerSearch] = React.useState('');
+  const [referrerName, setReferrerName] = React.useState('');
+
   React.useEffect(() => {
-    setForm(client ? { ...client } : { name: '', address: '', city: '', phone: '', email: '', zoneId: '', type: 'hogar', frequency: 'semanal', deliveryDay: '', notes: '', referralCode: '' });
+    setForm(client ? { ...client } : { name: '', address: '', city: '', phone: '', email: '', zoneId: '', type: 'hogar', frequency: 'semanal', deliveryDay: '', notes: '' });
+    setReferrerSearch('');
+    setReferrerName('');
+    if (!client) DataService.getClients(true).then(setAllClients);
   }, [client, isOpen]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
-  const handleReferral = async () => {
-    const ref = await DataService.getClientByReferral(form.referralCode);
-    if (ref) { alert(`Código válido. Referido por: ${ref.name} (${ref.code})`); set('referredBy', ref.id); }
-    else alert('Código de referido no encontrado');
+  const referrerMatches = referrerSearch.length >= 2
+    ? allClients.filter(c => c.name.toLowerCase().includes(referrerSearch.toLowerCase())).slice(0, 5)
+    : [];
+
+  const selectReferrer = (c) => {
+    set('referredBy', c.id);
+    setReferrerName(c.name);
+    setReferrerSearch('');
+  };
+
+  const clearReferrer = () => {
+    set('referredBy', null);
+    setReferrerName('');
+    setReferrerSearch('');
   };
 
   const submit = (e) => {
@@ -283,11 +300,32 @@ function ClientFormModal({ isOpen, client, zones, onClose, onSave }) {
         </div>
 
         {!client && (
-          <FormField label="Código de referido (opcional)" hint="Ingresá el código si el cliente fue referido por otro">
-            <div className="flex gap-2">
-              <input value={form.referralCode || ''} onChange={e => set('referralCode', e.target.value)} className={inputCls('flex-1')} placeholder="001-REF" />
-              {form.referralCode && <button type="button" onClick={handleReferral} className="px-3 py-2 bg-blue-50 text-blue-600 text-sm font-medium rounded-lg hover:bg-blue-100">Verificar</button>}
-            </div>
+          <FormField label="Referido por (opcional)" hint="Buscá el cliente que lo recomendó">
+            {referrerName ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+                <span className="text-sm text-green-800 flex-1">✓ {referrerName}</span>
+                <button type="button" onClick={clearReferrer} className="text-xs text-slate-400 hover:text-slate-600">Cambiar</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input value={referrerSearch} onChange={e => setReferrerSearch(e.target.value)}
+                  className={inputCls()} placeholder="Escribí el nombre del cliente que lo recomendó..." />
+                {referrerMatches.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                    {referrerMatches.map(c => (
+                      <button key={c.id} type="button" onClick={() => selectReferrer(c)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm border-b border-gray-50 last:border-0">
+                        <span className="font-medium text-slate-900">{c.name}</span>
+                        <span className="text-slate-400 ml-2 text-xs">{c.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {referrerSearch.length >= 2 && referrerMatches.length === 0 && (
+                  <p className="text-xs text-slate-400 mt-1">No se encontraron clientes con ese nombre.</p>
+                )}
+              </div>
+            )}
           </FormField>
         )}
 
