@@ -131,29 +131,33 @@ function NotificationBell({ onNavigate }) {
 
   React.useEffect(() => {
     const since = new Date(Date.now() - 7 * 86400000).toISOString();
-    DataService.getLeads().then(leads => {
-      setItems(leads.filter(l => l.createdAt > since));
-    });
+    let lastCount = 0;
 
-    const channelName = `admin-notifs-${Math.random().toString(36).slice(2)}`;
-    const channel = DataService._sb.channel(channelName);
-    channel
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'leads' }, ({ new: row }) => {
-        const lead = DataService._js(row);
-        setItems(prev => [lead, ...prev]);
-        if (Notification.permission === 'granted') {
-          new Notification('Nuevo lead', {
-            body: label(lead),
-            icon: '/favicon-32x32.png',
-          });
-        }
-      })
-      .subscribe();
+    const fetchLeads = async () => {
+      const leads = await DataService.getLeads();
+      const recent = leads.filter(l => l.createdAt > since);
+      const newOnes = recent.slice(0, recent.length - lastCount);
+      if (lastCount > 0 && newOnes.length > 0) {
+        newOnes.forEach(lead => {
+          if (Notification.permission === 'granted') {
+            new Notification('Nuevo lead', {
+              body: label(lead),
+              icon: '/favicon-32x32.png',
+            });
+          }
+        });
+      }
+      lastCount = recent.length;
+      setItems(recent);
+    };
+
+    fetchLeads();
+    const interval = setInterval(fetchLeads, 60000);
 
     const closeOnOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', closeOnOutside);
     return () => {
-      DataService._sb.removeChannel(channel);
+      clearInterval(interval);
       document.removeEventListener('mousedown', closeOnOutside);
     };
   }, []);
