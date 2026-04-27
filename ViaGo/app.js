@@ -110,6 +110,7 @@ function App() {
             </div>
             <span className="font-bold text-slate-900">{moduleTitle[activeModule] || 'NATIVA'}</span>
           </div>
+          <NotificationBell onNavigate={navigate} />
           {activeModule !== 'config' && (
             <button onClick={() => navigate('config')} className="p-2 rounded-xl hover:bg-gray-100 text-slate-400">
               <Icon name="settings" size={18} />
@@ -128,6 +129,8 @@ function App() {
             <span className="text-xs text-slate-400">{DataService.formatDate(DataService.today())}</span>
             <div className="w-px h-4 bg-gray-200" />
             <QuickStats />
+            <div className="w-px h-4 bg-gray-200" />
+            <NotificationBell onNavigate={navigate} />
             <div className="w-px h-4 bg-gray-200" />
             <button onClick={handleLogout} className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1">
               <Icon name="logout" size={14} />Salir

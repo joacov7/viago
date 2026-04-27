@@ -510,8 +510,15 @@ function ReferralLanding({ refCode, config }) {
             </p>
             {referrer && (
               <p className="text-xs text-green-600 mt-3 font-medium">
-                Acordate de mencionar que te recomendó {referrer.name} para recibir tu descuento.
+                Vas a recibir {config.referralReferredDiscount || 10}% de descuento en tu primera factura.
               </p>
+            )}
+            {config.whatsappNumber && (
+              <a href={`https://wa.me/${(config.whatsappNumber).replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Soy ${form.name}, acabo de dejar mis datos en el formulario${referrer ? ` (me recomendó ${referrer.name})` : ''}. ¡Quedo a disposición!`)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+                <span>💬</span> Escribirle al negocio
+              </a>
             )}
           </div>
         ) : (

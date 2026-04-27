@@ -103,6 +103,138 @@ function TodayBadge() {
   );
 }
 
+function NotificationBell({ onNavigate }) {
+  const STORAGE_KEY = 'nativa_notif_last_seen';
+  const [items, setItems] = React.useState([]);
+  const [open, setOpen] = React.useState(false);
+  const [lastSeen] = React.useState(() => localStorage.getItem(STORAGE_KEY) || new Date(0).toISOString());
+  const [seenAt, setSeenAt] = React.useState(lastSeen);
+  const ref = React.useRef(null);
+
+  const unread = items.filter(n => n.createdAt > seenAt).length;
+
+  const label = (item) => {
+    if (item.notes && item.notes.includes('Referido por')) return `Referido · ${item.name}`;
+    if (item.source === 'referido') return `Referido · ${item.name}`;
+    return `Lead · ${item.name}`;
+  };
+
+  const timeAgo = (iso) => {
+    const diff = Date.now() - new Date(iso);
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'ahora';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h`;
+    return `${Math.floor(h / 24)}d`;
+  };
+
+  React.useEffect(() => {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString();
+    DataService.getLeads().then(leads => {
+      setItems(leads.filter(l => l.createdAt > since));
+    });
+
+    const channel = DataService._sb.channel('admin-notifs')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'leads' }, ({ new: row }) => {
+        const lead = DataService._js(row);
+        setItems(prev => [lead, ...prev]);
+        if (Notification.permission === 'granted') {
+          new Notification('Nuevo lead', {
+            body: label(lead),
+            icon: '/favicon-32x32.png',
+          });
+        }
+      })
+      .subscribe();
+
+    const closeOnOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', closeOnOutside);
+    return () => {
+      DataService._sb.removeChannel(channel);
+      document.removeEventListener('mousedown', closeOnOutside);
+    };
+  }, []);
+
+  const markRead = () => {
+    const now = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, now);
+    setSeenAt(now);
+  };
+
+  const handleOpen = () => {
+    setOpen(o => !o);
+    if (!open && unread > 0) markRead();
+    if (!open && Notification.permission === 'default') Notification.requestPermission();
+  };
+
+  const goTo = (item) => {
+    setOpen(false);
+    onNavigate('prospecting');
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={handleOpen}
+        className="relative p-2 rounded-xl hover:bg-gray-100 text-slate-500 hover:text-slate-700 transition-colors">
+        <Icon name="bell" size={18} />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+            {unread > 9 ? '9+' : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <p className="text-sm font-semibold text-slate-900">Notificaciones</p>
+            {unread === 0 && items.length > 0 && (
+              <span className="text-xs text-slate-400">Todo al día</span>
+            )}
+          </div>
+
+          {items.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <p className="text-2xl mb-2">🔔</p>
+              <p className="text-sm text-slate-400">Sin notificaciones nuevas</p>
+            </div>
+          ) : (
+            <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+              {items.slice(0, 15).map(item => {
+                const isNew = item.createdAt > seenAt;
+                return (
+                  <button key={item.id} onClick={() => goTo(item)}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start gap-3 ${isNew ? 'bg-blue-50 hover:bg-blue-50' : ''}`}>
+                    <span className="text-lg flex-shrink-0 mt-0.5">
+                      {item.source === 'referido' || (item.notes || '').includes('Referido') ? '🎁' : '👤'}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm truncate ${isNew ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>{item.name}</p>
+                      <p className="text-xs text-slate-400 truncate">
+                        {item.source === 'referido' || (item.notes || '').includes('Referido') ? 'Referido · ' : 'Lead · '}
+                        {item.phone || item.city || '—'}
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-400 flex-shrink-0 mt-0.5">{timeAgo(item.createdAt)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
+            <button onClick={() => { setOpen(false); onNavigate('prospecting'); }}
+              className="text-xs text-blue-600 font-semibold hover:text-blue-700">
+              Ver todos en Captación →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Reusable top-bar header for each module
 function PageHeader({ title, subtitle, action }) {
   return (
