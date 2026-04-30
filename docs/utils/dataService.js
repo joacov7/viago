@@ -410,16 +410,22 @@ const DataService = {
   },
 
   // ─── COSTS ───────────────────────────────────────────────────────────────
-  async getCosts() {
-    const { data } = await this._sb.from('costs').select('*').order('date', { ascending: false });
+  async getCosts(month) {
+    let q = this._sb.from('costs').select('*').order('date', { ascending: false });
+    if (month) q = q.gte('date', `${month}-01`).lte('date', `${month}-31`);
+    const { data } = await q;
     return this._jsMany(data);
   },
+  _costFields(data) {
+    const { month, quantity, unit, total, ...rest } = data;
+    return rest;
+  },
   async createCost(data) {
-    const { error } = await this._sb.from('costs').insert(this._db(data));
+    const { error } = await this._sb.from('costs').insert(this._db(this._costFields(data)));
     if (error) throw new Error(error.message);
   },
   async updateCost(id, data) {
-    const { error } = await this._sb.from('costs').update(this._db(data)).eq('id', id);
+    const { error } = await this._sb.from('costs').update(this._db(this._costFields(data))).eq('id', id);
     if (error) throw new Error(error.message);
   },
   async deleteCost(id) {
