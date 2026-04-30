@@ -412,7 +412,11 @@ const DataService = {
   // ─── COSTS ───────────────────────────────────────────────────────────────
   async getCosts(month) {
     let q = this._sb.from('costs').select('*').order('date', { ascending: false });
-    if (month) q = q.gte('date', `${month}-01`).lte('date', `${month}-31`);
+    if (month) {
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+      q = q.gte('date', `${month}-01`).lt('date', `${nextMonth}-01`);
+    }
     const { data } = await q;
     return this._jsMany(data);
   },
