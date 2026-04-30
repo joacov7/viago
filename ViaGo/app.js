@@ -58,6 +58,7 @@ function App() {
     dashboard: 'Dashboard', clients: 'Clientes', prospecting: 'Captación',
     orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
+    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas',
   };
 
   const renderModule = () => {
@@ -71,8 +72,11 @@ function App() {
       case 'billing':   return <Billing navParams={navParams} />;
       case 'loyalty':   return <Loyalty />;
       case 'products':  return <Products />;
-      case 'config':    return <Config onConfigChange={cfg => setConfig(cfg)} />;
-      default:          return <Dashboard onNavigate={navigate} />;
+      case 'config':      return <Config onConfigChange={cfg => setConfig(cfg)} />;
+      case 'costs':       return <Costs />;
+      case 'dispensers':  return <Dispensers />;
+      case 'machines':    return <Machines />;
+      default:            return <Dashboard onNavigate={navigate} />;
     }
   };
 

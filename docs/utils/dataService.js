@@ -409,6 +409,87 @@ const DataService = {
     };
   },
 
+  // ─── COSTS ───────────────────────────────────────────────────────────────
+  async getCosts() {
+    const { data } = await this._sb.from('costs').select('*').order('date', { ascending: false });
+    return this._jsMany(data);
+  },
+  async createCost(data) {
+    const { error } = await this._sb.from('costs').insert(this._db(data));
+    if (error) throw new Error(error.message);
+  },
+  async updateCost(id, data) {
+    const { error } = await this._sb.from('costs').update(this._db(data)).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async deleteCost(id) {
+    const { error } = await this._sb.from('costs').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ─── DISPENSERS ──────────────────────────────────────────────────────────
+  async getDispensers() {
+    const { data } = await this._sb.from('dispensers').select('*').order('created_at', { ascending: false });
+    return this._jsMany(data);
+  },
+  async createDispenser(data) {
+    const { error } = await this._sb.from('dispensers').insert(this._db(data));
+    if (error) throw new Error(error.message);
+  },
+  async updateDispenser(id, data) {
+    const { error } = await this._sb.from('dispensers').update(this._db(data)).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async deleteDispenser(id) {
+    const { error } = await this._sb.from('dispensers').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+
+  // ─── MACHINES ────────────────────────────────────────────────────────────
+  async getMachines() {
+    const { data } = await this._sb.from('machines').select('*').order('created_at', { ascending: true });
+    return this._jsMany(data);
+  },
+  async createMachine(data) {
+    const { data: row, error } = await this._sb.from('machines').insert(this._db(data)).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(row);
+  },
+  async updateMachine(id, data) {
+    const { error } = await this._sb.from('machines').update(this._db(data)).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async deleteMachine(id) {
+    await this._sb.from('maintenance_logs').delete().eq('machine_id', id);
+    const { error } = await this._sb.from('machines').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async logMaintenance(data) {
+    const { resetLiters, machineId, ...logData } = data;
+    const { error } = await this._sb.from('maintenance_logs').insert(this._db({ ...logData, machineId }));
+    if (error) throw new Error(error.message);
+    if (resetLiters) {
+      const machine = (await this._sb.from('machines').select('current_liters').eq('id', machineId).single()).data;
+      const currentLiters = machine?.current_liters || 0;
+      await this._sb.from('machines').update({
+        liters_at_last_maintenance: currentLiters,
+        last_maintenance_date: logData.date,
+      }).eq('id', machineId);
+    }
+  },
+  async addMachineLiters(machineId, liters) {
+    const { data: machine } = await this._sb.from('machines').select('current_liters').eq('id', machineId).single();
+    const current = machine?.current_liters || 0;
+    const { error } = await this._sb.from('machines').update({ current_liters: current + liters }).eq('id', machineId);
+    if (error) throw new Error(error.message);
+  },
+  async getMaintenanceLogs(machineId) {
+    let q = this._sb.from('maintenance_logs').select('*').order('date', { ascending: false });
+    if (machineId) q = q.eq('machine_id', machineId);
+    const { data } = await q;
+    return this._jsMany(data);
+  },
+
   // ─── AUTH ─────────────────────────────────────────────────────────────────
   async setAdminUser(userId) {
     this._configCache = null;

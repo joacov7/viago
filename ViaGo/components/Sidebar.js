@@ -13,6 +13,9 @@ function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
     { id: 'billing',    icon: 'fileText',     label: 'Facturación' },
     { id: 'loyalty',    icon: 'star',         label: 'Fidelización' },
     { id: 'products',   icon: 'shoppingBag',  label: 'Productos' },
+    { id: 'costs',      icon: 'dollarSign',   label: 'Costos' },
+    { id: 'dispensers', icon: 'droplets',     label: 'Comodatos' },
+    { id: 'machines',   icon: 'settings',     label: 'Máquinas' },
     { id: 'config',     icon: 'settings',     label: 'Configuración' },
   ];
 
