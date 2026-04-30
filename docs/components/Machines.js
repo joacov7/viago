@@ -329,7 +329,7 @@ function MachineModal({ machine, onClose, onSave }) {
   };
 
   return (
-    <Modal title={machine ? 'Editar máquina' : 'Nueva máquina'} onClose={onClose} maxWidth="max-w-lg">
+    <Modal isOpen={true} title={machine ? 'Editar máquina' : 'Nueva máquina'} onClose={onClose} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
@@ -446,7 +446,7 @@ function LogMaintenanceModal({ machine, onClose, onSave }) {
   const litersSince = getLitersSince(machine);
 
   return (
-    <Modal title={`Registrar mantenimiento · ${machine.name}`} onClose={onClose} maxWidth="max-w-md">
+    <Modal isOpen={true} title={`Registrar mantenimiento · ${machine.name}`} onClose={onClose} size="md">
       <div className="bg-slate-50 rounded-xl p-3 mb-4 flex items-center gap-3">
         <Icon name="droplets" size={18} className="text-blue-500" />
         <div>
@@ -524,7 +524,7 @@ function AddLitersModal({ machine, onClose, onSave }) {
   };
 
   return (
-    <Modal title={`Agregar litros · ${machine.name}`} onClose={onClose} maxWidth="max-w-xs">
+    <Modal isOpen={true} title={`Agregar litros · ${machine.name}`} onClose={onClose} size="sm">
       <p className="text-sm text-slate-500 mb-4">
         Litros actuales: <strong className="text-slate-900">{(machine.currentLiters || 0).toLocaleString('es-AR')}</strong>
       </p>

@@ -416,16 +416,22 @@ const DataService = {
     const { data } = await q;
     return this._jsMany(data);
   },
-  _costFields(data) {
-    const { month, quantity, unit, total, ...rest } = data;
-    return rest;
+  _costRow(data) {
+    return {
+      name: data.name,
+      category: data.category,
+      amount: data.amount,
+      date: data.date,
+      frequency: data.frequency || null,
+      notes: data.notes || null,
+    };
   },
   async createCost(data) {
-    const { error } = await this._sb.from('costs').insert(this._db(this._costFields(data)));
+    const { error } = await this._sb.from('costs').insert(this._costRow(data));
     if (error) throw new Error(error.message);
   },
   async updateCost(id, data) {
-    const { error } = await this._sb.from('costs').update(this._db(this._costFields(data))).eq('id', id);
+    const { error } = await this._sb.from('costs').update(this._costRow(data)).eq('id', id);
     if (error) throw new Error(error.message);
   },
   async deleteCost(id) {
