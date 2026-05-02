@@ -149,6 +149,89 @@ function parseOsmResult(el, city, typeLabel) {
   };
 }
 
+// ── GOOGLE PLACES API (New) ───────────────────────────────────────────────────
+const GP_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
+const GP_FIELDS   = 'places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.reviews';
+
+const NEG_KW = ['demora', 'tarde', 'sucio', 'caro', 'no vienen', 'nunca', 'frío', 'caliente', 'roto', 'mal servicio', 'no llegan', 'lento', 'falta', 'cobran'];
+const POS_KW = ['puntual', 'limpio', 'fresco', 'rápido', 'recomiendo', 'excelente', 'bueno', 'calidad', 'confiable', 'siempre'];
+
+const GP_SEARCHES = {
+  competitors: [
+    { query: 'Sodería',      label: 'Soderías',    bizType: 'competidor' },
+    { query: 'Agua de mesa', label: 'Agua de mesa', bizType: 'competidor' },
+  ],
+  leads: [
+    { query: 'Gimnasio',         label: 'Gimnasios',  bizType: 'gimnasio' },
+    { query: 'Clínica médica',   label: 'Clínicas',   bizType: 'clinica'  },
+    { query: 'Empresa oficinas', label: 'Oficinas',   bizType: 'oficina'  },
+  ],
+};
+
+async function searchGP(query, city, lat, lng, apiKey) {
+  const r = await fetch(GP_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': GP_FIELDS,
+    },
+    body: JSON.stringify({
+      textQuery: `${query} ${city}`,
+      languageCode: 'es',
+      maxResultCount: 20,
+      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 15000 } },
+    }),
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.error?.message || `Error Google Places: ${r.status}`);
+  }
+  return (await r.json()).places || [];
+}
+
+function analyzeGPPlace(place) {
+  const reviews = place.reviews || [];
+  const negRevs = reviews.filter(r =>
+    r.rating < 3 || NEG_KW.some(k => (r.text?.text || '').toLowerCase().includes(k))
+  );
+  const posRevs = reviews.filter(r =>
+    r.rating >= 4 && POS_KW.some(k => (r.text?.text || '').toLowerCase().includes(k))
+  );
+  const weaknesses = [...new Set(
+    negRevs.flatMap(r => NEG_KW.filter(k => (r.text?.text || '').toLowerCase().includes(k)))
+  )].join(', ');
+  const rating = place.rating || 0;
+  const cnt    = place.userRatingCount || 0;
+  const strength = rating >= 4.5 && cnt >= 10 ? 'dominante'
+    : rating >= 3.5 || cnt >= 5 ? 'intermedio' : 'debil';
+  return { weaknesses, strength, negRevs, posRevs };
+}
+
+function gpToCSV(results, mode) {
+  const headers = mode === 'competitors'
+    ? ['Nombre','Dirección','Teléfono','Rating','Reseñas','Fortaleza','Debilidades','Reseña negativa','Lo que valoran']
+    : ['Nombre','Dirección','Teléfono','Rating','Reseñas','Tipo','Score','Prioridad'];
+  const rows = results.map(p => {
+    const { weaknesses, strength, negRevs, posRevs } = p._analysis;
+    const name  = p.displayName?.text || '';
+    const addr  = p.formattedAddress || '';
+    const phone = p.internationalPhoneNumber || '';
+    const rat   = p.rating || '';
+    const cnt   = p.userRatingCount || 0;
+    if (mode === 'competitors') {
+      return [name, addr, phone, rat, cnt, COMP_CFG[strength]?.label || strength, weaknesses,
+        negRevs[0]?.text?.text?.slice(0, 120) || '', posRevs[0]?.text?.text?.slice(0, 120) || ''];
+    }
+    const fake = { businessType: p._bizType, phone, address: addr, source: 'google' };
+    const score = calcScore(fake);
+    return [name, addr, phone, rat, cnt, p._bizType, score, getPriority(score)];
+  });
+  return [headers, ...rows]
+    .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+}
+
 // ── SHARED SMALL COMPONENTS ───────────────────────────────────────────────────
 function ScoreChip({ score }) {
   const color = score >= 70 ? 'bg-red-500' : score >= 42 ? 'bg-amber-500' : 'bg-gray-400';
@@ -242,7 +325,8 @@ function Prospecting() {
 
   const TABS = [
     { id: 'oportunidades', label: '⚡ Oportunidades' },
-    { id: 'buscar',        label: '🔍 Buscar negocios' },
+    { id: 'buscar',        label: '🔍 OSM' },
+    { id: 'google',        label: '📍 Google Places' },
     { id: 'competencia',   label: '📊 Competencia' },
     { id: 'mensajes',      label: '💬 Mensajes' },
   ];
@@ -278,6 +362,9 @@ function Prospecting() {
       )}
       {tab === 'buscar' && (
         <TabBuscar leads={leads} config={config} onAdded={reload} />
+      )}
+      {tab === 'google' && (
+        <TabGooglePlaces config={config} competitors={competitors} onRefresh={reload} />
       )}
       {tab === 'competencia' && (
         <TabCompetencia competitors={competitors} leads={enriched} onRefresh={reload} />
@@ -1085,6 +1172,245 @@ function CompetitorModal({ competitor, onClose, onSave }) {
         </div>
       </form>
     </Modal>
+  );
+}
+
+// ── TAB: GOOGLE PLACES ────────────────────────────────────────────────────────
+function TabGooglePlaces({ config, competitors, onRefresh }) {
+  const [apiKey, setApiKey]     = React.useState(() => localStorage.getItem('gp_api_key') || '');
+  const [city, setCity]         = React.useState(config.city || '');
+  const [mode, setMode]         = React.useState('competitors');
+  const [searching, setSearching] = React.useState(false);
+  const [results, setResults]   = React.useState([]);
+  const [error, setError]       = React.useState('');
+  const [saving, setSaving]     = React.useState(null);
+
+  const saveKey = k => { setApiKey(k); localStorage.setItem('gp_api_key', k); };
+
+  const handleSearch = async () => {
+    if (!apiKey.trim()) { setError('Ingresá tu clave de Google Places API.'); return; }
+    if (!city.trim())   { setError('Ingresá una ciudad.'); return; }
+    setError(''); setResults([]); setSearching(true);
+    try {
+      const { lat, lng } = await geocodeCity(city);
+      const seen = new Set();
+      const all = [];
+      for (const s of GP_SEARCHES[mode]) {
+        const places = await searchGP(s.query, city, lat, lng, apiKey);
+        for (const p of places) {
+          if (seen.has(p.name)) continue;
+          seen.add(p.name);
+          p._analysis   = analyzeGPPlace(p);
+          p._bizType    = s.bizType;
+          p._searchLabel = s.label;
+          all.push(p);
+        }
+      }
+      setResults(all);
+      if (!all.length) setError('Sin resultados para esta búsqueda.');
+    } catch (err) { setError(err.message); }
+    setSearching(false);
+  };
+
+  const saveAsCompetitor = async (place) => {
+    setSaving(place.name);
+    try {
+      const { weaknesses, strength } = place._analysis;
+      await DataService.createCompetitor({
+        name: place.displayName?.text || '',
+        zone: city,
+        strength,
+        weaknesses,
+        rating: place.rating || null,
+        reviewsCount: place.userRatingCount || null,
+        notes: 'Fuente: Google Places',
+      });
+      onRefresh();
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(null);
+  };
+
+  const saveAsLead = async (place) => {
+    setSaving(place.name);
+    try {
+      await DataService.createLead({
+        name: place.displayName?.text || '',
+        phone: place.internationalPhoneNumber || '',
+        address: place.formattedAddress || '',
+        city,
+        businessType: place._bizType,
+        type: place._bizType,
+        source: 'google',
+        notes: place.rating
+          ? `Rating Google: ${place.rating}/5 (${place.userRatingCount || 0} reseñas)`
+          : '',
+      });
+      onRefresh();
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(null);
+  };
+
+  const exportCSV = () => {
+    if (!results.length) return;
+    const blob = new Blob(['﻿' + gpToCSV(results, mode)], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gplaces-${mode}-${city.replace(/\s/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* API Key */}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <span className="text-xl">🔑</span>
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Clave de Google Places API</p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              Se guarda solo en este navegador. Restringí la clave a tu dominio en Google Cloud Console.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <input type="password" value={apiKey} onChange={e => saveKey(e.target.value)}
+            className={_inputCls('font-mono text-xs')} placeholder="AIzaSy..." />
+          {apiKey && (
+            <button onClick={() => saveKey('')}
+              className="px-3 py-2 text-xs border border-gray-200 rounded-xl text-slate-500 hover:text-red-600">
+              Borrar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search controls */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <p className="text-sm font-semibold text-slate-700 mb-4">Buscar con Google Places</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <FormField label="Modo">
+            <select value={mode} onChange={e => { setMode(e.target.value); setResults([]); }} className={_inputCls()}>
+              <option value="competitors">🏁 Competidores (Soderías, Agua)</option>
+              <option value="leads">🎯 Clientes potenciales (Gimn, Clín, Of.)</option>
+            </select>
+          </FormField>
+          <FormField label="Ciudad">
+            <input value={city} onChange={e => setCity(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              className={_inputCls()} placeholder="Gualeguay, Entre Ríos" />
+          </FormField>
+          <FormField label=" ">
+            <Btn onClick={handleSearch} disabled={searching} variant="primary" icon="search" className="w-full justify-center">
+              {searching ? 'Buscando...' : 'Buscar'}
+            </Btn>
+          </FormField>
+        </div>
+        <p className="text-xs text-slate-400">
+          Busca: {GP_SEARCHES[mode].map(s => s.label).join(', ')} ·
+          Trae rating, reseñas, dirección y teléfono.
+        </p>
+      </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
+      )}
+
+      {results.length > 0 && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-700">
+              {results.length} resultado{results.length !== 1 ? 's' : ''}
+            </p>
+            <Btn onClick={exportCSV} variant="secondary" size="sm" icon="download">Exportar CSV</Btn>
+          </div>
+
+          <div className="space-y-3">
+            {results.map(place => {
+              const { weaknesses, strength, negRevs, posRevs } = place._analysis;
+              const isSaving = saving === place.name;
+              const fakeLead = { businessType: place._bizType, phone: place.internationalPhoneNumber, address: place.formattedAddress, source: 'google' };
+              const score = calcScore(fakeLead);
+
+              return (
+                <div key={place.name} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <p className="font-semibold text-slate-900 text-sm">{place.displayName?.text}</p>
+                        <span className="text-xs text-slate-400 bg-gray-100 px-1.5 py-0.5 rounded">{place._searchLabel}</span>
+                        {mode === 'competitors' && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${COMP_CFG[strength].bg} ${COMP_CFG[strength].text}`}>
+                            {COMP_CFG[strength].icon} {COMP_CFG[strength].label}
+                          </span>
+                        )}
+                      </div>
+                      {place.formattedAddress && (
+                        <p className="text-xs text-slate-500 mb-0.5 truncate">{place.formattedAddress}</p>
+                      )}
+                      {place.internationalPhoneNumber && (
+                        <p className="text-xs text-slate-500">{place.internationalPhoneNumber}</p>
+                      )}
+                      {place.rating != null && (
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className="text-xs font-bold text-amber-500">★ {place.rating}</span>
+                          <span className="text-xs text-slate-400">{place.userRatingCount || 0} reseñas</span>
+                        </div>
+                      )}
+
+                      {mode === 'competitors' && (weaknesses || negRevs.length > 0 || posRevs.length > 0) && (
+                        <div className="mt-2 space-y-1.5">
+                          {weaknesses && (
+                            <p className="text-xs text-red-700">
+                              <span className="font-semibold">⚠ Debilidades detectadas:</span> {weaknesses}
+                            </p>
+                          )}
+                          {negRevs[0]?.text?.text && (
+                            <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                              <p className="text-xs text-red-600 italic">
+                                "{negRevs[0].text.text.slice(0, 150)}{negRevs[0].text.text.length > 150 ? '...' : ''}"
+                              </p>
+                            </div>
+                          )}
+                          {posRevs[0]?.text?.text && (
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                              <p className="text-xs text-emerald-700 italic">
+                                "{posRevs[0].text.text.slice(0, 150)}{posRevs[0].text.text.length > 150 ? '...' : ''}"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {mode === 'leads' && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <ScoreChip score={score} />
+                          <PriorityBadge priority={getPriority(score)} />
+                          <span className="text-xs text-slate-400">{getOfferType({ businessType: place._bizType })}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-shrink-0">
+                      {mode === 'competitors' ? (
+                        <Btn onClick={() => saveAsCompetitor(place)} disabled={isSaving} variant="primary" size="sm">
+                          {isSaving ? '...' : '+ Competidor'}
+                        </Btn>
+                      ) : (
+                        <Btn onClick={() => saveAsLead(place)} disabled={isSaving} variant="primary" size="sm">
+                          {isSaving ? '...' : '+ Lead'}
+                        </Btn>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
