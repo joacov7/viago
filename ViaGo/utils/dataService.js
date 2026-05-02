@@ -509,17 +509,28 @@ const DataService = {
   },
 
   // ─── COMPETITORS ─────────────────────────────────────────────────────────
+  _competitorRow(data) {
+    return {
+      name: data.name,
+      zone: data.zone || null,
+      strength: data.strength || 'intermedio',
+      weaknesses: data.weaknesses || null,
+      rating: data.rating ? Number(data.rating) : null,
+      reviews_count: data.reviewsCount ? Number(data.reviewsCount) : null,
+      notes: data.notes || null,
+    };
+  },
   async getCompetitors() {
     const { data } = await this._sb.from('competitors').select('*').order('name');
     return this._jsMany(data);
   },
   async createCompetitor(data) {
-    const { data: row, error } = await this._sb.from('competitors').insert(this._db(data)).select().single();
+    const { data: row, error } = await this._sb.from('competitors').insert(this._competitorRow(data)).select().single();
     if (error) throw new Error(error.message);
     return this._js(row);
   },
   async updateCompetitor(id, data) {
-    const { data: row, error } = await this._sb.from('competitors').update(this._db(data)).eq('id', id).select().single();
+    const { data: row, error } = await this._sb.from('competitors').update(this._competitorRow(data)).eq('id', id).select().single();
     if (error) throw new Error(error.message);
     return this._js(row);
   },
