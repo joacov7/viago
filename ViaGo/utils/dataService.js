@@ -510,13 +510,17 @@ const DataService = {
 
   // ─── COMPETITORS ─────────────────────────────────────────────────────────
   _competitorRow(data) {
+    const w = data.weaknesses;
+    const weaknesses = Array.isArray(w)
+      ? w
+      : (w ? w.split(',').map(s => s.trim()).filter(Boolean) : null);
     return {
       name: data.name,
       zone: data.zone || null,
       strength: data.strength || 'intermedio',
-      weaknesses: data.weaknesses || null,
-      rating: data.rating ? Number(data.rating) : null,
-      reviews_count: data.reviewsCount ? Number(data.reviewsCount) : null,
+      weaknesses,
+      rating: (data.rating !== '' && data.rating != null) ? Number(data.rating) : null,
+      reviews_count: (data.reviewsCount !== '' && data.reviewsCount != null) ? Number(data.reviewsCount) : null,
       notes: data.notes || null,
     };
   },
