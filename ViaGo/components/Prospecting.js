@@ -188,12 +188,12 @@ function gpLimit() {
   return parseInt(localStorage.getItem('gp_limit') || '9990');
 }
 
-async function searchGP(query, city, lat, lng, apiKey, pageToken = null) {
+async function searchGP(query, city, lat, lng, apiKey, pageToken = null, radius = 25000) {
   const body = {
     textQuery: `${query} ${city}`,
     languageCode: 'es',
     maxResultCount: 20,
-    locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 15000 } },
+    locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius } },
   };
   if (pageToken) body.pageToken = pageToken;
   const r = await fetch(GP_ENDPOINT, {
@@ -1203,6 +1203,7 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
   const [apiKey, setApiKey]       = React.useState(() => localStorage.getItem('gp_api_key') || '');
   const [city, setCity]           = React.useState(config.city || '');
   const [mode, setMode]           = React.useState('competitors');
+  const [radius, setRadius]       = React.useState(25000);
   const [searching, setSearching] = React.useState(false);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [results, setResults]     = React.useState([]);
@@ -1245,10 +1246,10 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
       const tokens = {};
       const searches = GP_SEARCHES[mode];
       for (const s of searches) {
-        const { places, nextPageToken } = await searchGP(s.query, city, lat, lng, apiKey);
+        const { places, nextPageToken } = await searchGP(s.query, city, lat, lng, apiKey, null, radius);
         gpAddUsage(1);
         all.push(...processPlaces(places, s, seen));
-        if (nextPageToken) tokens[s.label] = { token: nextPageToken, s, lat, lng };
+        if (nextPageToken) tokens[s.label] = { token: nextPageToken, s, lat, lng, radius };
       }
       setUsage(gpUsage());
       setResults(all);
@@ -1265,11 +1266,11 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
       const seen = new Set(results.map(r => r.name));
       const more = [];
       const newTokens = {};
-      for (const [label, { token, s, lat, lng }] of Object.entries(pageTokens)) {
-        const { places, nextPageToken } = await searchGP(s.query, city, lat, lng, apiKey, token);
+      for (const [label, { token, s, lat, lng, radius: r }] of Object.entries(pageTokens)) {
+        const { places, nextPageToken } = await searchGP(s.query, city, lat, lng, apiKey, token, r);
         gpAddUsage(1);
         more.push(...processPlaces(places, s, seen));
-        if (nextPageToken) newTokens[label] = { token: nextPageToken, s, lat, lng };
+        if (nextPageToken) newTokens[label] = { token: nextPageToken, s, lat, lng, radius: r };
       }
       setUsage(gpUsage());
       setResults(r => [...r, ...more]);
@@ -1399,17 +1400,26 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
       {/* Search controls */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
         <p className="text-sm font-semibold text-slate-700 mb-4">Buscar con Google Places</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
           <FormField label="Modo">
             <select value={mode} onChange={e => { setMode(e.target.value); setResults([]); setPageTokens({}); }} className={_inputCls()}>
-              <option value="competitors">🏁 Competidores (Soderías, Agua)</option>
-              <option value="leads">🎯 Clientes potenciales (Gimn, Clín, Of.)</option>
+              <option value="competitors">🏁 Competidores</option>
+              <option value="leads">🎯 Clientes potenciales</option>
             </select>
           </FormField>
-          <FormField label="Ciudad">
+          <FormField label="Ciudad / Zona">
             <input value={city} onChange={e => setCity(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
               className={_inputCls()} placeholder="Gualeguay, Entre Ríos" />
+          </FormField>
+          <FormField label="Radio">
+            <select value={radius} onChange={e => setRadius(Number(e.target.value))} className={_inputCls()}>
+              <option value={5000}>5 km</option>
+              <option value={10000}>10 km</option>
+              <option value={25000}>25 km</option>
+              <option value={50000}>50 km</option>
+              <option value={100000}>100 km</option>
+            </select>
           </FormField>
           <FormField label=" ">
             <Btn onClick={handleSearch} disabled={searching || usage.count >= limit} variant="primary" icon="search" className="w-full justify-center">
