@@ -151,15 +151,18 @@ function parseOsmResult(el, city, typeLabel) {
 
 // ── GOOGLE PLACES API (New) ───────────────────────────────────────────────────
 const GP_ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
-const GP_FIELDS   = 'places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.reviews';
+const GP_FIELDS   = 'places.displayName,places.formattedAddress,places.internationalPhoneNumber,places.rating,places.userRatingCount,places.reviews,nextPageToken';
 
 const NEG_KW = ['demora', 'tarde', 'sucio', 'caro', 'no vienen', 'nunca', 'frío', 'caliente', 'roto', 'mal servicio', 'no llegan', 'lento', 'falta', 'cobran'];
 const POS_KW = ['puntual', 'limpio', 'fresco', 'rápido', 'recomiendo', 'excelente', 'bueno', 'calidad', 'confiable', 'siempre'];
 
 const GP_SEARCHES = {
   competitors: [
-    { query: 'Sodería',      label: 'Soderías',    bizType: 'competidor' },
-    { query: 'Agua de mesa', label: 'Agua de mesa', bizType: 'competidor' },
+    { query: 'Sodería',                  label: 'Soderías' },
+    { query: 'Agua de mesa',             label: 'Agua de mesa' },
+    { query: 'Distribuidora agua bidón', label: 'Distribuidoras' },
+    { query: 'Agua purificada domicilio',label: 'Agua purificada' },
+    { query: 'Bidones agua potable',     label: 'Bidones' },
   ],
   leads: [
     { query: 'Gimnasio',         label: 'Gimnasios',  bizType: 'gimnasio' },
@@ -168,7 +171,31 @@ const GP_SEARCHES = {
   ],
 };
 
-async function searchGP(query, city, lat, lng, apiKey) {
+// ── Contador de uso ──────────────────────────────────────────────────────────
+function gpUsage() {
+  const month = new Date().toISOString().slice(0, 7);
+  const stored = JSON.parse(localStorage.getItem('gp_usage') || '{}');
+  if (stored.month !== month) return { month, count: 0 };
+  return stored;
+}
+function gpAddUsage(n = 1) {
+  const u = gpUsage();
+  u.count += n;
+  localStorage.setItem('gp_usage', JSON.stringify(u));
+  return u.count;
+}
+function gpLimit() {
+  return parseInt(localStorage.getItem('gp_limit') || '9990');
+}
+
+async function searchGP(query, city, lat, lng, apiKey, pageToken = null) {
+  const body = {
+    textQuery: `${query} ${city}`,
+    languageCode: 'es',
+    maxResultCount: 20,
+    locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 15000 } },
+  };
+  if (pageToken) body.pageToken = pageToken;
   const r = await fetch(GP_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -176,18 +203,14 @@ async function searchGP(query, city, lat, lng, apiKey) {
       'X-Goog-Api-Key': apiKey,
       'X-Goog-FieldMask': GP_FIELDS,
     },
-    body: JSON.stringify({
-      textQuery: `${query} ${city}`,
-      languageCode: 'es',
-      maxResultCount: 20,
-      locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius: 15000 } },
-    }),
+    body: JSON.stringify(body),
   });
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
     throw new Error(e.error?.message || `Error Google Places: ${r.status}`);
   }
-  return (await r.json()).places || [];
+  const d = await r.json();
+  return { places: d.places || [], nextPageToken: d.nextPageToken || null };
 }
 
 function analyzeGPPlace(place) {
@@ -1177,39 +1200,82 @@ function CompetitorModal({ competitor, onClose, onSave }) {
 
 // ── TAB: GOOGLE PLACES ────────────────────────────────────────────────────────
 function TabGooglePlaces({ config, competitors, onRefresh }) {
-  const [apiKey, setApiKey]     = React.useState(() => localStorage.getItem('gp_api_key') || '');
-  const [city, setCity]         = React.useState(config.city || '');
-  const [mode, setMode]         = React.useState('competitors');
+  const [apiKey, setApiKey]       = React.useState(() => localStorage.getItem('gp_api_key') || '');
+  const [city, setCity]           = React.useState(config.city || '');
+  const [mode, setMode]           = React.useState('competitors');
   const [searching, setSearching] = React.useState(false);
-  const [results, setResults]   = React.useState([]);
-  const [error, setError]       = React.useState('');
-  const [saving, setSaving]     = React.useState(null);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [results, setResults]     = React.useState([]);
+  const [pageTokens, setPageTokens] = React.useState({});  // { label: token }
+  const [error, setError]         = React.useState('');
+  const [saving, setSaving]       = React.useState(null);
+  const [usage, setUsage]         = React.useState(() => gpUsage());
+  const [limitInput, setLimitInput] = React.useState(() => String(gpLimit()));
+  const [showConfig, setShowConfig] = React.useState(false);
 
   const saveKey = k => { setApiKey(k); localStorage.setItem('gp_api_key', k); };
+  const saveLimit = v => { localStorage.setItem('gp_limit', v); setLimitInput(v); };
+  const limit = parseInt(limitInput) || 9990;
+  const usagePct = Math.min(100, Math.round(usage.count / limit * 100));
+  const usageColor = usagePct >= 95 ? 'bg-red-500' : usagePct >= 80 ? 'bg-amber-500' : 'bg-emerald-500';
+  const usageBg   = usagePct >= 95 ? 'bg-red-50 border-red-200' : usagePct >= 80 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200';
+
+  const processPlaces = (places, s, seen) => {
+    const added = [];
+    for (const p of places) {
+      if (seen.has(p.name)) continue;
+      seen.add(p.name);
+      p._analysis    = analyzeGPPlace(p);
+      p._bizType     = s.bizType || 'competidor';
+      p._searchLabel = s.label;
+      added.push(p);
+    }
+    return added;
+  };
 
   const handleSearch = async () => {
     if (!apiKey.trim()) { setError('Ingresá tu clave de Google Places API.'); return; }
     if (!city.trim())   { setError('Ingresá una ciudad.'); return; }
-    setError(''); setResults([]); setSearching(true);
+    if (usage.count >= limit) { setError(`Límite de ${limit} consultas alcanzado este mes.`); return; }
+    setError(''); setResults([]); setPageTokens({}); setSearching(true);
     try {
       const { lat, lng } = await geocodeCity(city);
       const seen = new Set();
-      const all = [];
-      for (const s of GP_SEARCHES[mode]) {
-        const places = await searchGP(s.query, city, lat, lng, apiKey);
-        for (const p of places) {
-          if (seen.has(p.name)) continue;
-          seen.add(p.name);
-          p._analysis   = analyzeGPPlace(p);
-          p._bizType    = s.bizType;
-          p._searchLabel = s.label;
-          all.push(p);
-        }
+      const all  = [];
+      const tokens = {};
+      const searches = GP_SEARCHES[mode];
+      for (const s of searches) {
+        const { places, nextPageToken } = await searchGP(s.query, city, lat, lng, apiKey);
+        gpAddUsage(1);
+        all.push(...processPlaces(places, s, seen));
+        if (nextPageToken) tokens[s.label] = { token: nextPageToken, s, lat, lng };
       }
+      setUsage(gpUsage());
       setResults(all);
-      if (!all.length) setError('Sin resultados para esta búsqueda.');
+      setPageTokens(tokens);
+      if (!all.length) setError('Sin resultados. Probá otra ciudad o verificá la clave API.');
     } catch (err) { setError(err.message); }
     setSearching(false);
+  };
+
+  const handleLoadMore = async () => {
+    if (usage.count >= limit) { setError(`Límite de ${limit} consultas alcanzado.`); return; }
+    setLoadingMore(true);
+    try {
+      const seen = new Set(results.map(r => r.name));
+      const more = [];
+      const newTokens = {};
+      for (const [label, { token, s, lat, lng }] of Object.entries(pageTokens)) {
+        const { places, nextPageToken } = await searchGP(s.query, city, lat, lng, apiKey, token);
+        gpAddUsage(1);
+        more.push(...processPlaces(places, s, seen));
+        if (nextPageToken) newTokens[label] = { token: nextPageToken, s, lat, lng };
+      }
+      setUsage(gpUsage());
+      setResults(r => [...r, ...more]);
+      setPageTokens(newTokens);
+    } catch (err) { setError(err.message); }
+    setLoadingMore(false);
   };
 
   const saveAsCompetitor = async (place) => {
@@ -1218,9 +1284,7 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
       const { weaknesses, strength } = place._analysis;
       await DataService.createCompetitor({
         name: place.displayName?.text || '',
-        zone: city,
-        strength,
-        weaknesses,
+        zone: city, strength, weaknesses,
         rating: place.rating || null,
         reviewsCount: place.userRatingCount || null,
         notes: 'Fuente: Google Places',
@@ -1237,13 +1301,8 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
         name: place.displayName?.text || '',
         phone: place.internationalPhoneNumber || '',
         address: place.formattedAddress || '',
-        city,
-        businessType: place._bizType,
-        type: place._bizType,
-        source: 'google',
-        notes: place.rating
-          ? `Rating Google: ${place.rating}/5 (${place.userRatingCount || 0} reseñas)`
-          : '',
+        city, businessType: place._bizType, type: place._bizType, source: 'google',
+        notes: place.rating ? `Rating Google: ${place.rating}/5 (${place.userRatingCount || 0} reseñas)` : '',
       });
       onRefresh();
     } catch (err) { alert('Error: ' + err.message); }
@@ -1255,35 +1314,86 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
     const blob = new Blob(['﻿' + gpToCSV(results, mode)], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `gplaces-${mode}-${city.replace(/\s/g, '_')}.csv`;
-    a.click();
+    a.href = url; a.download = `gplaces-${mode}-${city.replace(/\s/g, '_')}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
+  const hasMore = Object.keys(pageTokens).length > 0;
+
   return (
     <div className="space-y-5">
-      {/* API Key */}
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
-        <div className="flex items-start gap-2">
-          <span className="text-xl">🔑</span>
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Clave de Google Places API</p>
-            <p className="text-xs text-amber-600 mt-0.5">
-              Se guarda solo en este navegador. Restringí la clave a tu dominio en Google Cloud Console.
+
+      {/* API Key + Config */}
+      <div className={`border rounded-2xl p-4 space-y-3 ${usagePct >= 80 ? usageBg : 'bg-amber-50 border-amber-200'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🔑</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Google Places API</p>
+              <p className="text-xs text-amber-600">Guardada solo en este navegador.</p>
+            </div>
+          </div>
+          <button onClick={() => setShowConfig(c => !c)}
+            className="text-xs text-slate-500 hover:text-slate-700 border border-gray-200 rounded-lg px-2 py-1">
+            {showConfig ? 'Cerrar' : '⚙ Config'}
+          </button>
+        </div>
+
+        {/* Usage bar */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-slate-600 font-medium">Consultas este mes</p>
+            <p className={`text-xs font-bold ${usagePct >= 95 ? 'text-red-600' : usagePct >= 80 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              {usage.count} / {limit}
             </p>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <input type="password" value={apiKey} onChange={e => saveKey(e.target.value)}
-            className={_inputCls('font-mono text-xs')} placeholder="AIzaSy..." />
-          {apiKey && (
-            <button onClick={() => saveKey('')}
-              className="px-3 py-2 text-xs border border-gray-200 rounded-xl text-slate-500 hover:text-red-600">
-              Borrar
-            </button>
+          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${usageColor}`} style={{ width: `${usagePct}%` }} />
+          </div>
+          {usagePct >= 80 && (
+            <p className={`text-xs mt-1 ${usagePct >= 95 ? 'text-red-600 font-semibold' : 'text-amber-600'}`}>
+              {usagePct >= 95 ? '⛔ Límite alcanzado. Reinicia el 1° del mes o subí el límite.' : '⚠ Cerca del límite configurado.'}
+            </p>
           )}
         </div>
+
+        {showConfig && (
+          <div className="border-t border-amber-200 pt-3 space-y-3">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <p className="text-xs text-slate-600 mb-1 font-medium">Clave API</p>
+                <input type="password" value={apiKey} onChange={e => saveKey(e.target.value)}
+                  className={_inputCls('font-mono text-xs')} placeholder="AIzaSy..." />
+              </div>
+              {apiKey && (
+                <div className="flex items-end">
+                  <button onClick={() => saveKey('')}
+                    className="px-3 py-2.5 text-xs border border-gray-200 rounded-xl text-red-500 hover:bg-red-50">
+                    Borrar
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <p className="text-xs text-slate-600 mb-1 font-medium">Límite mensual de consultas</p>
+                <input type="number" value={limitInput} onChange={e => saveLimit(e.target.value)}
+                  className={_inputCls()} min="10" step="10" />
+              </div>
+              <button onClick={() => { const u = gpUsage(); u.count = 0; localStorage.setItem('gp_usage', JSON.stringify(u)); setUsage(gpUsage()); }}
+                className="text-xs text-slate-500 border border-gray-200 rounded-xl px-3 py-2.5 hover:bg-gray-50">
+                Resetear contador
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!showConfig && (
+          <div className="flex gap-2">
+            <input type="password" value={apiKey} onChange={e => saveKey(e.target.value)}
+              className={_inputCls('font-mono text-xs')} placeholder="AIzaSy..." />
+          </div>
+        )}
       </div>
 
       {/* Search controls */}
@@ -1291,7 +1401,7 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
         <p className="text-sm font-semibold text-slate-700 mb-4">Buscar con Google Places</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
           <FormField label="Modo">
-            <select value={mode} onChange={e => { setMode(e.target.value); setResults([]); }} className={_inputCls()}>
+            <select value={mode} onChange={e => { setMode(e.target.value); setResults([]); setPageTokens({}); }} className={_inputCls()}>
               <option value="competitors">🏁 Competidores (Soderías, Agua)</option>
               <option value="leads">🎯 Clientes potenciales (Gimn, Clín, Of.)</option>
             </select>
@@ -1302,14 +1412,14 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
               className={_inputCls()} placeholder="Gualeguay, Entre Ríos" />
           </FormField>
           <FormField label=" ">
-            <Btn onClick={handleSearch} disabled={searching} variant="primary" icon="search" className="w-full justify-center">
+            <Btn onClick={handleSearch} disabled={searching || usage.count >= limit} variant="primary" icon="search" className="w-full justify-center">
               {searching ? 'Buscando...' : 'Buscar'}
             </Btn>
           </FormField>
         </div>
         <p className="text-xs text-slate-400">
           Busca: {GP_SEARCHES[mode].map(s => s.label).join(', ')} ·
-          Trae rating, reseñas, dirección y teléfono.
+          Cada búsqueda usa {GP_SEARCHES[mode].length} consulta{GP_SEARCHES[mode].length !== 1 ? 's' : ''}.
         </p>
       </div>
 
@@ -1322,6 +1432,7 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-700">
               {results.length} resultado{results.length !== 1 ? 's' : ''}
+              {hasMore && <span className="text-xs text-blue-600 font-normal ml-2">· hay más disponibles</span>}
             </p>
             <Btn onClick={exportCSV} variant="secondary" size="sm" icon="download">Exportar CSV</Btn>
           </div>
@@ -1332,7 +1443,6 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
               const isSaving = saving === place.name;
               const fakeLead = { businessType: place._bizType, phone: place.internationalPhoneNumber, address: place.formattedAddress, source: 'google' };
               const score = calcScore(fakeLead);
-
               return (
                 <div key={place.name} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -1358,31 +1468,25 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
                           <span className="text-xs text-slate-400">{place.userRatingCount || 0} reseñas</span>
                         </div>
                       )}
-
                       {mode === 'competitors' && (weaknesses || negRevs.length > 0 || posRevs.length > 0) && (
                         <div className="mt-2 space-y-1.5">
                           {weaknesses && (
                             <p className="text-xs text-red-700">
-                              <span className="font-semibold">⚠ Debilidades detectadas:</span> {weaknesses}
+                              <span className="font-semibold">⚠ Debilidades:</span> {weaknesses}
                             </p>
                           )}
                           {negRevs[0]?.text?.text && (
                             <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                              <p className="text-xs text-red-600 italic">
-                                "{negRevs[0].text.text.slice(0, 150)}{negRevs[0].text.text.length > 150 ? '...' : ''}"
-                              </p>
+                              <p className="text-xs text-red-600 italic">"{negRevs[0].text.text.slice(0, 150)}{negRevs[0].text.text.length > 150 ? '...' : ''}"</p>
                             </div>
                           )}
                           {posRevs[0]?.text?.text && (
                             <div className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
-                              <p className="text-xs text-emerald-700 italic">
-                                "{posRevs[0].text.text.slice(0, 150)}{posRevs[0].text.text.length > 150 ? '...' : ''}"
-                              </p>
+                              <p className="text-xs text-emerald-700 italic">"{posRevs[0].text.text.slice(0, 150)}{posRevs[0].text.text.length > 150 ? '...' : ''}"</p>
                             </div>
                           )}
                         </div>
                       )}
-
                       {mode === 'leads' && (
                         <div className="flex items-center gap-2 mt-2">
                           <ScoreChip score={score} />
@@ -1391,7 +1495,6 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
                         </div>
                       )}
                     </div>
-
                     <div className="flex-shrink-0">
                       {mode === 'competitors' ? (
                         <Btn onClick={() => saveAsCompetitor(place)} disabled={isSaving} variant="primary" size="sm">
@@ -1408,6 +1511,17 @@ function TabGooglePlaces({ config, competitors, onRefresh }) {
               );
             })}
           </div>
+
+          {hasMore && (
+            <div className="text-center">
+              <Btn onClick={handleLoadMore} disabled={loadingMore || usage.count >= limit} variant="secondary">
+                {loadingMore ? 'Cargando...' : '↓ Cargar más resultados'}
+              </Btn>
+              <p className="text-xs text-slate-400 mt-1">
+                Usa {Object.keys(pageTokens).length} consulta{Object.keys(pageTokens).length !== 1 ? 's' : ''} adicional{Object.keys(pageTokens).length !== 1 ? 'es' : ''}.
+              </p>
+            </div>
+          )}
         </>
       )}
     </div>
