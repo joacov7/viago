@@ -1,24 +1,120 @@
-// NATIVA - Prospecting / Captación module (OpenStreetMap + lead management)
+// NATIVA — Captación inteligente v2: scoring, competencia, CRM, mensajes
 
-const inputCls = (extra = '') => `w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${extra}`;
+const _inputCls = (extra = '') =>
+  `w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${extra}`;
 
-const BUSINESS_TYPES = [
-  { label: 'Gimnasio / Fitness', tags: [['leisure','fitness_centre'],['amenity','gym']], icon: '🏋️' },
-  { label: 'Empresa / Oficina',  tags: [['office','company'],['office','yes']], icon: '🏢' },
-  { label: 'Restaurante',        tags: [['amenity','restaurant']], icon: '🍽️' },
-  { label: 'Bar / Café',         tags: [['amenity','bar'],['amenity','cafe']], icon: '☕' },
-  { label: 'Farmacia',           tags: [['amenity','pharmacy']], icon: '💊' },
-  { label: 'Supermercado',       tags: [['shop','supermarket']], icon: '🛒' },
-  { label: 'Escuela / Colegio',  tags: [['amenity','school']], icon: '🎓' },
-  { label: 'Hotel / Hostel',     tags: [['tourism','hotel'],['tourism','hostel']], icon: '🏨' },
-  { label: 'Panadería',          tags: [['shop','bakery']], icon: '🥖' },
-  { label: 'Peluquería / Salón', tags: [['shop','hairdresser'],['shop','beauty']], icon: '✂️' },
-  { label: 'Consultorio / Clínica', tags: [['amenity','doctors'],['amenity','clinic']], icon: '🏥' },
-  { label: 'Veterinaria',        tags: [['amenity','veterinary']], icon: '🐾' },
-  { label: 'Taller / Mecánica',  tags: [['shop','car_repair']], icon: '🔧' },
-  { label: 'Kiosco / Almacén',   tags: [['shop','kiosk'],['shop','convenience']], icon: '🏪' },
+// ── Tipos de negocio con puntaje base ──────────────────────────────────────
+const BIZ_TYPES = [
+  { id: 'clinica',     label: 'Clínica / Salud',       icon: '🏥', score: 45 },
+  { id: 'oficina',     label: 'Oficina / Empresa',      icon: '🏢', score: 42 },
+  { id: 'gimnasio',    label: 'Gimnasio / Fitness',     icon: '💪', score: 40 },
+  { id: 'escuela',     label: 'Escuela / Educación',    icon: '🎓', score: 40 },
+  { id: 'restaurante', label: 'Restaurante / Bar',      icon: '🍽️', score: 35 },
+  { id: 'comercio',    label: 'Comercio / Local',       icon: '🏪', score: 28 },
+  { id: 'hogar',       label: 'Hogar / Familia',        icon: '🏠', score: 20 },
+  { id: 'otro',        label: 'Otro',                   icon: '📋', score: 18 },
 ];
 
+const CRM_STATES = {
+  nuevo:      { label: 'Nuevo',      bg: 'bg-blue-100',    text: 'text-blue-700',    dot: 'bg-blue-500' },
+  contactado: { label: 'Contactado', bg: 'bg-amber-100',   text: 'text-amber-700',   dot: 'bg-amber-500' },
+  interesado: { label: 'Interesado', bg: 'bg-violet-100',  text: 'text-violet-700',  dot: 'bg-violet-500' },
+  cliente:    { label: 'Cliente',    bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },
+  descartado: { label: 'Descartado', bg: 'bg-gray-100',    text: 'text-gray-400',    dot: 'bg-gray-300' },
+};
+
+const COMP_CFG = {
+  dominante:  { label: 'Dominante',  bg: 'bg-red-100',     text: 'text-red-700',    icon: '🔴' },
+  intermedio: { label: 'Intermedio', bg: 'bg-amber-100',   text: 'text-amber-700',  icon: '🟡' },
+  debil:      { label: 'Débil',      bg: 'bg-emerald-100', text: 'text-emerald-700',icon: '🟢' },
+};
+
+const PRIO_CFG = {
+  alta:  { label: 'ALTA', bg: 'bg-red-100',   text: 'text-red-700',   dot: 'bg-red-500' },
+  media: { label: 'MEDIA',bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' },
+  baja:  { label: 'BAJA', bg: 'bg-gray-100',  text: 'text-gray-500',  dot: 'bg-gray-400' },
+};
+
+const OSM_TYPES = [
+  { label: 'Gimnasio / Fitness',    tags: [['leisure','fitness_centre'],['amenity','gym']], icon: '🏋️' },
+  { label: 'Empresa / Oficina',     tags: [['office','company'],['office','yes']],          icon: '🏢' },
+  { label: 'Restaurante',           tags: [['amenity','restaurant']],                       icon: '🍽️' },
+  { label: 'Bar / Café',            tags: [['amenity','bar'],['amenity','cafe']],            icon: '☕' },
+  { label: 'Farmacia',              tags: [['amenity','pharmacy']],                          icon: '💊' },
+  { label: 'Supermercado',          tags: [['shop','supermarket']],                          icon: '🛒' },
+  { label: 'Escuela / Colegio',     tags: [['amenity','school']],                            icon: '🎓' },
+  { label: 'Hotel / Hostel',        tags: [['tourism','hotel'],['tourism','hostel']],        icon: '🏨' },
+  { label: 'Panadería',             tags: [['shop','bakery']],                               icon: '🥖' },
+  { label: 'Consultorio / Clínica', tags: [['amenity','doctors'],['amenity','clinic']],     icon: '🏥' },
+  { label: 'Kiosco / Almacén',      tags: [['shop','kiosk'],['shop','convenience']],        icon: '🏪' },
+  { label: 'Taller / Mecánica',     tags: [['shop','car_repair']],                          icon: '🔧' },
+];
+
+// ── Scoring ─────────────────────────────────────────────────────────────────
+function calcScore(lead) {
+  const bt = BIZ_TYPES.find(t => t.id === (lead.businessType || lead.type));
+  let s = bt ? bt.score : 18;                                              // tipo: 18-45
+
+  const emp = Number(lead.employeeCount) || 0;
+  s += emp >= 50 ? 20 : emp >= 20 ? 16 : emp >= 10 ? 11 : emp >= 5 ? 7 : 4; // tamaño: 4-20
+
+  if (lead.phone) s += 12;   // contacto
+  if (lead.address) s += 5;  // ubicación
+
+  const src = { referido: 13, referral: 13, google: 10, web: 9, instagram: 9, openstreetmap: 8, manual: 5 };
+  s += src[lead.source] ?? 5;                                              // fuente: 5-13
+
+  const n = (lead.notes || '').length;
+  s += n > 30 ? 5 : n > 10 ? 3 : 0;                                      // contexto: 0-5
+
+  return Math.min(100, Math.max(0, s));
+}
+
+function getPriority(score) {
+  return score >= 70 ? 'alta' : score >= 42 ? 'media' : 'baja';
+}
+
+function getOfferType(lead) {
+  const bt = lead.businessType || lead.type;
+  if (['oficina', 'clinica', 'escuela'].includes(bt)) return 'Plan empresa';
+  if (bt === 'gimnasio') return 'Abono semanal';
+  if (bt === 'hogar') return 'Plan familiar';
+  return '1er bidón con descuento';
+}
+
+function buildWAMessage(lead, config, competitors) {
+  const co = config.companyName || 'nuestra empresa';
+  const bt = lead.businessType || lead.type || '';
+  const weaknesses = (competitors || [])
+    .flatMap(c => (c.weaknesses || '').split(',').map(w => w.trim()))
+    .filter(Boolean).slice(0, 2);
+  const weakLine = weaknesses.length
+    ? `A diferencia de otros: *sin ${weaknesses.join(' ni ')}* ✅\n`
+    : '';
+
+  const middles = {
+    clinica:     'En una clínica el agua tiene que estar *siempre disponible*, sin excusas',
+    oficina:     'En una empresa, la hidratación del equipo impacta directo en el rendimiento',
+    gimnasio:    'Para un gimnasio, la hidratación es parte del servicio que ofrecés',
+    escuela:     'Para una escuela, que los chicos tengan agua fresca es fundamental',
+    restaurante: 'Un restaurante necesita abastecimiento seguro, todos los días',
+    comercio:    'Te ahorrás el trabajo de ir a buscar o esperar reposición',
+    hogar:       'Agua de calidad para tu familia, sin el peso de cargar bidones',
+  };
+  const mid = middles[bt] || 'Entregamos agua en bidones directamente en tu puerta';
+
+  return `Hola${lead.name ? ` *${lead.name}*` : ''}! 👋
+
+Somos *${co}*, proveemos agua en bidones con entrega a domicilio en tu zona.
+
+${mid}.
+${weakLine}
+Esta semana tenemos *${getOfferType(lead)}* para nuevos clientes 💧
+
+¿Les cuento más info o coordinamos una entrega de prueba?`.trim();
+}
+
+// ── OSM helpers ──────────────────────────────────────────────────────────────
 async function geocodeCity(city) {
   const res = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`,
@@ -30,37 +126,339 @@ async function geocodeCity(city) {
 }
 
 async function queryOverpass(tags, lat, lng, radius) {
-  const conditions = tags.flatMap(([k, v]) => [
+  const conds = tags.flatMap(([k, v]) => [
     `node["${k}"="${v}"](around:${radius},${lat},${lng});`,
     `way["${k}"="${v}"](around:${radius},${lat},${lng});`,
   ]).join('');
-  const query = `[out:json][timeout:30];(${conditions});out center tags;`;
-  const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: query });
-  const data = await res.json();
-  return data.elements || [];
+  const res = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST', body: `[out:json][timeout:30];(${conds});out center tags;`,
+  });
+  return (await res.json()).elements || [];
 }
 
 function parseOsmResult(el, city, typeLabel) {
   const t = el.tags || {};
-  const address = [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' ');
-  const phone = t.phone || t['contact:phone'] || t['mobile'] || '';
-  const website = t.website || t['contact:website'] || '';
   return {
     osmId: String(el.id),
     name: t.name || t['name:es'] || '',
-    phone: phone.replace(/\s/g, ''),
-    address,
+    phone: (t.phone || t['contact:phone'] || t.mobile || '').replace(/\s/g, ''),
+    address: [t['addr:street'], t['addr:housenumber']].filter(Boolean).join(' '),
     city: t['addr:city'] || city,
-    website,
+    website: t.website || t['contact:website'] || '',
     type: typeLabel,
   };
 }
 
+// ── SHARED SMALL COMPONENTS ───────────────────────────────────────────────────
+function ScoreChip({ score }) {
+  const color = score >= 70 ? 'bg-red-500' : score >= 42 ? 'bg-amber-500' : 'bg-gray-400';
+  return (
+    <div className="flex items-center gap-1.5 flex-shrink-0" title={`Score: ${score}/100`}>
+      <div className="w-14 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
+      </div>
+      <span className="text-xs font-bold text-slate-600 w-6 text-right">{score}</span>
+    </div>
+  );
+}
+
+function PriorityBadge({ priority, dot }) {
+  const pc = PRIO_CFG[priority] || PRIO_CFG.baja;
+  if (dot) return <div className={`w-2 h-2 rounded-full flex-shrink-0 ${pc.dot}`} title={pc.label} />;
+  return <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${pc.bg} ${pc.text}`}>{pc.label}</span>;
+}
+
+// ── MAIN COMPONENT ─────────────────────────────────────────────────────────────
 function Prospecting() {
-  const [tab, setTab] = React.useState('buscar');
+  const [tab, setTab] = React.useState('oportunidades');
   const [leads, setLeads] = React.useState([]);
+  const [competitors, setCompetitors] = React.useState([]);
+  const [config, setConfig] = React.useState({});
+  const [loading, setLoading] = React.useState(true);
+  const [showLeadForm, setShowLeadForm] = React.useState(false);
+  const [editingLead, setEditingLead] = React.useState(null);
+
+  const reload = async () => {
+    setLoading(true);
+    const [ls, comps, cfg] = await Promise.all([
+      DataService.getLeads(),
+      DataService.getCompetitors().catch(() => []),
+      DataService.getConfig(),
+    ]);
+    setLeads(ls);
+    setCompetitors(comps);
+    setConfig(cfg);
+    setLoading(false);
+  };
+  React.useEffect(() => { reload(); }, []);
+
+  const enriched = React.useMemo(() =>
+    leads.map(l => ({ ...l, _score: calcScore(l), _priority: getPriority(calcScore(l)) })),
+    [leads]
+  );
+
+  const stats = React.useMemo(() => {
+    const active = enriched.filter(l => l.status !== 'descartado');
+    return {
+      total: leads.length,
+      alta: active.filter(l => l._priority === 'alta').length,
+      seguimiento: leads.filter(l => ['contactado', 'interesado'].includes(l.status)).length,
+      conversion: leads.length > 0
+        ? Math.round(leads.filter(l => l.status === 'cliente').length / leads.length * 100)
+        : 0,
+    };
+  }, [enriched, leads]);
+
+  const handleUpdateStatus = async (lead, status) => {
+    try {
+      await DataService.updateLead(lead.id, { status });
+      setLeads(ls => ls.map(l => l.id === lead.id ? { ...l, status } : l));
+    } catch (err) { alert(err.message); }
+  };
+
+  const handleDelete = async (lead) => {
+    if (!window.confirm(`¿Eliminar "${lead.name}"?`)) return;
+    await DataService.deleteLead(lead.id);
+    setLeads(ls => ls.filter(l => l.id !== lead.id));
+  };
+
+  const handleConvert = async (lead) => {
+    if (!window.confirm(`¿Convertir "${lead.name}" en cliente?`)) return;
+    try {
+      await DataService.createClient({
+        name: lead.name, phone: lead.phone, address: lead.address,
+        city: lead.city, type: 'empresa', notes: lead.notes || '',
+      });
+      await DataService.updateLead(lead.id, { status: 'cliente' });
+      setLeads(ls => ls.map(l => l.id === lead.id ? { ...l, status: 'cliente' } : l));
+    } catch (err) { alert(err.message); }
+  };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  const TABS = [
+    { id: 'oportunidades', label: '⚡ Oportunidades' },
+    { id: 'buscar',        label: '🔍 Buscar negocios' },
+    { id: 'competencia',   label: '📊 Competencia' },
+    { id: 'mensajes',      label: '💬 Mensajes' },
+  ];
+
+  return (
+    <div>
+      <PageHeader
+        title="Captación inteligente"
+        subtitle={`${leads.length} leads · ${stats.alta} alta prioridad · ${stats.conversion}% conversión`}
+        action={
+          <Btn onClick={() => { setEditingLead(null); setShowLeadForm(true); }} icon="plus" variant="primary">
+            Nuevo lead
+          </Btn>
+        }
+      />
+
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 overflow-x-auto">
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0
+              ${tab === t.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'oportunidades' && (
+        <TabOportunidades
+          leads={enriched} stats={stats} config={config} competitors={competitors}
+          onUpdateStatus={handleUpdateStatus} onDelete={handleDelete}
+          onConvert={handleConvert} onEdit={l => { setEditingLead(l); setShowLeadForm(true); }}
+        />
+      )}
+      {tab === 'buscar' && (
+        <TabBuscar leads={leads} config={config} onAdded={reload} />
+      )}
+      {tab === 'competencia' && (
+        <TabCompetencia competitors={competitors} leads={enriched} onRefresh={reload} />
+      )}
+      {tab === 'mensajes' && (
+        <TabMensajes leads={enriched} config={config} competitors={competitors} />
+      )}
+
+      <LeadFormModal
+        isOpen={showLeadForm}
+        lead={editingLead}
+        onClose={() => { setShowLeadForm(false); setEditingLead(null); }}
+        onSave={async (data) => {
+          if (editingLead) {
+            await DataService.updateLead(editingLead.id, data);
+          } else {
+            await DataService.createLead({ ...data, source: data.source || 'manual' });
+          }
+          setShowLeadForm(false);
+          setEditingLead(null);
+          reload();
+        }}
+      />
+    </div>
+  );
+}
+
+// ── TAB: OPORTUNIDADES ────────────────────────────────────────────────────────
+function TabOportunidades({ leads, stats, config, competitors, onUpdateStatus, onDelete, onConvert, onEdit }) {
+  const [filterPriority, setFilterPriority] = React.useState('');
+  const [filterStatus, setFilterStatus] = React.useState('');
+  const [filterType, setFilterType] = React.useState('');
+  const [showTop, setShowTop] = React.useState(true);
+  const [waLead, setWaLead] = React.useState(null);
+
+  const topTen = [...leads]
+    .filter(l => !['cliente', 'descartado'].includes(l.status))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 10);
+
+  const filtered = leads
+    .filter(l => !filterPriority || l._priority === filterPriority)
+    .filter(l => !filterStatus || l.status === filterStatus)
+    .filter(l => !filterType || (l.businessType || l.type) === filterType)
+    .sort((a, b) => b._score - a._score);
+
+  return (
+    <div className="space-y-6">
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total leads',     value: stats.total,          icon: 'users',        bg: 'bg-blue-100',    c: 'text-blue-600' },
+          { label: 'Alta prioridad',  value: stats.alta,           icon: 'trendingUp',   bg: 'bg-red-100',     c: 'text-red-600' },
+          { label: 'En seguimiento',  value: stats.seguimiento,    icon: 'messageCircle',bg: 'bg-violet-100',  c: 'text-violet-600' },
+          { label: 'Tasa conversión', value: `${stats.conversion}%`,icon: 'checkCircle', bg: 'bg-emerald-100', c: 'text-emerald-600' },
+        ].map((c, i) => (
+          <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${c.bg}`}>
+              <Icon name={c.icon} size={20} className={c.c} />
+            </div>
+            <div className="text-2xl font-bold text-slate-900">{c.value}</div>
+            <div className="text-sm text-slate-500 mt-0.5">{c.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Top 10 */}
+      {topTen.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f2142 0%, #1e3a5f 100%)' }}>
+          <button onClick={() => setShowTop(v => !v)}
+            className="w-full flex items-center justify-between px-6 py-4 text-left">
+            <div>
+              <p className="text-white font-bold">⚡ Top {topTen.length} oportunidades</p>
+              <p className="text-blue-300 text-xs mt-0.5">Leads con mayor puntaje pendientes de contacto</p>
+            </div>
+            <Icon name={showTop ? 'chevDown' : 'chevRight'} size={18} className="text-blue-300" />
+          </button>
+          {showTop && (
+            <div className="px-4 pb-4 space-y-2">
+              {topTen.map((lead, i) => {
+                const bt = BIZ_TYPES.find(b => b.id === (lead.businessType || lead.type));
+                return (
+                  <div key={lead.id}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 transition-all"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}>
+                    <span className="text-blue-300 font-bold text-base w-6 flex-shrink-0 text-center">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold text-sm truncate">{lead.name}</p>
+                      <p className="text-blue-300 text-xs truncate">
+                        {bt ? `${bt.icon} ${bt.label}` : (lead.type || '—')}
+                        {lead.city ? ` · ${lead.city}` : ''}
+                      </p>
+                    </div>
+                    <ScoreChip score={lead._score} />
+                    <PriorityBadge priority={lead._priority} dot />
+                    <div className="flex items-center gap-1">
+                      {lead.phone && (
+                        <button onClick={() => setWaLead(lead)}
+                          className="p-1.5 rounded-lg text-green-300 hover:text-green-200 transition-colors"
+                          style={{ background: 'rgba(34,197,94,0.15)' }} title="Generar mensaje WA">
+                          <Icon name="messageCircle" size={14} />
+                        </button>
+                      )}
+                      <button onClick={() => onEdit(lead)}
+                        className="p-1.5 rounded-lg text-blue-300 hover:text-white transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.1)' }} title="Editar">
+                        <Icon name="edit" size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center bg-white rounded-2xl px-5 py-4 shadow-sm border border-gray-100">
+        <span className="text-sm font-semibold text-slate-700">Filtrar:</span>
+        <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white">
+          <option value="">Todas las prioridades</option>
+          <option value="alta">Alta prioridad</option>
+          <option value="media">Media prioridad</option>
+          <option value="baja">Baja prioridad</option>
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white">
+          <option value="">Todos los estados</option>
+          {Object.entries(CRM_STATES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white">
+          <option value="">Todos los tipos</option>
+          {BIZ_TYPES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.label}</option>)}
+        </select>
+        {(filterPriority || filterStatus || filterType) && (
+          <button onClick={() => { setFilterPriority(''); setFilterStatus(''); setFilterType(''); }}
+            className="text-xs text-blue-600 font-medium hover:text-blue-700">
+            Limpiar filtros
+          </button>
+        )}
+        <span className="ml-auto text-xs text-slate-400">{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* Lead list */}
+      {filtered.length === 0 ? (
+        <EmptyState icon="users" title="Sin leads" description="Buscá negocios o agregá leads manualmente" />
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="divide-y divide-gray-50">
+            {filtered.map(lead => (
+              <LeadRow
+                key={lead.id} lead={lead}
+                onUpdateStatus={onUpdateStatus} onDelete={onDelete}
+                onConvert={onConvert} onEdit={onEdit}
+                onWA={() => setWaLead(lead)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {waLead && (
+        <WAMessageModal
+          lead={waLead} config={config} competitors={competitors}
+          onClose={() => setWaLead(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── TAB: BUSCAR (OSM) ──────────────────────────────────────────────────────────
+function TabBuscar({ leads, config, onAdded }) {
   const [typeIdx, setTypeIdx] = React.useState(0);
-  const [city, setCity] = React.useState('');
+  const [city, setCity] = React.useState(config.city || '');
   const [radius, setRadius] = React.useState(3000);
   const [searching, setSearching] = React.useState(false);
   const [results, setResults] = React.useState([]);
@@ -68,31 +466,21 @@ function Prospecting() {
   const [searchError, setSearchError] = React.useState('');
   const [addingIds, setAddingIds] = React.useState(new Set());
 
-  const reload = async () => {
-    const [ls, cfg] = await Promise.all([DataService.getLeads(), DataService.getConfig()]);
-    setLeads(ls);
-    setCity(c => c || cfg.city || '');
-  };
-  React.useEffect(() => { reload(); }, []);
-
-  const existingOsmIds = new Set(leads.map(l => l.osmId).filter(Boolean));
+  const existingIds = new Set(leads.map(l => l.osmId).filter(Boolean));
 
   const handleSearch = async () => {
     if (!city.trim()) { setSearchError('Ingresá una ciudad o zona.'); return; }
     setSearchError(''); setResults([]); setSelected(new Set()); setSearching(true);
     try {
       const { lat, lng } = await geocodeCity(city);
-      const btype = BUSINESS_TYPES[typeIdx];
-      const elements = await queryOverpass(btype.tags, lat, lng, radius);
-      const parsed = elements
-        .map(el => parseOsmResult(el, city, btype.label))
+      const bt = OSM_TYPES[typeIdx];
+      const elements = await queryOverpass(bt.tags, lat, lng, radius);
+      const parsed = elements.map(el => parseOsmResult(el, city, bt.label))
         .filter(r => r.name)
-        .filter((r, i, arr) => arr.findIndex(x => x.osmId === r.osmId) === i);
+        .filter((r, i, a) => a.findIndex(x => x.osmId === r.osmId) === i);
       setResults(parsed);
-      if (!parsed.length) setSearchError('No se encontraron resultados. Probá otro tipo de negocio o un radio mayor.');
-    } catch (err) {
-      setSearchError(err.message);
-    }
+      if (!parsed.length) setSearchError('Sin resultados. Probá otro tipo o radio mayor.');
+    } catch (err) { setSearchError(err.message); }
     setSearching(false);
   };
 
@@ -100,276 +488,644 @@ function Prospecting() {
     setAddingIds(s => new Set([...s, r.osmId]));
     try {
       await DataService.createLead({ ...r, source: 'openstreetmap' });
-      setLeads(ls => [...ls, { ...r, status: 'nuevo' }]);
+      onAdded();
     } catch (err) { alert('Error: ' + err.message); }
     setAddingIds(s => { const n = new Set(s); n.delete(r.osmId); return n; });
   };
 
   const addSelected = async () => {
-    const toAdd = results.filter(r => selected.has(r.osmId) && !existingOsmIds.has(r.osmId));
-    for (const r of toAdd) await addLead(r);
+    for (const r of results.filter(r => selected.has(r.osmId) && !existingIds.has(r.osmId))) {
+      await addLead(r);
+    }
     setSelected(new Set());
   };
 
-  const toggleSelect = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const addable = results.filter(r => !existingOsmIds.has(r.osmId));
-  const allSelected = addable.length > 0 && selected.size === addable.length;
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(addable.map(r => r.osmId)));
+  const toggleSel = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const addable = results.filter(r => !existingIds.has(r.osmId));
+  const allSel = addable.length > 0 && selected.size === addable.length;
 
   return (
-    <div>
-      <PageHeader title="Captación" subtitle="Buscá prospectos y gestioná tus leads"
-        action={<span className="text-xs text-slate-400 font-medium">{leads.length} leads guardados</span>} />
-
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 w-fit">
-        {[['buscar','Buscar negocios'],['leads','Mis leads']].map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            {label}{id === 'leads' && leads.length > 0 && <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">{leads.length}</span>}
-          </button>
-        ))}
+    <div className="space-y-5">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <p className="text-sm font-semibold text-slate-700 mb-4">Buscar negocios por zona — OpenStreetMap</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <FormField label="Tipo de negocio">
+            <select value={typeIdx} onChange={e => setTypeIdx(Number(e.target.value))} className={_inputCls()}>
+              {OSM_TYPES.map((bt, i) => <option key={i} value={i}>{bt.icon} {bt.label}</option>)}
+            </select>
+          </FormField>
+          <FormField label="Ciudad / Zona">
+            <input value={city} onChange={e => setCity(e.target.value)} className={_inputCls()}
+              placeholder="Ej: Villa María, Córdoba"
+              onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+          </FormField>
+          <FormField label="Radio de búsqueda">
+            <select value={radius} onChange={e => setRadius(Number(e.target.value))} className={_inputCls()}>
+              {[[1000,'1 km'],[2000,'2 km'],[3000,'3 km'],[5000,'5 km'],[10000,'10 km']].map(([v, l]) =>
+                <option key={v} value={v}>{l}</option>)}
+            </select>
+          </FormField>
+        </div>
+        <div className="flex items-center gap-3">
+          <Btn onClick={handleSearch} disabled={searching} variant="primary" icon="search">
+            {searching ? 'Buscando...' : 'Buscar negocios'}
+          </Btn>
+          <p className="text-xs text-slate-400">Gratis, sin límites. Puede no incluir todos los negocios.</p>
+        </div>
       </div>
 
-      {tab === 'buscar' && (
-        <div>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <FormField label="Tipo de negocio">
-                <select value={typeIdx} onChange={e => setTypeIdx(Number(e.target.value))} className={inputCls()}>
-                  {BUSINESS_TYPES.map((bt, i) => <option key={i} value={i}>{bt.icon} {bt.label}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Ciudad / Zona">
-                <input value={city} onChange={e => setCity(e.target.value)} className={inputCls()}
-                  placeholder="Ej: Villa María, Córdoba" onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-              </FormField>
-              <FormField label="Radio">
-                <select value={radius} onChange={e => setRadius(Number(e.target.value))} className={inputCls()}>
-                  {[[1000,'1 km'],[2000,'2 km'],[3000,'3 km'],[5000,'5 km'],[10000,'10 km']].map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </FormField>
-            </div>
-            <Btn onClick={handleSearch} disabled={searching} variant="primary" icon="search">
-              {searching ? 'Buscando en OpenStreetMap...' : 'Buscar'}
-            </Btn>
-            <p className="text-xs text-slate-400 mt-2">Datos de OpenStreetMap — gratis, sin límites. Puede no tener todos los negocios.</p>
-          </div>
-
-          {searchError && <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">{searchError}</div>}
-
-          {results.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <p className="text-sm font-semibold text-slate-700">{results.length} resultado{results.length !== 1 ? 's' : ''} · {addable.length} sin agregar</p>
-                <div className="flex items-center gap-3">
-                  {selected.size > 0 && (
-                    <Btn onClick={addSelected} variant="primary" size="sm" icon="plus">Agregar {selected.size}</Btn>
-                  )}
-                  <button onClick={toggleAll} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                    {allSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                  </button>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {results.map(r => {
-                  const added = existingOsmIds.has(r.osmId);
-                  const adding = addingIds.has(r.osmId);
-                  return (
-                    <div key={r.osmId} className={`flex items-center gap-3 px-5 py-3.5 ${added ? 'opacity-40' : 'hover:bg-gray-50'}`}>
-                      <input type="checkbox" checked={selected.has(r.osmId)} disabled={added}
-                        onChange={() => toggleSelect(r.osmId)} className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{r.name}</p>
-                        <p className="text-xs text-slate-400 truncate">
-                          {[r.address, r.city].filter(Boolean).join(', ')}
-                          {r.phone && <span className="ml-2 text-slate-500">· {r.phone}</span>}
-                        </p>
-                      </div>
-                      {r.website && (
-                        <a href={r.website.startsWith('http') ? r.website : `https://${r.website}`}
-                          target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex-shrink-0">web</a>
-                      )}
-                      {added ? (
-                        <span className="text-xs text-emerald-600 font-medium flex-shrink-0">✓ Guardado</span>
-                      ) : (
-                        <button onClick={() => addLead(r)} disabled={adding}
-                          className="flex-shrink-0 p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 disabled:opacity-50" title="Agregar a leads">
-                          <Icon name={adding ? 'refresh' : 'plus'} size={14} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+      {searchError && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">{searchError}</div>
       )}
 
-      {tab === 'leads' && <LeadsList leads={leads} onReload={reload} />}
-    </div>
-  );
-}
-
-function LeadsList({ leads, onReload }) {
-  const [filter, setFilter] = React.useState('');
-  const [showForm, setShowForm] = React.useState(false);
-  const counts = ['nuevo','contactado','convertido','descartado'].reduce((acc, s) => ({ ...acc, [s]: leads.filter(l => l.status === s).length }), {});
-  const filtered = filter ? leads.filter(l => l.status === filter) : leads;
-
-  const statusColors = {
-    nuevo: 'bg-blue-100 text-blue-700',
-    contactado: 'bg-amber-100 text-amber-700',
-    convertido: 'bg-emerald-100 text-emerald-700',
-    descartado: 'bg-gray-100 text-gray-500',
-  };
-
-  const convertToClient = async (lead) => {
-    if (!window.confirm(`¿Convertir "${lead.name}" en cliente?`)) return;
-    try {
-      await DataService.createClient({ name: lead.name, phone: lead.phone, address: lead.address, city: lead.city, type: 'empresa', notes: lead.notes || '' });
-      await DataService.updateLead(lead.id, { status: 'convertido' });
-      await onReload();
-      alert(`Cliente "${lead.name}" creado.`);
-    } catch (err) { alert('Error: ' + err.message); }
-  };
-
-  const updateStatus = async (lead, status) => {
-    try { await DataService.updateLead(lead.id, { status }); onReload(); }
-    catch (err) { alert('Error: ' + err.message); }
-  };
-
-  const deleteLead = async (lead) => {
-    if (!window.confirm(`¿Eliminar "${lead.name}"?`)) return;
-    await DataService.deleteLead(lead.id);
-    onReload();
-  };
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex gap-2 flex-wrap">
-          {[['','Todos',leads.length],['nuevo','Nuevos',counts.nuevo],['contactado','Contactados',counts.contactado],['convertido','Convertidos',counts.convertido],['descartado','Descartados',counts.descartado]].map(([val,label,count]) => (
-            <button key={val} onClick={() => setFilter(val)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === val ? 'bg-blue-600 text-white' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}>
-              {label} <span className="opacity-70">({count})</span>
-            </button>
-          ))}
-        </div>
-        <Btn onClick={() => setShowForm(true)} icon="plus" variant="primary" size="sm">Nuevo lead</Btn>
-      </div>
-
-      {leads.length === 0 ? (
-        <EmptyState icon="search" title="Sin leads todavía"
-          description="Buscá negocios en la otra pestaña o agregá un lead manualmente"
-          action={<Btn onClick={() => setShowForm(true)} icon="plus" variant="primary">Agregar lead</Btn>} />
-      ) : (
+      {results.length > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+            <p className="text-sm font-semibold text-slate-700">
+              {results.length} resultado{results.length !== 1 ? 's' : ''} · {addable.length} sin agregar
+            </p>
+            <div className="flex items-center gap-3">
+              {selected.size > 0 && (
+                <Btn onClick={addSelected} variant="primary" size="sm" icon="plus">
+                  Agregar {selected.size}
+                </Btn>
+              )}
+              <button onClick={() => setSelected(allSel ? new Set() : new Set(addable.map(r => r.osmId)))}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                {allSel ? 'Deseleccionar' : 'Seleccionar todos'}
+              </button>
+            </div>
+          </div>
           <div className="divide-y divide-gray-50">
-            {filtered.map(lead => (
-              <div key={lead.id} className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                    <p className="text-sm font-semibold text-slate-900">{lead.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[lead.status] || statusColors.nuevo}`}>{lead.status}</span>
-                    {lead.source === 'openstreetmap' && <span className="text-xs text-slate-400">OSM</span>}
+            {results.map(r => {
+              const added = existingIds.has(r.osmId);
+              const adding = addingIds.has(r.osmId);
+              return (
+                <div key={r.osmId}
+                  className={`flex items-center gap-3 px-5 py-3.5 ${added ? 'opacity-40' : 'hover:bg-gray-50'}`}>
+                  <input type="checkbox" checked={selected.has(r.osmId)} disabled={added}
+                    onChange={() => toggleSel(r.osmId)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 truncate">{r.name}</p>
+                    <p className="text-xs text-slate-400 truncate">
+                      {[r.address, r.city].filter(Boolean).join(', ')}{r.phone ? ` · ${r.phone}` : ''}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-400 truncate">
-                    {lead.type} · {[lead.address, lead.city].filter(Boolean).join(', ')}
-                    {lead.phone && <span className="ml-2">· {lead.phone}</span>}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {lead.status !== 'convertido' && lead.status !== 'descartado' && (
-                    <select value={lead.status} onChange={e => updateStatus(lead, e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white mr-1">
-                      <option value="nuevo">Nuevo</option>
-                      <option value="contactado">Contactado</option>
-                      <option value="descartado">Descartar</option>
-                    </select>
+                  {r.website && (
+                    <a href={r.website.startsWith('http') ? r.website : `https://${r.website}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-blue-500 hover:underline flex-shrink-0">web</a>
                   )}
-                  {lead.phone && (
-                    <a href={`https://wa.me/${lead.phone.replace(/\D/g,'')}?text=${encodeURIComponent(`¡Hola ${lead.name}! Te contactamos de NATIVA 💧 ¿Te interesa el servicio de agua a domicilio?`)}`}
-                      target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="WhatsApp">
-                      <Icon name="messageCircle" size={15} />
-                    </a>
-                  )}
-                  {lead.status !== 'convertido' && (
-                    <button onClick={() => convertToClient(lead)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600" title="Convertir en cliente">
-                      <Icon name="userPlus" size={15} />
+                  {added ? (
+                    <span className="text-xs text-emerald-600 font-medium flex-shrink-0">✓ Guardado</span>
+                  ) : (
+                    <button onClick={() => addLead(r)} disabled={adding}
+                      className="flex-shrink-0 p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 disabled:opacity-50">
+                      <Icon name={adding ? 'refresh' : 'plus'} size={14} />
                     </button>
                   )}
-                  <button onClick={() => deleteLead(lead)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title="Eliminar">
-                    <Icon name="trash" size={15} />
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
-
-      <LeadFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={async (data) => {
-        await DataService.createLead({ ...data, source: 'manual' });
-        setShowForm(false);
-        onReload();
-      }} />
     </div>
   );
 }
 
-function LeadFormModal({ isOpen, onClose, onSave }) {
-  const [form, setForm] = React.useState({ name: '', phone: '', address: '', city: '', type: 'empresa', notes: '' });
+// ── TAB: COMPETENCIA ─────────────────────────────────────────────────────────
+function TabCompetencia({ competitors, leads, onRefresh }) {
+  const [showModal, setShowModal] = React.useState(false);
+  const [editing, setEditing] = React.useState(null);
+
+  const handleDelete = async (comp) => {
+    if (!window.confirm(`¿Eliminar "${comp.name}"?`)) return;
+    try {
+      await DataService.deleteCompetitor(comp.id);
+      onRefresh();
+    } catch (err) { alert(err.message); }
+  };
+
+  // Detección automática de oportunidades
+  const opportunities = [];
+  const zones = [...new Set(leads.map(l => l.city).filter(Boolean))];
+  zones.forEach(zone => {
+    const zLeads = leads.filter(l => l.city === zone);
+    const zComps = competitors.filter(c => c.zone === zone);
+    const hasDominant = zComps.some(c => c.strength === 'dominante');
+    const highPrio = zLeads.filter(l => l._priority === 'alta').length;
+    if (highPrio >= 2 && !hasDominant) {
+      opportunities.push({
+        color: 'emerald',
+        msg: `🚀 ${zone}: ${highPrio} leads de alta prioridad — sin competidor dominante`,
+      });
+    }
+  });
+  competitors.filter(c => c.strength === 'debil').forEach(comp => {
+    opportunities.push({
+      color: 'amber',
+      msg: `⚡ ${comp.name}${comp.zone ? ` (${comp.zone})` : ''} está clasificado como DÉBIL — zona recuperable`,
+    });
+  });
+  if (competitors.length === 0 && leads.filter(l => l._priority === 'alta').length >= 3) {
+    opportunities.push({
+      color: 'emerald',
+      msg: `🎯 Sin competidores registrados — zona con ${leads.filter(l => l._priority === 'alta').length} leads de alta prioridad libre`,
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-slate-900">Análisis de competencia</h3>
+          <p className="text-sm text-slate-500 mt-0.5">
+            {competitors.length} competidore{competitors.length !== 1 ? 's' : ''} registrado{competitors.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <Btn onClick={() => { setEditing(null); setShowModal(true); }} variant="primary" icon="plus">
+          Agregar competidor
+        </Btn>
+      </div>
+
+      {opportunities.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-700">🎯 Oportunidades detectadas</p>
+          {opportunities.map((op, i) => (
+            <div key={i} className={`p-4 rounded-xl border text-sm font-medium ${
+              op.color === 'emerald'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}>
+              {op.msg}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {competitors.length === 0 ? (
+        <EmptyState icon="users" title="Sin competidores registrados"
+          description="Registrá a tus competidores para detectar oportunidades y generar argumentos de venta basados en sus debilidades"
+          action={
+            <Btn onClick={() => { setEditing(null); setShowModal(true); }} variant="primary" icon="plus">
+              Agregar competidor
+            </Btn>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {competitors.map(comp => {
+            const cc = COMP_CFG[comp.strength] || COMP_CFG.intermedio;
+            const weaknesses = (comp.weaknesses || '').split(',').map(w => w.trim()).filter(Boolean);
+            return (
+              <div key={comp.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cc.bg} ${cc.text}`}>
+                      {cc.icon} {cc.label}
+                    </span>
+                    <h4 className="font-semibold text-slate-900 mt-2">{comp.name}</h4>
+                    {comp.zone && <p className="text-xs text-slate-400">{comp.zone}</p>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => { setEditing(comp); setShowModal(true); }}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-slate-400">
+                      <Icon name="edit" size={14} />
+                    </button>
+                    <button onClick={() => handleDelete(comp)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500">
+                      <Icon name="trash" size={14} />
+                    </button>
+                  </div>
+                </div>
+                {comp.rating > 0 && (
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-amber-400 text-sm leading-none">
+                      {'★'.repeat(Math.round(comp.rating))}{'☆'.repeat(5 - Math.round(comp.rating))}
+                    </span>
+                    <span className="text-xs text-slate-400">{comp.rating}/5</span>
+                    {comp.reviewsCount > 0 && (
+                      <span className="text-xs text-slate-400">({comp.reviewsCount} reseñas)</span>
+                    )}
+                  </div>
+                )}
+                {weaknesses.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                      Debilidades → tus argumentos de venta
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {weaknesses.map((w, i) => (
+                        <span key={i} className="text-xs bg-red-50 text-red-600 border border-red-100 px-2 py-0.5 rounded-full">
+                          ⚠️ {w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {comp.notes && <p className="text-xs text-slate-400 mt-2 italic">{comp.notes}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showModal && (
+        <CompetitorModal
+          competitor={editing}
+          onClose={() => { setShowModal(false); setEditing(null); }}
+          onSave={async (data) => {
+            if (editing) await DataService.updateCompetitor(editing.id, data);
+            else await DataService.createCompetitor(data);
+            setShowModal(false);
+            setEditing(null);
+            onRefresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── TAB: MENSAJES ─────────────────────────────────────────────────────────────
+function TabMensajes({ leads, config, competitors }) {
+  const [selectedId, setSelectedId] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+
+  const lead = leads.find(l => String(l.id) === selectedId);
+  const message = lead ? buildWAMessage(lead, config, competitors) : '';
+  const activeLeads = leads.filter(l => l.status !== 'descartado' && l.phone).sort((a, b) => b._score - a._score);
+
+  const copyMsg = () => {
+    navigator.clipboard.writeText(message);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const exportCSV = () => {
+    const h = ['Nombre', 'Teléfono', 'Dirección', 'Ciudad', 'Tipo', 'Estado', 'Prioridad', 'Score', 'Fuente', 'Notas'];
+    const rows = leads.map(l => [
+      l.name, l.phone, l.address, l.city,
+      BIZ_TYPES.find(b => b.id === (l.businessType || l.type))?.label || l.type || '',
+      CRM_STATES[l.status]?.label || l.status || '',
+      PRIO_CFG[l._priority]?.label || l._priority || '',
+      l._score, l.source,
+      (l.notes || '').replace(/,/g, ';'),
+    ]);
+    const csv = [h, ...rows].map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })),
+      download: `leads-${DataService.today()}.csv`,
+    });
+    a.click();
+  };
+
+  return (
+    <div className="space-y-6">
+
+      {/* Message generator */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h3 className="font-semibold text-slate-900 mb-1">Generador de mensajes de venta</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          Mensaje personalizado por tipo de negocio, incluye argumento de venta y oferta sugerida
+        </p>
+        <FormField label="Seleccionar lead">
+          <select value={selectedId} onChange={e => setSelectedId(e.target.value)} className={_inputCls()}>
+            <option value="">— Elegir lead —</option>
+            {activeLeads.map(l => {
+              const bt = BIZ_TYPES.find(b => b.id === (l.businessType || l.type));
+              return (
+                <option key={l.id} value={l.id}>
+                  {PRIO_CFG[l._priority]?.label || 'LEAD'} · {l.name}
+                  {l.city ? ` (${l.city})` : ''} · Score {l._score}
+                  {bt ? ` · ${bt.icon}` : ''}
+                </option>
+              );
+            })}
+          </select>
+        </FormField>
+        {lead ? (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <ScoreChip score={lead._score} />
+              <PriorityBadge priority={lead._priority} />
+              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                {getOfferType(lead)}
+              </span>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-4 border border-gray-200">
+              <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{message}</p>
+            </div>
+            <div className="flex gap-3">
+              <Btn onClick={copyMsg} variant="secondary" icon={copied ? 'check' : 'copy'}>
+                {copied ? '¡Copiado!' : 'Copiar mensaje'}
+              </Btn>
+              {lead.phone && (
+                <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                  <Icon name="messageCircle" size={16} />
+                  Abrir WhatsApp
+                </a>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 p-6 bg-gray-50 rounded-xl text-center">
+            <p className="text-2xl mb-2">💬</p>
+            <p className="text-sm text-slate-400">Elegí un lead para ver el mensaje generado</p>
+          </div>
+        )}
+      </div>
+
+      {/* Quick contact list */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h3 className="font-semibold text-slate-900 mb-1">Contactar hoy</h3>
+        <p className="text-sm text-slate-500 mb-4">Top 5 leads nuevos de alta prioridad con teléfono</p>
+        <div className="space-y-2">
+          {leads.filter(l => l.status === 'nuevo' && l.phone)
+            .sort((a, b) => b._score - a._score)
+            .slice(0, 5)
+            .map(l => (
+              <div key={l.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                <ScoreChip score={l._score} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{l.name}</p>
+                  <p className="text-xs text-slate-400">{l.city || '—'} · {getOfferType(l)}</p>
+                </div>
+                <a href={`https://wa.me/${l.phone.replace(/\D/g, '')}?text=${encodeURIComponent(buildWAMessage(l, config, competitors))}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
+                  <Icon name="messageCircle" size={13} />WA
+                </a>
+              </div>
+            ))}
+          {leads.filter(l => l.status === 'nuevo' && l.phone).length === 0 && (
+            <p className="text-sm text-slate-400 text-center py-4">No hay leads nuevos con teléfono</p>
+          )}
+        </div>
+      </div>
+
+      {/* Export */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-slate-900">Exportar base de leads</h3>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {leads.length} leads con score y prioridad · CSV para Meta Ads, Excel o CRM externo
+            </p>
+          </div>
+          <Btn onClick={exportCSV} variant="secondary" icon="fileText">Exportar CSV</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── LEAD ROW ──────────────────────────────────────────────────────────────────
+function LeadRow({ lead, onUpdateStatus, onDelete, onConvert, onEdit, onWA }) {
+  const bt = BIZ_TYPES.find(b => b.id === (lead.businessType || lead.type));
+  const cs = CRM_STATES[lead.status] || CRM_STATES.nuevo;
+
+  return (
+    <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <span className="text-sm font-semibold text-slate-900 truncate">{lead.name}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${cs.bg} ${cs.text}`}>
+            {cs.label}
+          </span>
+          <PriorityBadge priority={lead._priority} dot />
+        </div>
+        <p className="text-xs text-slate-400 truncate">
+          {bt ? `${bt.icon} ${bt.label}` : (lead.type || '—')}
+          {lead.city ? ` · ${lead.city}` : ''}
+          {lead.phone ? ` · ${lead.phone}` : ''}
+        </p>
+      </div>
+      <ScoreChip score={lead._score} />
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <select value={lead.status} onChange={e => onUpdateStatus(lead, e.target.value)}
+          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 text-slate-600 bg-white mr-1">
+          {Object.entries(CRM_STATES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        {lead.phone && (
+          <button onClick={onWA} className="p-1.5 rounded-lg hover:bg-green-50 text-green-600" title="Mensaje WA">
+            <Icon name="messageCircle" size={15} />
+          </button>
+        )}
+        <button onClick={() => onEdit(lead)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400">
+          <Icon name="edit" size={15} />
+        </button>
+        {lead.status !== 'cliente' && (
+          <button onClick={() => onConvert(lead)} className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600" title="Convertir en cliente">
+            <Icon name="userPlus" size={15} />
+          </button>
+        )}
+        <button onClick={() => onDelete(lead)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400">
+          <Icon name="trash" size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function LeadFormModal({ isOpen, lead, onClose, onSave }) {
+  const isEdit = !!lead?.id;
+  const blank = { name: '', phone: '', address: '', city: '', businessType: 'oficina', employeeCount: '', notes: '' };
+  const [form, setForm] = React.useState(blank);
   const [saving, setSaving] = React.useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   React.useEffect(() => {
-    if (isOpen) setForm({ name: '', phone: '', address: '', city: '', type: 'empresa', notes: '' });
+    if (!isOpen) return;
+    setForm(lead ? {
+      name: lead.name || '', phone: lead.phone || '', address: lead.address || '',
+      city: lead.city || '', businessType: lead.businessType || lead.type || 'oficina',
+      employeeCount: lead.employeeCount || '', notes: lead.notes || '',
+    } : blank);
   }, [isOpen]);
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim()) { alert('El nombre es obligatorio'); return; }
     setSaving(true);
-    try { await onSave(form); }
-    catch (err) { alert('Error al guardar: ' + err.message); }
+    try {
+      await onSave({
+        ...form,
+        type: form.businessType,
+        businessType: form.businessType,
+        employeeCount: Number(form.employeeCount) || null,
+      });
+    } catch (err) { alert('Error: ' + err.message); }
     setSaving(false);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Nuevo lead" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Editar lead' : 'Nuevo lead'} size="md">
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Nombre / Empresa" required>
-            <input value={form.name} onChange={e => set('name', e.target.value)} className={inputCls()} placeholder="Gym Centro, Farmacia López..." autoFocus required />
-          </FormField>
+          <div className="sm:col-span-2">
+            <FormField label="Nombre / Empresa" required>
+              <input value={form.name} onChange={e => set('name', e.target.value)}
+                className={_inputCls()} placeholder="Gym Centro, Farmacia López..." autoFocus required />
+            </FormField>
+          </div>
           <FormField label="Teléfono">
-            <input value={form.phone} onChange={e => set('phone', e.target.value)} className={inputCls()} placeholder="1123456789" />
-          </FormField>
-          <FormField label="Dirección">
-            <input value={form.address} onChange={e => set('address', e.target.value)} className={inputCls()} placeholder="Av. San Martín 123" />
+            <input value={form.phone} onChange={e => set('phone', e.target.value)}
+              className={_inputCls()} placeholder="1123456789" />
           </FormField>
           <FormField label="Ciudad">
-            <input value={form.city} onChange={e => set('city', e.target.value)} className={inputCls()} placeholder="Villa María" />
+            <input value={form.city} onChange={e => set('city', e.target.value)}
+              className={_inputCls()} placeholder="Villa María" />
           </FormField>
-          <FormField label="Tipo">
-            <select value={form.type} onChange={e => set('type', e.target.value)} className={inputCls()}>
-              <option value="empresa">Empresa / Oficina</option>
-              <option value="gimnasio">Gimnasio / Fitness</option>
-              <option value="restaurante">Restaurante / Bar</option>
-              <option value="comercio">Comercio</option>
-              <option value="otro">Otro</option>
+          <FormField label="Tipo de negocio">
+            <select value={form.businessType} onChange={e => set('businessType', e.target.value)} className={_inputCls()}>
+              {BIZ_TYPES.map(b => <option key={b.id} value={b.id}>{b.icon} {b.label}</option>)}
             </select>
           </FormField>
+          <FormField label="Empleados (aprox.)">
+            <input value={form.employeeCount} onChange={e => set('employeeCount', e.target.value)}
+              type="number" min="0" className={_inputCls()} placeholder="Ej: 10" />
+          </FormField>
+          <div className="sm:col-span-2">
+            <FormField label="Dirección">
+              <input value={form.address} onChange={e => set('address', e.target.value)}
+                className={_inputCls()} placeholder="Av. San Martín 123" />
+            </FormField>
+          </div>
         </div>
         <FormField label="Notas">
-          <textarea value={form.notes} onChange={e => set('notes', e.target.value)} className={inputCls('resize-none')} rows="2" placeholder="Contacto, horarios, observaciones..." />
+          <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+            className={_inputCls('resize-none')} rows="2"
+            placeholder="Contacto, horarios, observaciones..." />
         </FormField>
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
           <Btn type="button" onClick={onClose} variant="secondary">Cancelar</Btn>
-          <Btn type="submit" variant="primary" icon="plus" disabled={saving}>{saving ? 'Guardando...' : 'Agregar lead'}</Btn>
+          <Btn type="submit" variant="primary" icon="plus" disabled={saving}>
+            {saving ? 'Guardando...' : isEdit ? 'Guardar' : 'Agregar lead'}
+          </Btn>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function CompetitorModal({ competitor, onClose, onSave }) {
+  const blank = { name: '', zone: '', strength: 'intermedio', weaknesses: '', rating: '', reviewsCount: '', notes: '' };
+  const [form, setForm] = React.useState(blank);
+  const [saving, setSaving] = React.useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  React.useEffect(() => {
+    setForm(competitor ? {
+      name: competitor.name || '', zone: competitor.zone || '',
+      strength: competitor.strength || 'intermedio',
+      weaknesses: competitor.weaknesses || '',
+      rating: competitor.rating || '', reviewsCount: competitor.reviewsCount || '',
+      notes: competitor.notes || '',
+    } : blank);
+  }, [competitor]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave({ ...form, rating: Number(form.rating) || 0, reviewsCount: Number(form.reviewsCount) || 0 });
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(false);
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title={competitor ? 'Editar competidor' : 'Nuevo competidor'} size="md">
+      <form onSubmit={submit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <FormField label="Nombre del competidor" required>
+              <input value={form.name} onChange={e => set('name', e.target.value)} required
+                className={_inputCls()} placeholder="Agua Pura López..." autoFocus />
+            </FormField>
+          </div>
+          <FormField label="Zona / Ciudad">
+            <input value={form.zone} onChange={e => set('zone', e.target.value)}
+              className={_inputCls()} placeholder="Villa del Rosario" />
+          </FormField>
+          <FormField label="Clasificación">
+            <select value={form.strength} onChange={e => set('strength', e.target.value)} className={_inputCls()}>
+              <option value="dominante">🔴 Dominante</option>
+              <option value="intermedio">🟡 Intermedio</option>
+              <option value="debil">🟢 Débil</option>
+            </select>
+          </FormField>
+          <FormField label="Calificación (1-5)">
+            <input value={form.rating} onChange={e => set('rating', e.target.value)}
+              type="number" min="0" max="5" step="0.1" className={_inputCls()} placeholder="3.5" />
+          </FormField>
+          <FormField label="Cantidad de reseñas">
+            <input value={form.reviewsCount} onChange={e => set('reviewsCount', e.target.value)}
+              type="number" min="0" className={_inputCls()} placeholder="42" />
+          </FormField>
+        </div>
+        <FormField label="Debilidades" hint="Separadas por coma: demoras en entrega, mala atención, precios altos">
+          <input value={form.weaknesses} onChange={e => set('weaknesses', e.target.value)}
+            className={_inputCls()} placeholder="demoras en entrega, mala atención, precios altos" />
+        </FormField>
+        <FormField label="Notas internas">
+          <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
+            className={_inputCls('resize-none')} rows="2" />
+        </FormField>
+        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+          <Btn type="button" onClick={onClose} variant="secondary">Cancelar</Btn>
+          <Btn type="submit" variant="primary" disabled={saving}>
+            {saving ? 'Guardando...' : competitor ? 'Guardar' : 'Agregar'}
+          </Btn>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function WAMessageModal({ lead, config, competitors, onClose }) {
+  const [copied, setCopied] = React.useState(false);
+  const message = buildWAMessage(lead, config, competitors);
+  const score = calcScore(lead);
+
+  const copy = () => {
+    navigator.clipboard.writeText(message);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title={`Mensaje para ${lead.name}`} size="md">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <ScoreChip score={score} />
+          <PriorityBadge priority={getPriority(score)} />
+          <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+            {getOfferType(lead)}
+          </span>
+        </div>
+        <div className="bg-slate-50 rounded-xl p-4 border border-gray-200">
+          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{message}</p>
+        </div>
+        <div className="flex gap-3">
+          <Btn onClick={copy} variant="secondary" icon={copied ? 'check' : 'copy'} className="flex-1 justify-center">
+            {copied ? '¡Copiado!' : 'Copiar mensaje'}
+          </Btn>
+          {lead.phone && (
+            <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors">
+              <Icon name="messageCircle" size={16} />
+              Abrir WhatsApp
+            </a>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 }

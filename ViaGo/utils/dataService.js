@@ -228,6 +228,8 @@ const DataService = {
       name: leadData.name, phone: leadData.phone || '', address: leadData.address || '',
       city: leadData.city || '', type: leadData.type || 'empresa', source: leadData.source || 'manual',
       notes, status: 'nuevo', osmId: leadData.osmId || '', website: leadData.website || '',
+      businessType: leadData.businessType || leadData.type || null,
+      employeeCount: leadData.employeeCount ? parseInt(leadData.employeeCount) : null,
     })).select().single();
     if (error) throw new Error(error.message);
     return this._js(data);
@@ -504,6 +506,26 @@ const DataService = {
     if (machineId) q = q.eq('machine_id', machineId);
     const { data } = await q;
     return this._jsMany(data);
+  },
+
+  // ─── COMPETITORS ─────────────────────────────────────────────────────────
+  async getCompetitors() {
+    const { data } = await this._sb.from('competitors').select('*').order('name');
+    return this._jsMany(data);
+  },
+  async createCompetitor(data) {
+    const { data: row, error } = await this._sb.from('competitors').insert(this._db(data)).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(row);
+  },
+  async updateCompetitor(id, data) {
+    const { data: row, error } = await this._sb.from('competitors').update(this._db(data)).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(row);
+  },
+  async deleteCompetitor(id) {
+    const { error } = await this._sb.from('competitors').delete().eq('id', id);
+    if (error) throw new Error(error.message);
   },
 
   // ─── AUTH ─────────────────────────────────────────────────────────────────
