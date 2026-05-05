@@ -13,8 +13,8 @@ COMPANY = os.getenv("COMPANY_NAME", "NATIVA")
 
 def _llm():
     return LLM(
-        model="anthropic/claude-sonnet-4-6",
-        api_key=os.environ["ANTHROPIC_API_KEY"],
+        model="gpt-4o-mini",
+        api_key=os.environ["OPENAI_API_KEY"],
         temperature=0.2,
         max_tokens=1500,
     )
