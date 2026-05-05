@@ -169,6 +169,13 @@ const DataService = {
   async deleteClient(id) {
     await this._sb.from('clients').update({ active: false }).eq('id', id);
   },
+  async updateClientEnvases(clientId, envasesEntregados, envasesRecuperados) {
+    const { data } = await this._sb.from('clients').select('envases_prestados').eq('id', clientId).single();
+    const current = data?.envases_prestados || 0;
+    const newBalance = Math.max(0, current + envasesEntregados - envasesRecuperados);
+    await this._sb.from('clients').update({ envases_prestados: newBalance }).eq('id', clientId);
+    return newBalance;
+  },
   async getInactiveClients(days = 21) {
     const [clients, { data: orders }] = await Promise.all([
       this.getClients(),

@@ -192,10 +192,13 @@ function DeliveryApp({ config }) {
     setOptimizing(false);
   };
 
-  const handleDeliver = async (order, method, amount, deliveredItems) => {
+  const handleDeliver = async (order, method, amount, deliveredItems, envasesRecuperados = 0, envasesEntregados = 0) => {
     const finalItems = deliveredItems || order.items || [];
     const finalTotal = parseFloat(amount) || order.total;
-    await DataService.updateOrder(order.id, { status: 'entregado', items: finalItems, total: finalTotal });
+    await DataService.updateOrder(order.id, {
+      status: 'entregado', items: finalItems, total: finalTotal,
+      envasesEntregados, envasesRecuperados,
+    });
     await DataService.createInvoice({
       clientId: order.clientId,
       orderId: order.id,
@@ -204,6 +207,9 @@ function DeliveryApp({ config }) {
       paymentMethod: method,
       paymentStatus: 'pagado',
     });
+    if (envasesEntregados > 0 || envasesRecuperados > 0) {
+      await DataService.updateClientEnvases(order.clientId, envasesEntregados, envasesRecuperados).catch(() => {});
+    }
     setDeliveries(ds => ds.map(d => d.id === order.id ? { ...d, status: 'entregado' } : d));
     // Advance to next pending in route
     if (routeOrder) {
@@ -521,6 +527,7 @@ function PayCollectModal({ order, onClose, onConfirm }) {
       ? order.items.map(i => ({ ...i }))
       : []
   );
+  const [envasesRec, setEnvasesRec] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
 
   const updateQty = (idx, qty) => {
@@ -528,12 +535,13 @@ function PayCollectModal({ order, onClose, onConfirm }) {
   };
 
   const total = items.reduce((s, i) => s + (i.price || 0) * (i.quantity || 0), 0);
+  const totalEntregados = items.reduce((s, i) => s + (i.quantity || 0), 0);
 
   const confirm = async () => {
     setLoading(true);
     try {
       const delivered = items.filter(i => i.quantity > 0);
-      await onConfirm(order, method, total, delivered);
+      await onConfirm(order, method, total, delivered, envasesRec, totalEntregados);
     } catch (e) {
       alert('Error al guardar: ' + e.message);
       setLoading(false);
@@ -548,7 +556,7 @@ function PayCollectModal({ order, onClose, onConfirm }) {
 
   return (
     <div className="fixed inset-0 flex items-end z-50" style={{background:'rgba(0,0,0,0.8)'}} onClick={onClose}>
-      <div className="w-full rounded-t-3xl p-6" style={{background:'#1e293b'}} onClick={e => e.stopPropagation()}>
+      <div className="w-full rounded-t-3xl p-6 max-h-screen overflow-y-auto" style={{background:'#1e293b'}} onClick={e => e.stopPropagation()}>
         <div className="w-12 h-1.5 rounded-full mx-auto mb-6" style={{background:'#475569'}} />
         <h3 className="text-white font-bold text-xl mb-1">Registrar entrega</h3>
         <p className="text-slate-400 text-sm mb-5">{order.client?.name}</p>
@@ -583,6 +591,38 @@ function PayCollectModal({ order, onClose, onConfirm }) {
           </div>
         )}
 
+        {/* Envases */}
+        <div className="mb-5">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">🫙 Envases</p>
+          <div className="rounded-2xl p-4" style={{background:'#0f172a'}}>
+            <div className="flex justify-between items-center mb-4 pb-3 border-b" style={{borderColor:'#1e293b'}}>
+              <span className="text-slate-300 text-sm">Entregados ahora</span>
+              <span className="font-bold text-lg" style={{color:'#60a5fa'}}>{totalEntregados}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-white text-sm font-medium">Vacíos recuperados</p>
+                <p className="text-xs mt-0.5" style={{color:'#64748b'}}>Bidones vacíos que te devuelve</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setEnvasesRec(r => Math.max(0, r - 1))}
+                  className="w-10 h-10 rounded-xl text-white font-bold text-xl flex items-center justify-center"
+                  style={{background:'#334155'}}>−</button>
+                <span className="text-white font-bold text-2xl w-8 text-center">{envasesRec}</span>
+                <button onClick={() => setEnvasesRec(r => r + 1)}
+                  className="w-10 h-10 rounded-xl text-white font-bold text-xl flex items-center justify-center"
+                  style={{background:'#334155'}}>+</button>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t flex justify-between items-center" style={{borderColor:'#1e293b'}}>
+              <span className="text-xs" style={{color:'#64748b'}}>Saldo neto cliente hoy</span>
+              <span className="text-sm font-bold" style={{color: totalEntregados - envasesRec > 0 ? '#fbbf24' : '#34d399'}}>
+                {totalEntregados - envasesRec > 0 ? '+' : ''}{totalEntregados - envasesRec} envase{totalEntregados - envasesRec !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Forma de pago</p>
         <div className="grid grid-cols-3 gap-3 mb-6">
           {methods.map(m => (
@@ -612,6 +652,8 @@ function DaySummary({ deliveries, config, onClose }) {
   const delivered = deliveries.filter(d => d.status === 'entregado');
   const pending = deliveries.filter(d => d.status === 'pendiente');
   const total = delivered.reduce((s, d) => s + (d.total || 0), 0);
+  const totalEnvasesEnt = delivered.reduce((s, d) => s + (d.envasesEntregados || 0), 0);
+  const totalEnvasesRec = delivered.reduce((s, d) => s + (d.envasesRecuperados || 0), 0);
 
   const byMethod = delivered.reduce((acc, d) => {
     const m = d.paymentMethod || 'efectivo';
@@ -654,6 +696,27 @@ function DaySummary({ deliveries, config, onClose }) {
           <p className="text-slate-400 text-sm mt-1">Pendientes</p>
         </div>
       </div>
+
+      {/* Envases */}
+      {(totalEnvasesEnt > 0 || totalEnvasesRec > 0) && (
+        <div className="rounded-2xl p-4 mb-5" style={{background:'#1e293b'}}>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">🫙 Envases del día</p>
+          <div className="flex justify-between items-center py-2.5 border-b" style={{borderColor:'#334155'}}>
+            <span className="text-slate-300 text-sm">Entregados</span>
+            <span className="font-bold text-lg" style={{color:'#60a5fa'}}>+{totalEnvasesEnt}</span>
+          </div>
+          <div className="flex justify-between items-center py-2.5 border-b" style={{borderColor:'#334155'}}>
+            <span className="text-slate-300 text-sm">Recuperados</span>
+            <span className="font-bold text-lg" style={{color:'#34d399'}}>−{totalEnvasesRec}</span>
+          </div>
+          <div className="flex justify-between items-center pt-2.5">
+            <span className="text-white text-sm font-semibold">Neto en calle</span>
+            <span className="font-bold text-lg" style={{color: totalEnvasesEnt - totalEnvasesRec > 0 ? '#fbbf24' : '#34d399'}}>
+              {totalEnvasesEnt - totalEnvasesRec > 0 ? '+' : ''}{totalEnvasesEnt - totalEnvasesRec}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* By method */}
       {Object.keys(byMethod).length > 0 && (
