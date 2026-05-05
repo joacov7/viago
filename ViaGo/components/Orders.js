@@ -256,6 +256,12 @@ function OrderDetail({ order, client, zone, products, onBack, onStatus, onNaviga
         <div className="flex flex-wrap gap-3">
           {client.phone && <a href={WhatsAppService.orderConfirmation(client, order)} target="_blank" rel="noopener noreferrer"><Btn variant="secondary" icon="messageCircle">Confirmar WA</Btn></a>}
           {client.phone && <a href={WhatsAppService.deliveryNotice(client, order)} target="_blank" rel="noopener noreferrer"><Btn variant="secondary" icon="truck">Aviso entrega</Btn></a>}
+          <Btn onClick={() => PDFService.printRemito(order, client, DataService.getConfigSync())} variant="secondary" icon="printer">Remito</Btn>
+          {client.phone && order.status === 'entregado' && (
+            <a href={`https://wa.me/${(client.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(PDFService.textReceipt(order, client, DataService.getConfigSync()))}`} target="_blank" rel="noopener noreferrer">
+              <Btn variant="secondary" icon="messageCircle">Comprobante WA</Btn>
+            </a>
+          )}
           {order.status === 'pendiente' && <Btn onClick={() => { onStatus(order.id, 'entregado'); onBack(); }} variant="success" icon="checkCircle">Marcar entregado</Btn>}
           {order.status === 'entregado' && !invoice && <Btn onClick={() => onNavigate('billing', { orderId: order.id, clientId: client.id, items: order.items, total: order.total })} variant="primary" icon="fileText">Generar factura</Btn>}
           {invoice && <Btn onClick={() => onNavigate('billing', { invoiceId: invoice.id })} variant="secondary" icon="eye">Ver factura {invoice.number}</Btn>}

@@ -316,8 +316,11 @@ function InvoiceDetail({ invoice, config, onBack, onPay }) {
           </div>
         )}
 
-        <div className="flex gap-3">
-          <Btn onClick={() => PDFService.printInvoice(invoice, invoice.client, config)} variant="secondary" icon="printer" className="flex-1 justify-center">Imprimir</Btn>
+        <div className="flex flex-wrap gap-3">
+          <Btn onClick={() => PDFService.printInvoice(invoice, invoice.client, config)} variant="secondary" icon="printer" className="flex-1 justify-center">Factura</Btn>
+          {invoice.paymentStatus === 'pagado' && (
+            <Btn onClick={() => PDFService.printRecibo(invoice, invoice.client, config)} variant="secondary" icon="fileText" className="flex-1 justify-center">Recibo</Btn>
+          )}
           {invoice.paymentStatus === 'pendiente' && (
             <Btn onClick={() => onPay(invoice)} variant="success" icon="wallet" className="flex-1 justify-center">Registrar pago</Btn>
           )}
