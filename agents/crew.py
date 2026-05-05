@@ -95,11 +95,10 @@ class NativaCrew:
                 "Respuesta en español argentino, estructurada con bullets, con números reales de la base de datos. "
                 "Máximo 250 palabras."
             ),
-            agent=ceo,
         )
 
         crew = Crew(
-            agents=[ceo, cfo, ops, marketing],
+            agents=[cfo, ops, marketing],
             tasks=[task],
             process=Process.hierarchical,
             manager_agent=ceo,
