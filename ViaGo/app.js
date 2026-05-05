@@ -58,7 +58,7 @@ function App() {
     dashboard: 'Dashboard', clients: 'Clientes', prospecting: 'Captación',
     orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
-    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas',
+    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas', liveTracking: 'En vivo',
   };
 
   const renderModule = () => {
@@ -75,8 +75,9 @@ function App() {
       case 'config':      return <Config onConfigChange={cfg => setConfig(cfg)} />;
       case 'costs':       return <Costs />;
       case 'dispensers':  return <Dispensers />;
-      case 'machines':    return <Machines />;
-      default:            return <Dashboard onNavigate={navigate} />;
+      case 'machines':      return <Machines />;
+      case 'liveTracking':  return <LiveTracking />;
+      default:              return <Dashboard onNavigate={navigate} />;
     }
   };
 

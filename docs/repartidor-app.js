@@ -111,9 +111,11 @@ function DeliveryApp({ config }) {
   const [active, setActive] = React.useState(null);
   const [showSummary, setShowSummary] = React.useState(false);
   const [online, setOnline] = React.useState(navigator.onLine);
-  const [routeOrder, setRouteOrder] = React.useState(null); // null = not optimized, array of ids = optimized
+  const [routeOrder, setRouteOrder] = React.useState(null);
   const [optimizing, setOptimizing] = React.useState(false);
   const [optimizeMsg, setOptimizeMsg] = React.useState('');
+  const [sharing, setSharing] = React.useState(false);
+  const watchIdRef = React.useRef(null);
 
   React.useEffect(() => {
     const on = () => setOnline(true);
@@ -122,6 +124,27 @@ function DeliveryApp({ config }) {
     window.addEventListener('offline', off);
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
+
+  const startSharing = () => {
+    if (!navigator.geolocation) { alert('GPS no disponible en este dispositivo.'); return; }
+    setSharing(true);
+    const send = pos => {
+      DataService.upsertDriverLocation(
+        pos.coords.latitude, pos.coords.longitude, config.companyName || 'Repartidor'
+      ).catch(() => {});
+    };
+    watchIdRef.current = navigator.geolocation.watchPosition(send, () => {}, {
+      enableHighAccuracy: true, maximumAge: 15000, timeout: 15000,
+    });
+  };
+
+  const stopSharing = () => {
+    if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+    watchIdRef.current = null;
+    setSharing(false);
+  };
+
+  React.useEffect(() => () => stopSharing(), []);
 
   const load = async () => {
     setLoading(true);
@@ -263,11 +286,19 @@ function DeliveryApp({ config }) {
             <p className="text-blue-200 text-sm capitalize">{dateStr}</p>
             <h1 className="text-white text-2xl font-bold">Mis entregas</h1>
           </div>
-          <button onClick={() => setShowSummary(true)}
-            className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
-            style={{background:'rgba(255,255,255,0.2)'}}>
-            📊
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={sharing ? stopSharing : startSharing}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+              style={{background: sharing ? '#dc2626' : 'rgba(255,255,255,0.2)', color: 'white'}}>
+              <span className={`w-2 h-2 rounded-full ${sharing ? 'bg-white animate-pulse' : 'bg-white opacity-50'}`} />
+              {sharing ? 'GPS ON' : 'GPS'}
+            </button>
+            <button onClick={() => setShowSummary(true)}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
+              style={{background:'rgba(255,255,255,0.2)'}}>
+              📊
+            </button>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[

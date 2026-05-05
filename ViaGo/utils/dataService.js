@@ -550,6 +550,19 @@ const DataService = {
     if (error) throw new Error(error.message);
   },
 
+  // ─── DRIVER LOCATION ─────────────────────────────────────────────────────
+  async upsertDriverLocation(lat, lng, driverName = 'Repartidor') {
+    const { error } = await this._sb.from('driver_locations').upsert(
+      { id: 1, driver_name: driverName, lat, lng, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    if (error) throw new Error(error.message);
+  },
+  async getDriverLocation() {
+    const { data } = await this._sb.from('driver_locations').select('*').eq('id', 1).single();
+    return this._js(data);
+  },
+
   // ─── AUTH ─────────────────────────────────────────────────────────────────
   async setAdminUser(userId) {
     this._configCache = null;
