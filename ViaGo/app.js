@@ -58,7 +58,7 @@ function App() {
     dashboard: 'Dashboard', clients: 'Clientes', prospecting: 'Captación',
     orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
-    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas', liveTracking: 'En vivo',
+    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas', liveTracking: 'En vivo', mapView: 'Mapa',
   };
 
   const renderModule = () => {
@@ -77,6 +77,7 @@ function App() {
       case 'dispensers':  return <Dispensers />;
       case 'machines':      return <Machines />;
       case 'liveTracking':  return <LiveTracking />;
+      case 'mapView':       return <MapView />;
       default:              return <Dashboard onNavigate={navigate} />;
     }
   };
