@@ -115,6 +115,7 @@ function DeliveryApp({ config }) {
   const [optimizing, setOptimizing] = React.useState(false);
   const [optimizeMsg, setOptimizeMsg] = React.useState('');
   const [sharing, setSharing] = React.useState(false);
+  const [lastReceipt, setLastReceipt] = React.useState(null);
   const watchIdRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -234,6 +235,9 @@ function DeliveryApp({ config }) {
       await DataService.updateClientEnvases(order.clientId, envasesEntregados, envasesRecuperados).catch(() => {});
     }
     setDeliveries(ds => ds.map(d => d.id === order.id ? { ...d, status: 'entregado' } : d));
+    if (order.client?.phone) {
+      setLastReceipt({ client: order.client, items: finalItems, total: finalTotal, date: DataService.today() });
+    }
     // Advance to next pending in route
     if (routeOrder) {
       const remaining = routeOrder.filter(id => id !== order.id);
@@ -336,6 +340,24 @@ function DeliveryApp({ config }) {
           <p className="text-center text-xs mt-2" style={{color:'rgba(255,255,255,0.7)'}}>{optimizeMsg}</p>
         )}
       </div>
+
+      {/* WA receipt banner */}
+      {lastReceipt && (
+        <div className="mx-4 mt-4 rounded-2xl p-4 flex items-center gap-3" style={{background:'#14532d', border:'1px solid #166534'}}>
+          <span className="text-2xl">✅</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-sm truncate">{lastReceipt.client.name}</p>
+            <p className="text-xs" style={{color:'#86efac'}}>{DataService.formatCurrency(lastReceipt.total)} cobrado</p>
+          </div>
+          <a href={`https://wa.me/${(lastReceipt.client.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(PDFService.textReceipt({items:lastReceipt.items,total:lastReceipt.total,deliveryDate:lastReceipt.date}, lastReceipt.client, config))}`}
+            target="_blank" rel="noopener noreferrer"
+            className="px-3 py-2 rounded-xl text-sm font-bold text-white flex-shrink-0"
+            style={{background:'#16a34a'}}>
+            💬 Comprobante
+          </a>
+          <button onClick={() => setLastReceipt(null)} className="text-xl" style={{color:'#4ade80'}}>×</button>
+        </div>
+      )}
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 safe-bottom">
