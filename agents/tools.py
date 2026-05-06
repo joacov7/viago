@@ -206,3 +206,77 @@ class TopClientsTool(BaseTool):
         clients = {c["id"]: c for c in db.table("clients").select("id, name, phone, code").in_("id", top_ids).execute().data}
         result = [{"cliente": clients[cid]["name"], "facturado": _fmt_ars(totals[cid]), "telefono": clients[cid].get("phone", "")} for cid in top_ids if cid in clients]
         return json.dumps(result, ensure_ascii=False)
+
+
+# ── Write tools (require user confirmation before running) ────────────────────
+
+class GenerateWAOfferTool(BaseTool):
+    name: str = "generar_oferta_whatsapp"
+    description: str = (
+        "Genera los mensajes de WhatsApp para una campaña. "
+        "Input JSON: {\"clients\": [{\"name\": \"...\", \"phone\": \"...\"}], \"message\": \"...\"}. "
+        "Devuelve los links wa.me listos para enviar."
+    )
+
+    def _run(self, input_data: str) -> str:
+        data = json.loads(input_data)
+        clients = data.get("clients", [])
+        message = data.get("message", "")
+        links = []
+        for c in clients:
+            phone = (c.get("phone") or "").replace("+", "").replace(" ", "").replace("-", "")
+            if not phone:
+                continue
+            personalized = message.replace("{nombre}", c["name"].split()[0])
+            url = f"https://wa.me/{phone}?text={personalized}"
+            links.append({"cliente": c["name"], "link": url})
+        return json.dumps({"cantidad": len(links), "mensajes": links}, ensure_ascii=False)
+
+
+class CreateOrdersBulkTool(BaseTool):
+    name: str = "crear_pedidos_masivos"
+    description: str = (
+        "Crea pedidos en el sistema para varios clientes. "
+        "Input JSON: {\"client_ids\": [1,2,3], \"product_id\": 1, \"quantity\": 1, \"date\": \"YYYY-MM-DD\", \"notes\": \"...\"}."
+    )
+
+    def _run(self, input_data: str) -> str:
+        data = json.loads(input_data)
+        db = _db()
+        product = db.table("products").select("id, name, price").eq("id", data["product_id"]).single().execute().data
+        if not product:
+            return "Producto no encontrado."
+        qty = int(data.get("quantity", 1))
+        item = {"productId": product["id"], "productName": product["name"], "price": product["price"], "quantity": qty, "subtotal": product["price"] * qty}
+        date = data.get("date") or datetime.now().strftime("%Y-%m-%d")
+        created = 0
+        for cid in data["client_ids"]:
+            db.table("orders").insert({
+                "client_id": cid,
+                "delivery_date": date,
+                "items": [item],
+                "total": item["subtotal"],
+                "status": "pendiente",
+                "notes": data.get("notes", ""),
+            }).execute()
+            created += 1
+        return json.dumps({"pedidos_creados": created, "producto": product["name"], "fecha": date}, ensure_ascii=False)
+
+
+class MarkInvoicePaidTool(BaseTool):
+    name: str = "marcar_factura_pagada"
+    description: str = (
+        "Marca una factura como pagada. "
+        "Input JSON: {\"invoice_id\": 123, \"payment_method\": \"efectivo\"}."
+    )
+
+    def _run(self, input_data: str) -> str:
+        data = json.loads(input_data)
+        db = _db()
+        db.table("invoices").update({
+            "payment_status": "pagado",
+            "payment_method": data.get("payment_method", "efectivo"),
+            "paid_at": datetime.now().isoformat(),
+        }).eq("id", data["invoice_id"]).execute()
+        return json.dumps({"ok": True, "factura_id": data["invoice_id"]}, ensure_ascii=False)
+

@@ -6,8 +6,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 load_dotenv()
 
@@ -17,10 +17,22 @@ logger = logging.getLogger(__name__)
 OWNER_ID = int(os.getenv("TELEGRAM_OWNER_ID", "0"))
 executor = ThreadPoolExecutor(max_workers=2)
 
+# Stores pending approved actions: chat_id -> {request, plan}
+pending_actions: dict = {}
+
 
 def _run_crew(text: str) -> str:
     from crew import NativaCrew
     return NativaCrew().run(text)
+
+
+def _execute_crew(request: str, plan: str) -> str:
+    from crew import NativaCrew
+    return NativaCrew().execute(request, plan)
+
+
+def _requires_action(text: str) -> bool:
+    return "⚠️" in text
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -32,7 +44,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Podés preguntarme cualquier cosa sobre la empresa:\n"
         "• Cómo cerró el mes\n"
         "• Clientes sin pedir hace 30 días\n"
-        "• Armar una campaña de recuperación\n"
+        "• Hacer una oferta para clientes inactivos\n"
         "• Cuánto se cobró hoy\n"
         "• Qué zonas rinden menos\n\n"
         "Hablo con mi equipo y te traigo la respuesta.",
@@ -65,15 +77,52 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _handle(update: Update, text: str):
+    chat_id = update.effective_chat.id
     thinking = await update.message.reply_text("⏳ Consultando con el equipo...")
     loop = asyncio.get_event_loop()
     try:
         result = await loop.run_in_executor(executor, _run_crew, text)
         await thinking.delete()
-        await update.message.reply_text(result, parse_mode="Markdown")
+
+        if _requires_action(result):
+            pending_actions[chat_id] = {"request": text, "plan": result}
+            keyboard = InlineKeyboardMarkup([[
+                InlineKeyboardButton("✅ Sí, ejecutar", callback_data="confirm"),
+                InlineKeyboardButton("❌ No", callback_data="reject"),
+            ]])
+            await update.message.reply_text(result, reply_markup=keyboard, parse_mode="Markdown")
+        else:
+            await update.message.reply_text(result, parse_mode="Markdown")
+
     except Exception as e:
         logger.exception("Crew error")
         await thinking.edit_text(f"❌ Error: {e}")
+
+
+async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    chat_id = query.message.chat_id
+
+    if query.data == "confirm":
+        stored = pending_actions.pop(chat_id, None)
+        if not stored:
+            await query.edit_message_text("⚠️ La acción expiró. Volvé a pedirla.")
+            return
+        await query.edit_message_text(query.message.text + "\n\n⏳ Ejecutando...")
+        loop = asyncio.get_event_loop()
+        try:
+            result = await loop.run_in_executor(
+                executor, _execute_crew, stored["request"], stored["plan"]
+            )
+            await query.message.reply_text(result, parse_mode="Markdown")
+        except Exception as e:
+            logger.exception("Execute error")
+            await query.message.reply_text(f"❌ Error al ejecutar: {e}")
+
+    elif query.data == "reject":
+        pending_actions.pop(chat_id, None)
+        await query.edit_message_text(query.message.text + "\n\n❌ Acción cancelada.")
 
 
 def main():
@@ -83,6 +132,7 @@ def main():
     app.add_handler(CommandHandler("hoy", cmd_hoy))
     app.add_handler(CommandHandler("mes", cmd_mes))
     app.add_handler(CommandHandler("deudas", cmd_deudas))
+    app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     logger.info("Bot iniciado")
     app.run_polling(drop_pending_updates=True)

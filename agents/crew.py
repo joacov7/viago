@@ -6,6 +6,7 @@ from crewai import Agent, Task, Crew, Process, LLM
 from tools import (
     RevenueSummaryTool, PendingInvoicesTool, ProductMarginsTool,
     TodayOrdersTool, InactiveClientsTool, ZoneStatsTool, TopClientsTool,
+    GenerateWAOfferTool, CreateOrdersBulkTool, MarkInvoicePaidTool,
 )
 
 COMPANY = os.getenv("COMPANY_NAME", "NATIVA")
@@ -102,6 +103,47 @@ class NativaCrew:
             tasks=[task],
             process=Process.hierarchical,
             manager_agent=ceo,
+            verbose=False,
+        )
+
+        result = crew.kickoff()
+        return str(result)
+
+    def execute(self, original_request: str, plan: str) -> str:
+        """Run a write-enabled crew to execute a previously approved plan."""
+        llm = _llm()
+
+        executor = Agent(
+            role="Ejecutor",
+            goal="Ejecutar exactamente el plan aprobado usando las herramientas disponibles",
+            backstory=(
+                f"Sos el Ejecutor de {COMPANY}. Tu única función es llevar a cabo el plan "
+                "que el dueño aprobó. No analizás ni proponés — solo ejecutás y reportás el resultado."
+            ),
+            tools=[GenerateWAOfferTool(), CreateOrdersBulkTool(), MarkInvoicePaidTool()],
+            llm=llm,
+            verbose=False,
+            allow_delegation=False,
+        )
+
+        task = Task(
+            description=(
+                f'El dueño aprobó ejecutar este plan:\n\n{plan}\n\n'
+                f'Pedido original: "{original_request}"\n\n'
+                "Ejecutá las acciones necesarias usando las herramientas. "
+                "Si generás mensajes de WhatsApp, incluí los links completos en la respuesta."
+            ),
+            expected_output=(
+                "Confirmación de qué se ejecutó, con números concretos. "
+                "Si hay links de WhatsApp, listarlos uno por uno."
+            ),
+            agent=executor,
+        )
+
+        crew = Crew(
+            agents=[executor],
+            tasks=[task],
+            process=Process.sequential,
             verbose=False,
         )
 
