@@ -126,6 +126,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    from scheduler import start_scheduler
+    start_scheduler()
+
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     app = Application.builder().token(token).build()
     app.add_handler(CommandHandler("start", cmd_start))

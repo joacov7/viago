@@ -280,3 +280,81 @@ class MarkInvoicePaidTool(BaseTool):
         }).eq("id", data["invoice_id"]).execute()
         return json.dumps({"ok": True, "factura_id": data["invoice_id"]}, ensure_ascii=False)
 
+
+# ── Campaign tools ─────────────────────────────────────────────────────────────
+
+class CreateCampaignTool(BaseTool):
+    name: str = "crear_campaña"
+    description: str = (
+        "Crea una campaña programada. "
+        "Input JSON: {\"name\":\"...\", \"message\":\"... {nombre} ...\", "
+        "\"segment\":\"inactive_30|inactive_60|zone|all|custom\", "
+        "\"segment_data\":{\"zone_id\":1}, "
+        "\"discount_pct\":10, "
+        "\"scheduled_at\":\"2026-05-10T10:00:00\", "
+        "\"expires_at\":\"2026-05-12T23:59:00\"}. "
+        "El campo {nombre} en el mensaje se reemplaza con el primer nombre del cliente."
+    )
+
+    def _run(self, input_data: str) -> str:
+        data = json.loads(input_data)
+        db = _db()
+        row = {
+            "name": data["name"],
+            "message": data["message"],
+            "segment": data["segment"],
+            "segment_data": data.get("segment_data", {}),
+            "discount_pct": data.get("discount_pct", 0),
+            "scheduled_at": data.get("scheduled_at"),
+            "expires_at": data.get("expires_at"),
+            "status": "pending",
+        }
+        result = db.table("campaigns").insert(row).execute()
+        camp_id = result.data[0]["id"] if result.data else "?"
+        return json.dumps({"ok": True, "campaign_id": camp_id, "programada_para": data.get("scheduled_at", "inmediato")}, ensure_ascii=False)
+
+
+class ListCampaignsTool(BaseTool):
+    name: str = "listar_campañas"
+    description: str = "Lista las campañas activas y programadas con su estado y resultados."
+
+    def _run(self) -> str:
+        db = _db()
+        rows = db.table("campaigns").select("id, name, segment, status, scheduled_at, clients_contacted, orders_after, discount_pct").order("created_at", desc=True).limit(10).execute().data
+        if not rows:
+            return "No hay campañas registradas."
+        return json.dumps(rows, ensure_ascii=False, default=str)
+
+
+class CancelCampaignTool(BaseTool):
+    name: str = "cancelar_campaña"
+    description: str = "Cancela una campaña pendiente. Input: campaign_id (número)."
+
+    def _run(self, campaign_id: str) -> str:
+        db = _db()
+        db.table("campaigns").update({"status": "cancelled"}).eq("id", int(campaign_id)).eq("status", "pending").execute()
+        return json.dumps({"ok": True, "campaign_id": campaign_id}, ensure_ascii=False)
+
+
+class CampaignResultsTool(BaseTool):
+    name: str = "resultados_campaña"
+    description: str = "Muestra los resultados de una campaña: contactados, convertidos, ROI estimado. Input: campaign_id."
+
+    def _run(self, campaign_id: str) -> str:
+        db = _db()
+        camp = db.table("campaigns").select("*").eq("id", int(campaign_id)).single().execute().data
+        if not camp:
+            return "Campaña no encontrada."
+        contacts = db.table("campaign_contacts").select("id, converted").eq("campaign_id", int(campaign_id)).execute().data
+        total = len(contacts)
+        converted = sum(1 for c in contacts if c["converted"])
+        rate = (converted / total * 100) if total else 0
+        return json.dumps({
+            "campaña": camp["name"],
+            "estado": camp["status"],
+            "segmento": camp["segment"],
+            "contactados": total,
+            "convirtieron": converted,
+            "tasa_conversion": f"{rate:.1f}%",
+            "pedidos_generados": camp.get("orders_after", 0),
+        }, ensure_ascii=False)

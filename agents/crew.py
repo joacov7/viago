@@ -7,6 +7,7 @@ from tools import (
     RevenueSummaryTool, PendingInvoicesTool, ProductMarginsTool,
     TodayOrdersTool, InactiveClientsTool, ZoneStatsTool, TopClientsTool,
     GenerateWAOfferTool, CreateOrdersBulkTool, MarkInvoicePaidTool,
+    CreateCampaignTool, ListCampaignsTool, CancelCampaignTool, CampaignResultsTool,
 )
 
 COMPANY = os.getenv("COMPANY_NAME", "NATIVA")
@@ -70,6 +71,21 @@ class NativaCrew:
             allow_delegation=False,
         )
 
+        campaigns = Agent(
+            role="Gerente de Campañas",
+            goal="Gestionar campañas de marketing: crearlas, programarlas, cancelarlas y reportar resultados",
+            backstory=(
+                f"Sos el Gerente de Campañas de {COMPANY}. "
+                "Podés crear campañas programadas para segmentos de clientes (inactivos, por zona, todos), "
+                "con mensajes personalizados y descuentos. También cancelás campañas y mostrás resultados de conversión. "
+                "Siempre confirmás fecha, hora y segmento antes de crear una campaña."
+            ),
+            tools=[CreateCampaignTool(), ListCampaignsTool(), CancelCampaignTool(), CampaignResultsTool()],
+            llm=llm,
+            verbose=False,
+            allow_delegation=False,
+        )
+
         ceo = Agent(
             role="CEO",
             goal=f"Dar al dueño de {COMPANY} respuestas ejecutivas claras, delegando al equipo según la consulta",
@@ -99,7 +115,7 @@ class NativaCrew:
         )
 
         crew = Crew(
-            agents=[cfo, ops, marketing],
+            agents=[cfo, ops, marketing, campaigns],
             tasks=[task],
             process=Process.hierarchical,
             manager_agent=ceo,
