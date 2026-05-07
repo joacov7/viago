@@ -1,0 +1,48 @@
+--- a/alpaso-panel-dueno.html
++++ b/alpaso-panel-dueno.html
+@@ línea 2793 - Bug 1: loadSimulador() no existe, debe llamar loadSimuladorCarn()
+-      <select id="sim-semana" onchange="loadSimulador()"
++      <select id="sim-semana" onchange="loadSimuladorCarn()"
+
+@@ línea 7171 - Bug 3: agregar variable para base de ganancia
+ let simDelta          = 0;
++let simGananciaBase   = 0;
+
+@@ línea 8197 - Bug 3: guardar base al cargar el simulador
+   simDelta = 0;
+   var gananciaActual = cortes.reduce(...);
++  simGananciaBase = gananciaActual;
+   if($('sim-ganancia-actual')) ...
+
+@@ línea 8204 - Bug 2: texto invisible (color:#fff sobre fondo #fff)
+-        '<div style="font-size:12px;font-weight:700;color:#fff">'+c.nombre+...
++        '<div style="font-size:12px;font-weight:700;color:#1A1A2E">'+c.nombre+...
+
+@@ líneas 8221-8235 - Bug 3: reemplazar calcularSimulacion con recalculo desde sliders
+-function handleSimRange(el) {
+-  var n=parseFloat(el.value),...;
+-  var span=el.nextElementSibling; if(span) span.textContent=fmtM(n);
+-  calcularSimulacion(0, n, kg, costo, base);
+-}
+-function calcularSimulacion(idx, nuevoPrecio, kg, costo, gananciaOrig) {
+-  var nueva = (nuevoPrecio - costo) * kg;
+-  simDelta += (nueva - gananciaOrig);
+-  var actual = parseFloat(($('sim-ganancia-actual')?.textContent||'0')...);
+-  var total = actual + simDelta;
+-  ...
++function handleSimRange(el) {
++  var span=el.nextElementSibling; if(span) span.textContent=fmtM(parseFloat(el.value));
++  var totalSim = 0;
++  document.querySelectorAll('.sim-rng').forEach(function(rng) {
++    var precio = parseFloat(rng.value) || 0;
++    var kg     = parseFloat(rng.dataset.kg)    || 0;
++    var costo  = parseFloat(rng.dataset.costo) || 0;
++    totalSim += (precio - costo) * kg;
++  });
++  var actual = simGananciaBase;
++  ...
++}
+
+@@ línea 7189 - Bug 4: CarnSim se reinicia cada vez que entras al tab
+-  if (id==='sim-avanzado') { if (typeof CarnSim !== 'undefined') CarnSim.init(); }
++  if (id==='sim-avanzado') { if (typeof CarnSim !== 'undefined' && !CarnSim._initialized) { CarnSim.init(); CarnSim._initialized = true; } }
