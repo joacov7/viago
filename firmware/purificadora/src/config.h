@@ -69,7 +69,29 @@
 // ──────────────────────────────────────────────────────
 //  Intervalos de tarea (ms)
 // ──────────────────────────────────────────────────────
-#define INTERVAL_SENSOR   500UL
+#define INTERVAL_SENSOR    500UL
 #define INTERVAL_DISPLAY  1000UL
 #define INTERVAL_TELEGRAM 2000UL
-#define INTERVAL_WS       1000UL   // broadcast WebSocket
+#define INTERVAL_WS       1000UL
+#define INTERVAL_COUNTER  1000UL
+#define INTERVAL_SCHEDULE 30000UL
+#define INTERVAL_SAVE_NVS 60000UL
+
+// ──────────────────────────────────────────────────────
+//  NTP / Tiempo (Argentina UTC-3, sin DST)
+// ──────────────────────────────────────────────────────
+#define NTP_SERVER1      "pool.ntp.org"
+#define NTP_SERVER2      "time.google.com"
+#define TZ_OFFSET_SEC    (-3 * 3600)
+
+// ──────────────────────────────────────────────────────
+//  Mantenimiento — umbrales de alerta en horas
+// ──────────────────────────────────────────────────────
+#define MEMBRANE_WARN_H  8760UL   // ~1 año
+#define UV_WARN_H        9000UL
+
+// ──────────────────────────────────────────────────────
+//  Log de alarmas (LittleFS)
+// ──────────────────────────────────────────────────────
+#define ALARM_LOG_FILE   "/alarms.txt"
+#define ALARM_LOG_MAX    50
