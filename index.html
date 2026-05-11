@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViaGo — Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <style type="text/tailwindcss">
+        @layer base { body { font-family: 'Inter', sans-serif; } }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 flex flex-col">
+
+    <header class="bg-white border-b shadow-sm">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                <span class="icon-truck text-xl text-white"></span>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-gray-900 leading-none">ViaGo</h1>
+                <p class="text-xs text-gray-400 mt-0.5">Sistema de gestión empresarial</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl mx-auto px-6 py-14 w-full">
+        <div class="mb-10">
+            <h2 class="text-2xl font-bold text-gray-900">Módulos</h2>
+            <p class="text-gray-500 mt-1">Selecioná el módulo que querés administrar</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+            <a href="ViaGo/logistica.html"
+               class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 hover:shadow-md hover:border-blue-200 transition-all group block">
+                <div class="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl mb-5">🚚</div>
+                <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">Logística</h3>
+                <p class="text-gray-500 text-sm mt-2 leading-relaxed">
+                    Gestión de envíos, conductores, seguimiento en mapa y administración de flota.
+                </p>
+                <div class="mt-6 flex items-center gap-1 text-blue-600 text-sm font-medium">
+                    Abrir módulo <span class="icon-arrow-right text-xs"></span>
+                </div>
+            </a>
+
+            <a href="ViaGo/purificadora.html"
+               class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 hover:shadow-md hover:border-cyan-200 transition-all group block">
+                <div class="w-14 h-14 bg-cyan-50 rounded-2xl flex items-center justify-center text-3xl mb-5">💧</div>
+                <h3 class="text-xl font-bold text-gray-900 group-hover:text-cyan-600 transition-colors">Purificadora</h3>
+                <p class="text-gray-500 text-sm mt-2 leading-relaxed">
+                    Control en tiempo real de la planta de ósmosis inversa vía ESP32.
+                </p>
+                <div class="mt-6 flex items-center gap-1 text-cyan-600 text-sm font-medium">
+                    Abrir módulo <span class="icon-arrow-right text-xs"></span>
+                </div>
+            </a>
+
+        </div>
+    </main>
+
+    <footer class="border-t text-center text-xs text-gray-400 py-6">
+        ViaGo &copy; 2025
+    </footer>
+
+</body>
+</html>
