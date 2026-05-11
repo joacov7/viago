@@ -11,14 +11,15 @@ function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
     { id: 'delivery',     icon: 'truck',        label: 'Reparto' },
     { id: 'liveTracking', icon: 'mapPin',       label: 'En vivo 🔴' },
     { id: 'mapView',      icon: 'map',          label: 'Mapa' },
-    { id: 'zones',      icon: 'mapPin',       label: 'Zonas' },
-    { id: 'billing',    icon: 'fileText',     label: 'Facturación' },
-    { id: 'loyalty',    icon: 'star',         label: 'Fidelización' },
-    { id: 'products',   icon: 'shoppingBag',  label: 'Productos' },
-    { id: 'costs',      icon: 'dollarSign',   label: 'Costos' },
-    { id: 'dispensers', icon: 'droplets',     label: 'Comodatos' },
-    { id: 'machines',   icon: 'settings',     label: 'Máquinas' },
-    { id: 'config',     icon: 'settings',     label: 'Configuración' },
+    { id: 'zones',        icon: 'mapPin',       label: 'Zonas' },
+    { id: 'billing',      icon: 'fileText',     label: 'Facturación' },
+    { id: 'loyalty',      icon: 'star',         label: 'Fidelización' },
+    { id: 'products',     icon: 'shoppingBag',  label: 'Productos' },
+    { id: 'costs',        icon: 'dollarSign',   label: 'Costos' },
+    { id: 'dispensers',   icon: 'droplets',     label: 'Comodatos' },
+    { id: 'machines',     icon: 'settings',     label: 'Máquinas' },
+    { id: 'purificadora', icon: 'droplets',     label: 'Purificadora 💧' },
+    { id: 'config',       icon: 'settings',     label: 'Configuración' },
   ];
 
   const handleNav = (id) => { onNavigate(id); onClose(); };
@@ -77,9 +78,7 @@ function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
                 />
                 <span className="text-sm">{item.label}</span>
                 {item.id === 'delivery' && (
-                  <span className="ml-auto">
-                    <TodayBadge />
-                  </span>
+                  <span className="ml-auto"><TodayBadge /></span>
                 )}
               </button>
             );
@@ -145,10 +144,7 @@ function NotificationBell({ onNavigate }) {
       if (lastCount > 0 && newOnes.length > 0) {
         newOnes.forEach(lead => {
           if (Notification.permission === 'granted') {
-            new Notification('Nuevo lead', {
-              body: label(lead),
-              icon: '/favicon-32x32.png',
-            });
+            new Notification('Nuevo lead', { body: label(lead), icon: '/favicon-32x32.png' });
           }
         });
       }
@@ -158,13 +154,9 @@ function NotificationBell({ onNavigate }) {
 
     fetchLeads();
     const interval = setInterval(fetchLeads, 60000);
-
     const closeOnOutside = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', closeOnOutside);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('mousedown', closeOnOutside);
-    };
+    return () => { clearInterval(interval); document.removeEventListener('mousedown', closeOnOutside); };
   }, []);
 
   const markRead = () => {
@@ -177,11 +169,6 @@ function NotificationBell({ onNavigate }) {
     setOpen(o => !o);
     if (!open && unread > 0) markRead();
     if (!open && Notification.permission === 'default') Notification.requestPermission();
-  };
-
-  const goTo = (item) => {
-    setOpen(false);
-    onNavigate('prospecting');
   };
 
   return (
@@ -200,11 +187,8 @@ function NotificationBell({ onNavigate }) {
         <div className="absolute right-0 top-10 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-slate-900">Notificaciones</p>
-            {unread === 0 && items.length > 0 && (
-              <span className="text-xs text-slate-400">Todo al día</span>
-            )}
+            {unread === 0 && items.length > 0 && <span className="text-xs text-slate-400">Todo al día</span>}
           </div>
-
           {items.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-2xl mb-2">🔔</p>
@@ -215,7 +199,7 @@ function NotificationBell({ onNavigate }) {
               {items.slice(0, 15).map(item => {
                 const isNew = item.createdAt > seenAt;
                 return (
-                  <button key={item.id} onClick={() => goTo(item)}
+                  <button key={item.id} onClick={() => { setOpen(false); onNavigate('prospecting'); }}
                     className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start gap-3 ${isNew ? 'bg-blue-50 hover:bg-blue-50' : ''}`}>
                     <span className="text-lg flex-shrink-0 mt-0.5">
                       {item.source === 'referido' || (item.notes || '').includes('Referido') ? '🎁' : '👤'}
@@ -233,7 +217,6 @@ function NotificationBell({ onNavigate }) {
               })}
             </div>
           )}
-
           <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
             <button onClick={() => { setOpen(false); onNavigate('prospecting'); }}
               className="text-xs text-blue-600 font-semibold hover:text-blue-700">
@@ -246,7 +229,6 @@ function NotificationBell({ onNavigate }) {
   );
 }
 
-// Reusable top-bar header for each module
 function PageHeader({ title, subtitle, action }) {
   return (
     <div className="flex items-start justify-between mb-6">
@@ -259,7 +241,6 @@ function PageHeader({ title, subtitle, action }) {
   );
 }
 
-// Reusable Modal component
 function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   if (!isOpen) return null;
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
@@ -279,7 +260,6 @@ function Modal({ isOpen, onClose, title, children, size = 'md' }) {
   );
 }
 
-// Reusable status badge
 function StatusBadge({ status }) {
   const map = {
     pendiente:    { bg: 'bg-amber-100',  text: 'text-amber-800',  label: 'Pendiente' },
@@ -299,7 +279,6 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>{s.label}</span>;
 }
 
-// Reusable form field
 function FormField({ label, required, children, hint }) {
   return (
     <div>
@@ -316,7 +295,6 @@ function inputCls(extra = '') {
   return `w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow ${extra}`;
 }
 
-// Reusable btn
 function Btn({ children, onClick, variant = 'primary', size = 'md', disabled = false, className = '', type = 'button', icon }) {
   const variants = {
     primary:   'bg-blue-600 hover:bg-blue-700 text-white shadow-sm',
@@ -339,7 +317,6 @@ function Btn({ children, onClick, variant = 'primary', size = 'md', disabled = f
   );
 }
 
-// Empty state helper
 function EmptyState({ icon, title, description, action }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -353,7 +330,6 @@ function EmptyState({ icon, title, description, action }) {
   );
 }
 
-// Confirm dialog
 function useConfirm() {
   return (message) => window.confirm(message);
 }

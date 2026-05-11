@@ -58,7 +58,8 @@ function App() {
     dashboard: 'Dashboard', clients: 'Clientes', prospecting: 'Captación',
     orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
-    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas', liveTracking: 'En vivo', mapView: 'Mapa',
+    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas',
+    liveTracking: 'En vivo', mapView: 'Mapa', purificadora: 'Purificadora',
   };
 
   const renderModule = () => {
@@ -66,19 +67,20 @@ function App() {
       case 'dashboard':    return <Dashboard onNavigate={navigate} />;
       case 'clients':      return <Clients onNavigate={navigate} navParams={navParams} />;
       case 'prospecting':  return <Prospecting />;
-      case 'orders':    return <Orders onNavigate={navigate} navParams={navParams} />;
-      case 'delivery':  return <Delivery onNavigate={navigate} />;
-      case 'zones':     return <Zones />;
-      case 'billing':   return <Billing navParams={navParams} />;
-      case 'loyalty':   return <Loyalty />;
-      case 'products':  return <Products />;
-      case 'config':      return <Config onConfigChange={cfg => setConfig(cfg)} />;
-      case 'costs':       return <Costs />;
-      case 'dispensers':  return <Dispensers />;
-      case 'machines':      return <Machines />;
-      case 'liveTracking':  return <LiveTracking />;
-      case 'mapView':       return <MapView />;
-      default:              return <Dashboard onNavigate={navigate} />;
+      case 'orders':       return <Orders onNavigate={navigate} navParams={navParams} />;
+      case 'delivery':     return <Delivery onNavigate={navigate} />;
+      case 'zones':        return <Zones />;
+      case 'billing':      return <Billing navParams={navParams} />;
+      case 'loyalty':      return <Loyalty />;
+      case 'products':     return <Products />;
+      case 'config':       return <Config onConfigChange={cfg => setConfig(cfg)} />;
+      case 'costs':        return <Costs />;
+      case 'dispensers':   return <Dispensers />;
+      case 'machines':     return <Machines />;
+      case 'liveTracking': return <LiveTracking />;
+      case 'mapView':      return <MapView />;
+      case 'purificadora': return <Purificadora />;
+      default:             return <Dashboard onNavigate={navigate} />;
     }
   };
 
