@@ -84,41 +84,38 @@ function App() {
           <Header activeTab={activeTab} setActiveTab={setActiveTab} />
           <NotificationCenter shipments={shipments} />
         </div>
-        
+
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === 'new' && (
             <ShipmentForm onSubmit={handleCreateShipment} />
           )}
-          
           {activeTab === 'shipments' && (
-            <ShipmentList 
+            <ShipmentList
               shipments={shipments}
               loading={loading}
               onRefresh={loadShipments}
             />
           )}
-          
           {activeTab === 'tracking' && (
             <TrackingMap shipments={shipments} />
           )}
-          
           {activeTab === 'driver' && (
-            <DriverPanel 
+            <DriverPanel
               shipments={shipments}
               onUpdateShipment={handleUpdateShipment}
             />
           )}
-          
           {activeTab === 'reports' && (
             <ReportsPanel shipments={shipments} />
           )}
-          
           {activeTab === 'fleet' && (
             <FleetManagement />
           )}
-          
           {activeTab === 'billing' && (
             <BillingPanel shipments={shipments} />
+          )}
+          {activeTab === 'purificadora' && (
+            <PurificadoraPanel />
           )}
         </main>
       </div>
