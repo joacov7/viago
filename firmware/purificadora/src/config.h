@@ -76,6 +76,7 @@
 #define INTERVAL_COUNTER  1000UL
 #define INTERVAL_SCHEDULE 30000UL
 #define INTERVAL_SAVE_NVS 60000UL
+#define INTERVAL_SUPABASE 5000UL
 
 // ──────────────────────────────────────────────────────
 //  NTP / Tiempo (Argentina UTC-3, sin DST)
@@ -95,3 +96,9 @@
 // ──────────────────────────────────────────────────────
 #define ALARM_LOG_FILE   "/alarms.txt"
 #define ALARM_LOG_MAX    50
+
+// ──────────────────────────────────────────────────────
+//  Supabase — definir en secrets.h
+//  #define SUPABASE_URL  "https://xxxx.supabase.co"
+//  #define SUPABASE_KEY  "eyJ..."
+// ──────────────────────────────────────────────────────

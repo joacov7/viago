@@ -4,6 +4,7 @@
 #include <Adafruit_SSD1306.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <HTTPClient.h>
 #include <UniversalTelegramBot.h>
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
@@ -58,6 +59,7 @@ unsigned long tLastSensor    = 0;
 unsigned long tLastDisplay   = 0;
 unsigned long tLastTelegram  = 0;
 unsigned long tLastWs        = 0;
+unsigned long tLastSupabase  = 0;
 unsigned long tPhaseStart    = 0;
 unsigned long tTankFull      = 0;
 bool          tankFullPending = false;
@@ -155,7 +157,6 @@ void logAlarm(const String& msg) {
     f.println(getDateTimeStr() + " | " + msg);
     f.close();
 
-    // Mantener máximo ALARM_LOG_MAX líneas
     File fr = LittleFS.open(ALARM_LOG_FILE, "r");
     if (!fr) return;
     String lines[ALARM_LOG_MAX + 10];
@@ -509,6 +510,34 @@ void updateDisplay() {
             secUV / 3600.0f);
     }
     display.display();
+}
+
+// ═══════════════════════════════════════════════════════
+//  Supabase
+// ═══════════════════════════════════════════════════════
+void pushToSupabase() {
+    if (WiFi.status() != WL_CONNECTED) return;
+    WiFiClientSecure sc;
+    sc.setInsecure();
+    HTTPClient http;
+    http.begin(sc, String(SUPABASE_URL) + "/rest/v1/sensor_readings");
+    http.addHeader("Content-Type",  "application/json");
+    http.addHeader("apikey",        SUPABASE_KEY);
+    http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
+    http.addHeader("Prefer",        "return=minimal");
+    StaticJsonDocument<256> doc;
+    doc["tds_in"]    = (int)tdsin;
+    doc["tds_out"]   = (int)tdsout;
+    doc["presion"]   = (float)(round(presion * 100) / 100.0);
+    doc["estado"]    = stateLabel();
+    doc["cisterna"]  = flCisterna;
+    doc["mem_horas"] = secMembrane / 3600.0f;
+    doc["uv_horas"]  = secUV       / 3600.0f;
+    String body;
+    serializeJson(doc, body);
+    int code = http.POST(body);
+    if (code != 201) Serial.printf("[SUPA] Error %d\n", code);
+    http.end();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -925,6 +954,11 @@ void loop() {
     if (now - tLastSchedule >= INTERVAL_SCHEDULE) {
         tLastSchedule = now;
         checkSchedule();
+    }
+
+    if (now - tLastSupabase >= INTERVAL_SUPABASE) {
+        tLastSupabase = now;
+        pushToSupabase();
     }
 
     if (now - tLastDisplay >= INTERVAL_DISPLAY) {
