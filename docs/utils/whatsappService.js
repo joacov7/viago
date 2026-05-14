@@ -14,37 +14,37 @@ const WhatsAppService = {
 
   orderConfirmation(client, order) {
     const items = (order.items || []).map(i => `  • ${i.quantity}x ${i.productName} - ${DataService.formatCurrency(i.subtotal)}`).join('\n');
-    const msg = `¡Hola ${client.name}! 👋\n\nTe confirmamos tu pedido NATIVA:\n\n${items}\n\n💰 *Total: ${DataService.formatCurrency(order.total)}*\n📅 Entrega: ${DataService.formatDate(order.deliveryDate)}\n\n¡Gracias por elegirnos! 💧`;
+    const msg = `¡Hola ${client.name}! 👋\n\nTe confirmamos tu pedido NATIVA:\n\n${items}\n\n💰 *Total: ${DataService.formatCurrency(order.total)}*\n📅 Entrega: ${DataService.formatDate(order.deliveryDate)}\n\n¡Gracias por elegirnos!`;
     return this.link(client.phone, msg);
   },
 
   deliveryNotice(client, order) {
-    const msg = `¡Hola ${client.name}! 🚚\n\nTu pedido *NATIVA* está en camino.\nLlegamos en breve a *${client.address}*.\n\nTotal a abonar: *${DataService.formatCurrency(order.total)}*\n\nAnte cualquier consulta respondé este mensaje. 💧`;
+    const msg = `¡Hola ${client.name}! 🚚\n\nTu pedido *NATIVA* está en camino.\nLlegamos en breve a *${client.address}*.\n\nTotal a abonar: *${DataService.formatCurrency(order.total)}*\n\nAnte cualquier consulta respondé este mensaje.`;
     return this.link(client.phone, msg);
   },
 
   paymentRequest(client, invoice) {
-    const msg = `¡Hola ${client.name}! 💳\n\nTe recordamos que tenés un pago pendiente:\n\n📄 Comprobante: *${invoice.number}*\n💰 Total: *${DataService.formatCurrency(invoice.total)}*\n\nPodés abonar por efectivo, transferencia o MercadoPago.\n\n¡Muchas gracias! 💧 *NATIVA*`;
+    const msg = `¡Hola ${client.name}! 💳\n\nTe recordamos que tenés un pago pendiente:\n\n📄 Comprobante: *${invoice.number}*\n💰 Total: *${DataService.formatCurrency(invoice.total)}*\n\nPodés abonar por efectivo, transferencia o MercadoPago.\n\n¡Muchas gracias! *NATIVA*`;
     return this.link(client.phone, msg);
   },
 
   promotion(client, promoText) {
-    const msg = `¡Hola ${client.name}! 🎁\n\n${promoText}\n\n¿Te interesa? Respondé este mensaje o llamanos.\n\n💧 *Equipo NATIVA*`;
+    const msg = `¡Hola ${client.name}! 🎁\n\n${promoText}\n\n¿Te interesa? Respondé este mensaje o llamanos.\n\n*Equipo NATIVA*`;
     return this.link(client.phone, msg);
   },
 
   referralShare(client) {
-    const msg = `¡Hola! Te comparto mi código de referido de *NATIVA* 💧\n\nUsá el código *${client.referralCode}* al registrarte y ambos recibimos un beneficio especial. 🎁\n\nPedís tu agua de calidad a domicilio fácilmente.`;
+    const msg = `¡Hola! Te comparto mi código de referido de *NATIVA*\n\nUsá el código *${client.referralCode}* al registrarte y ambos recibimos un beneficio especial. 🎁\n\nPedís tu agua de calidad a domicilio fácilmente.`;
     return this.link(client.phone, msg);
   },
 
   comingSoon(client) {
-    const msg = `¡Hola ${client.name}! 🚚\n\nSoy el repartidor de *NATIVA*. Estoy llegando a tu domicilio en los próximos minutos.\n\n📍 *${client.address || 'Tu dirección registrada'}*\n\nTené listo el pago por favor. ¡Hasta enseguida! 💧`;
+    const msg = `¡Hola ${client.name}! 🚚\n\nSoy el repartidor de *NATIVA*. Estoy llegando a tu domicilio en los próximos minutos.\n\n📍 *${client.address || 'Tu dirección registrada'}*\n\nTené listo el pago por favor. ¡Hasta enseguida!`;
     return this.link(client.phone, msg);
   },
 
   generic(client) {
-    return this.link(client.phone, `¡Hola ${client.name}! 👋 Te contactamos desde NATIVA 💧`);
+    return this.link(client.phone, `¡Hola ${client.name}! 👋 Te contactamos desde NATIVA.`);
   },
 
   _isIOS() {
