@@ -67,21 +67,17 @@ function Costs() {
       const data = await DataService.getCosts(targetMonth);
       setCosts(data || []);
 
-      // Load revenue for the month
       if (typeof DataService.getMonthRevenue === 'function') {
         const rev = await DataService.getMonthRevenue(targetMonth);
         setRevenue(rev || 0);
       } else {
-        // DataService.getMonthRevenue not yet implemented — default to 0
         setRevenue(0);
       }
 
-      // Load bottles delivered for the month
       if (typeof DataService.getMonthBottlesDelivered === 'function') {
         const btl = await DataService.getMonthBottlesDelivered(targetMonth);
         setBottlesDelivered(btl || 0);
       } else {
-        // DataService.getMonthBottlesDelivered not yet implemented — default to 0
         setBottlesDelivered(0);
       }
     } catch (err) {
@@ -102,7 +98,7 @@ function Costs() {
 
   const handleSave = async (data) => {
     try {
-      if (editing) {
+      if (editing && editing.id) {
         await DataService.updateCost(editing.id, data);
       } else {
         await DataService.createCost(data);
@@ -129,7 +125,6 @@ function Costs() {
     setOpenCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
   };
 
-  // Summary calculations
   const totalCosts = costs.reduce((s, c) => s + (c.total || c.amount || 0), 0);
   const margin = revenue - totalCosts;
   const marginPct = revenue > 0 ? ((margin / revenue) * 100).toFixed(1) : null;
@@ -187,7 +182,6 @@ function Costs() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        {/* Total costos */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-rose-100 flex items-center justify-center">
@@ -198,7 +192,6 @@ function Costs() {
           <p className="text-sm text-slate-500 mt-1">Total costos</p>
         </div>
 
-        {/* Ingresos */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center">
@@ -210,7 +203,6 @@ function Costs() {
           <p className="text-xs text-slate-400">Pagado</p>
         </div>
 
-        {/* Margen $ */}
         <div className={`rounded-2xl p-4 shadow-sm border ${margin >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
           <div className="flex items-start justify-between mb-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${margin >= 0 ? 'bg-emerald-100' : 'bg-red-100'}`}>
@@ -223,7 +215,6 @@ function Costs() {
           <p className="text-sm text-slate-600 mt-1">Margen ($)</p>
         </div>
 
-        {/* Margen % */}
         <div className={`rounded-2xl p-4 shadow-sm border ${margin >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
           <div className="flex items-start justify-between mb-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${margin >= 0 ? 'bg-emerald-100' : 'bg-red-100'}`}>
@@ -236,7 +227,6 @@ function Costs() {
           <p className="text-sm text-slate-600 mt-1">Margen (%)</p>
         </div>
 
-        {/* Costo por bidón */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-start justify-between mb-3">
             <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
@@ -253,14 +243,12 @@ function Costs() {
         </div>
       </div>
 
-      {/* Loading spinner */}
       {loading && (
         <div className="flex items-center justify-center py-10">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
 
-      {/* Empty state */}
       {!loading && costs.length === 0 && (
         <EmptyState
           icon="dollarSign"
@@ -270,7 +258,6 @@ function Costs() {
         />
       )}
 
-      {/* Cost list grouped by category */}
       {!loading && costs.length > 0 && (
         <div className="space-y-4">
           {CATEGORIES.map(cat => {
@@ -281,7 +268,6 @@ function Costs() {
 
             return (
               <div key={cat.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Category header */}
                 <button
                   onClick={() => toggleCategory(cat.id)}
                   className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors text-left"
@@ -303,7 +289,6 @@ function Costs() {
                   </div>
                 </button>
 
-                {/* Category items */}
                 {isOpen && (
                   <div className="border-t border-gray-100">
                     {items.length === 0 ? (
@@ -348,7 +333,6 @@ function Costs() {
             );
           })}
 
-          {/* Grand total footer */}
           <div className="bg-slate-800 rounded-2xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-slate-700 flex items-center justify-center">
@@ -372,7 +356,6 @@ function Costs() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
       <CostFormModal
         isOpen={showModal}
         editing={editing}
@@ -500,7 +483,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
     <Modal isOpen={isOpen} onClose={onClose} title={isEdit ? 'Editar gasto' : 'Nuevo gasto'} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* Category selector */}
         <FormField label="Categoría" required>
           <div className="grid grid-cols-2 gap-2">
             {CATEGORIES.map(cat => {
@@ -525,7 +507,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           </div>
         </FormField>
 
-        {/* Name with datalist suggestions */}
         <FormField label="Nombre del gasto" required>
           <input
             id="cost-name-input"
@@ -541,7 +522,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           </datalist>
         </FormField>
 
-        {/* Amount + quantity */}
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Monto unitario ($)" required>
             <input
@@ -567,7 +547,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           </FormField>
         </div>
 
-        {/* Unit type */}
         <FormField label="Tipo de unidad">
           <select value={unit} onChange={e => setUnit(e.target.value)} className={inputCls()}>
             {UNIT_OPTIONS.map(u => (
@@ -576,7 +555,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           </select>
         </FormField>
 
-        {/* Total preview */}
         {quantity > 1 && (
           <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-100">
             <span className="text-sm text-blue-700 font-medium">
@@ -588,7 +566,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           </div>
         )}
 
-        {/* Date */}
         <FormField label="Fecha">
           <input
             type="date"
@@ -598,7 +575,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           />
         </FormField>
 
-        {/* Notes */}
         <FormField label="Notas (opcional)">
           <textarea
             value={notes}
@@ -609,7 +585,6 @@ function CostFormModal({ isOpen, editing, onClose, onSave, month }) {
           />
         </FormField>
 
-        {/* Actions */}
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
           <Btn type="button" onClick={onClose} variant="secondary">Cancelar</Btn>
           <Btn type="submit" variant="primary" icon={isEdit ? 'check' : 'plus'} disabled={saving}>
