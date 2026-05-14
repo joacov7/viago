@@ -17,7 +17,7 @@ function fmtDateTime(s) {
   return new Date(s).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── No token screen ─────────────────────────────────────────────────────────
+// ─── No token screen ─────────────────────────────────────────────────────
 
 function NoAccess() {
   return (
@@ -33,7 +33,7 @@ function NoAccess() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
           <div className="text-4xl mb-3">🔗</div>
           <h2 className="font-bold text-slate-900 mb-2">Link de acceso requerido</h2>
-          <p className="text-sm text-slate-500">Pedile a NATIVA que te envíe tu link personal de acceso por WhatsApp.</p>
+          <p className="text-sm text-slate-500">Pedíle a NATIVA que te envíe tu link personal de acceso por WhatsApp.</p>
         </div>
       </div>
     </div>
@@ -46,13 +46,13 @@ function ClientNotFound() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-sm text-center">
         <div className="text-4xl mb-3">❌</div>
         <h2 className="font-bold text-slate-900 mb-2">Link inválido o expirado</h2>
-        <p className="text-sm text-slate-500">Pedile a NATIVA que te envíe un nuevo link de acceso.</p>
+        <p className="text-sm text-slate-500">Pedíle a NATIVA que te envíe un nuevo link de acceso.</p>
       </div>
     </div>
   );
 }
 
-// ─── Client Portal App ───────────────────────────────────────────────────────
+// ─── Client Portal App ───────────────────────────────────────────────────────────────
 
 function ClientPortalApp({ client, config }) {
   const [tab, setTab] = React.useState('home');
@@ -105,7 +105,7 @@ function ClientPortalApp({ client, config }) {
   );
 }
 
-// ─── Home ────────────────────────────────────────────────────────────────────
+// ─── Home ──────────────────────────────────────────────────────────────────────────
 
 function PortalHome({ client, config, onTab }) {
   const pct = config.pointsForReward > 0
@@ -168,7 +168,7 @@ function PortalHome({ client, config, onTab }) {
   );
 }
 
-// ─── Order ───────────────────────────────────────────────────────────────────
+// ─── Order ──────────────────────────────────────────────────────────────────────
 
 function PortalOrder({ client, onDone }) {
   const [products, setProducts] = React.useState([]);
@@ -267,7 +267,7 @@ function PortalOrder({ client, onDone }) {
   );
 }
 
-// ─── Orders ──────────────────────────────────────────────────────────────────
+// ─── Orders ───────────────────────────────────────────────────────────────────
 
 function PortalOrders({ client }) {
   const [orders, setOrders] = React.useState([]);
@@ -318,7 +318,7 @@ function PortalOrders({ client }) {
   );
 }
 
-// ─── Invoices ────────────────────────────────────────────────────────────────
+// ─── Invoices ──────────────────────────────────────────────────────────────
 
 function PortalInvoices({ client }) {
   const [invoices, setInvoices] = React.useState([]);
@@ -359,7 +359,7 @@ function PortalInvoices({ client }) {
   );
 }
 
-// ─── Referrals ───────────────────────────────────────────────────────────────
+// ─── Referrals ───────────────────────────────────────────────────────────────────
 
 function PortalReferrals({ client, config }) {
   const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
@@ -395,7 +395,6 @@ function PortalReferrals({ client, config }) {
 
   return (
     <div className="space-y-4 pt-2">
-      {/* Banner */}
       <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
         <p className="text-green-100 text-sm mb-1">Programa de referidos</p>
         <h2 className="text-xl font-bold">Referí y ganás</h2>
@@ -404,7 +403,6 @@ function PortalReferrals({ client, config }) {
         </p>
       </div>
 
-      {/* Beneficios */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
           <p className="text-2xl font-bold text-green-600">${config.referralReferrerReward || 500}</p>
@@ -416,7 +414,6 @@ function PortalReferrals({ client, config }) {
         </div>
       </div>
 
-      {/* Código */}
       {(client.referralCode || client.code) && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tu código</p>
@@ -430,7 +427,6 @@ function PortalReferrals({ client, config }) {
         </div>
       )}
 
-      {/* Mensaje editable */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
         <p className="text-sm font-semibold text-slate-700">Mensaje para compartir</p>
         <textarea
@@ -454,7 +450,7 @@ function PortalReferrals({ client, config }) {
     </div>
   );
 }
-// ─── Referral Landing (amigo que recibió el link) ────────────────────────────
+// ─── Referral Landing (amigo que recibió el link) ────────────────────────────────────────
 
 function ReferralLanding({ refCode, config }) {
   const [referrer, setReferrer] = React.useState(null);
@@ -550,18 +546,19 @@ function ReferralLanding({ refCode, config }) {
   );
 }
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
-
+// ─── Root ─────────────────────────────────────────────────────────────────────────────
 function ClientPortalRoot() {
-  const [state, setState] = React.useState('loading'); // loading | referral | no-token | not-found | ready
+  const [state, setState] = React.useState('loading');
   const [client, setClient] = React.useState(null);
   const [config, setConfig] = React.useState({});
   const [refCode, setRefCode] = React.useState('');
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
     const ref = params.get('ref');
+
+    // Token: URL tiene prioridad, sino lee localStorage (para PWA instalada)
+    const token = params.get('token') || localStorage.getItem('nativa_client_token');
 
     if (!token && ref) {
       setRefCode(ref);
