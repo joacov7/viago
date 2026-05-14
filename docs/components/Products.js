@@ -159,6 +159,16 @@ function ProductFormModal({ isOpen, product, onClose, onSave }) {
             />
           </div>
         </FormField>
+        <FormField label="Imagen del producto (URL)" hint="Se muestra en la app del cliente. Pegá la URL de una foto.">
+          <input value={form.imageUrl || ''} onChange={e => set('imageUrl', e.target.value)}
+            className={inputCls()} placeholder="https://..." type="url" />
+          {form.imageUrl && (
+            <div className="mt-2 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+              <img src={form.imageUrl} alt="preview" className="w-full h-full object-cover"
+                onError={e => { e.target.style.display = 'none'; }} />
+            </div>
+          )}
+        </FormField>
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
           <Btn type="button" onClick={onClose} variant="secondary">Cancelar</Btn>
           <Btn type="submit" variant="primary" icon={product ? 'check' : 'plus'}>{product ? 'Guardar cambios' : 'Crear producto'}</Btn>

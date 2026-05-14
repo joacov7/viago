@@ -51,6 +51,7 @@ const DataService = {
     return {
       companyName: 'NATIVA', tagline: 'Agua que llega. Siempre.',
       phone: '', email: '', address: '', city: '', primaryColor: '#2563EB',
+      clientHeroImage: '',
       pointsPerOrder: 10, pointsForReward: 100, freeProductId: 1, referralBonus: 50,
       referralsEnabled: false, referralReferrerReward: 500, referralReferredDiscount: 10,
       referralMessage: 'Referí a un amigo y ambos ganan crédito en su cuenta.',

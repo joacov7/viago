@@ -130,6 +130,22 @@ function Config({ onConfigChange }) {
                     </div>
                   </div>
                 </FormField>
+
+                <FormField label="Imagen hero de la app del cliente" hint="Se muestra de fondo en el banner principal de la app. Usá una URL de imagen (JPG/PNG/WebP).">
+                  <input type="url" value={config.clientHeroImage || ''} onChange={e => set('clientHeroImage', e.target.value)} className={inputCls()} placeholder="https://..." />
+                  {config.clientHeroImage && (
+                    <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200 relative"
+                      style={{ height: 120, background: 'linear-gradient(135deg, #0052D4, #00D2FF)' }}>
+                      <img src={config.clientHeroImage} alt="Hero preview"
+                        className="absolute inset-0 w-full h-full object-cover opacity-40"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                      <div className="absolute inset-0 flex flex-col justify-center px-5">
+                        <p className="text-white/70 text-xs mb-0.5 font-medium">¡Hola, Cliente!</p>
+                        <p className="text-white font-extrabold text-sm leading-snug">Agua Pura,<br/><span style={{color:'#9CECFB'}}>Directo a tu Hogar</span></p>
+                      </div>
+                    </div>
+                  )}
+                </FormField>
               </div>
             )}
 

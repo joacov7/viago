@@ -52,35 +52,100 @@ function ClientNotFound() {
   );
 }
 
+// ─── Nav SVG icons ────────────────────────────────────────────────────────────
+
+function NavIconHome({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  );
+}
+function NavIconDrop({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill={active ? color : 'none'}
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+    </svg>
+  );
+}
+function NavIconBox({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  );
+}
+function NavIconDoc({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  );
+}
+function NavIconGift({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 12 20 22 4 22 4 12"/>
+      <rect x="2" y="7" width="20" height="5"/>
+      <line x1="12" y1="22" x2="12" y2="7"/>
+      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+    </svg>
+  );
+}
+
 // ─── Client Portal App ───────────────────────────────────────────────────────────────
 
 function ClientPortalApp({ client, config }) {
   const [tab, setTab] = React.useState('home');
+  const primary = config.primaryColor || '#2563EB';
 
   const tabs = [
-    { id: 'home',     label: 'Inicio',      icon: '🏠' },
-    { id: 'order',    label: 'Pedir',       icon: '💧' },
-    { id: 'orders',   label: 'Mis pedidos', icon: '📦' },
-    { id: 'invoices', label: 'Facturas',    icon: '📄' },
-    ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', icon: '🎁' }] : []),
+    { id: 'home',     label: 'Inicio',   Icon: NavIconHome },
+    { id: 'order',    label: 'Pedir',    Icon: NavIconDrop },
+    { id: 'orders',   label: 'Pedidos',  Icon: NavIconBox },
+    { id: 'invoices', label: 'Facturas', Icon: NavIconDoc },
+    ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', Icon: NavIconGift }] : []),
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen pb-20" style={{ background: 'linear-gradient(180deg,#fff 0%,#F4F7FA 100%)' }}>
+      {/* ── Header ── */}
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
-            <span className="text-white text-sm">💧</span>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: `linear-gradient(135deg,${primary},#00D2FF)` }}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
+              <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+            </svg>
           </div>
-          <div>
-            <p className="font-bold text-slate-900 text-sm leading-none">{config.companyName || 'NATIVA'}</p>
-            <p className="text-xs text-slate-400 leading-none mt-0.5">{client.name}</p>
-          </div>
+          <span className="font-black text-slate-900 text-base" style={{ letterSpacing: '0.12em' }}>
+            {(config.companyName || 'NATIVA').toUpperCase()}
+          </span>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-amber-600">{client.points || 0} pts</p>
-          <p className="text-xs text-slate-400">mis puntos</p>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ background: '#00D2FF' }} />
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-bold text-amber-500 leading-none">{client.points || 0} pts</p>
+            <p className="text-xs text-slate-400 leading-none mt-0.5">{client.name.split(' ')[0]}</p>
+          </div>
         </div>
       </header>
 
@@ -92,76 +157,185 @@ function ClientPortalApp({ client, config }) {
         {tab === 'referrals' && <PortalReferrals client={client} config={config} />}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-10">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${tab === t.id ? 'text-blue-600' : 'text-slate-400'}`}>
-            <span className="text-lg leading-none">{t.icon}</span>
-            {t.label}
-          </button>
-        ))}
+      {/* ── Bottom Nav ── */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-10"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom,0px)' }}>
+        {tabs.map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors">
+              <t.Icon active={active} color={primary} />
+              <span className="text-xs font-medium" style={{ color: active ? primary : '#94a3b8' }}>
+                {t.label}
+              </span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
 }
 
-// ─── Home ──────────────────────────────────────────────────────────────────────────
+// ─── Home ─────────────────────────────────────────────────────────────────────
 
 function PortalHome({ client, config, onTab }) {
+  const [products, setProducts] = React.useState([]);
+  const primary = config.primaryColor || '#0052D4';
   const pct = config.pointsForReward > 0
     ? Math.min(100, Math.round((client.points || 0) / config.pointsForReward * 100))
     : 0;
+  const remaining = Math.max(0, (config.pointsForReward || 100) - (client.points || 0));
+
+  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 text-white">
-        <p className="text-blue-200 text-sm mb-1">¡Hola!</p>
-        <h2 className="text-xl font-bold">{client.name}</h2>
-        <p className="text-blue-200 text-xs mt-0.5">{client.code}</p>
-      </div>
+    <div className="-mx-4 -mt-2">
+      {/* ── Hero banner ── */}
+      <div className="relative overflow-hidden px-5 pt-6 pb-5"
+        style={{ background: `linear-gradient(145deg,${primary} 0%,#0ea5e9 55%,#00D2FF 100%)` }}>
+        {config.clientHeroImage && (
+          <img src={config.clientHeroImage} alt="" aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
+            onError={e => { e.target.style.display = 'none'; }} />
+        )}
+        <div className="relative z-10">
+          <p className="text-white/70 text-sm font-medium mb-0.5">
+            ¡Hola, {client.name.split(' ')[0]}! 👋
+          </p>
+          <h1 className="text-white text-xl font-extrabold leading-snug mb-4 tracking-tight">
+            Agua Pura de Vertiente,<br />
+            <span style={{ color: '#9CECFB' }}>{config.tagline || 'Directo a tu Hogar'}</span>
+          </h1>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-slate-900">Mis puntos</h3>
-          <span className="text-2xl font-bold text-amber-600">{client.points || 0}</span>
-        </div>
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="text-xs text-slate-400 mt-2">
-          {client.points || 0} / {config.pointsForReward || 100} pts para tu próximo premio
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => onTab('order')}
-          className="bg-blue-600 text-white rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-blue-700 transition-colors">
-          <span className="text-2xl">💧</span>
-          <span className="text-sm font-semibold">Hacer pedido</span>
-        </button>
-        <button onClick={() => onTab('orders')}
-          className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 text-slate-700 shadow-sm">
-          <span className="text-2xl">📦</span>
-          <span className="text-sm font-semibold">Mis pedidos</span>
-        </button>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        <h3 className="font-semibold text-slate-900 mb-3 text-sm">Mi información</h3>
-        <div className="space-y-2 text-sm">
-          {client.address && (
-            <div className="flex items-start gap-2">
-              <span className="text-slate-400 flex-shrink-0">📍</span>
-              <span className="text-slate-700">{client.address}{client.city ? `, ${client.city}` : ''}</span>
+          {/* Weather + Hydration */}
+          <div className="bg-white/15 rounded-2xl p-3.5 flex items-center">
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-2xl leading-none">☀️</span>
+              <div>
+                <p className="text-white text-xs font-semibold">24°C · Caluroso</p>
+                <p className="text-white/60 text-xs">Hoy</p>
+              </div>
             </div>
-          )}
-          {client.phone && <div className="flex items-center gap-2"><span className="text-slate-400">📞</span><span className="text-slate-700">{client.phone}</span></div>}
-          {client.email && <div className="flex items-center gap-2"><span className="text-slate-400">✉️</span><span className="text-slate-700">{client.email}</span></div>}
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">🔄</span>
-            <span className="text-slate-700 capitalize">{client.frequency || '—'}</span>
-            {client.deliveryDay && <span className="text-slate-500">· {client.deliveryDay}</span>}
+            <div className="w-px self-stretch bg-white/25 mx-3" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-white/80 text-xs font-medium">Hidratación</p>
+                <p className="text-xs font-bold" style={{ color: '#9CECFB' }}>65%</p>
+              </div>
+              <div className="h-1.5 bg-white/25 rounded-full overflow-hidden">
+                <div className="h-full rounded-full"
+                  style={{ width: '65%', background: 'linear-gradient(90deg,#9CECFB,#00D2FF)' }} />
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="px-4 pt-4 space-y-4 pb-32">
+        {/* ── Points card ── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+            <span className="text-2xl leading-none">⭐</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline justify-between mb-1.5">
+              <p className="text-sm font-semibold text-slate-800">Mis puntos</p>
+              <p className="font-bold text-amber-500 text-lg leading-none">{client.points || 0}</p>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all"
+                style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">{remaining} pts para tu próximo premio</p>
+          </div>
+        </div>
+
+        {/* ── Products carousel ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-bold text-slate-900">Nuestros Productos</p>
+            <button onClick={() => onTab('order')}
+              className="text-xs font-semibold" style={{ color: primary }}>
+              Ver todos →
+            </button>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {products.length === 0
+              ? [1, 2, 3].map(i => (
+                  <div key={i} className="w-36 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 snap-start">
+                    <div className="w-full h-24 bg-gray-100 rounded-xl mb-3 animate-pulse" />
+                    <div className="h-3 bg-gray-100 rounded mb-2 animate-pulse" />
+                    <div className="h-4 bg-gray-100 rounded w-2/3 animate-pulse" />
+                  </div>
+                ))
+              : products.map(p => (
+                  <button key={p.id} onClick={() => onTab('order')}
+                    className="w-36 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-3.5 text-left snap-start active:scale-95 transition-transform">
+                    <div className="w-full h-24 rounded-xl mb-3 flex items-center justify-center overflow-hidden"
+                      style={{ background: 'linear-gradient(135deg,#EFF6FF,#E0F2FE)' }}>
+                      {p.imageUrl
+                        ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover rounded-xl"
+                            onError={e => { e.target.style.display='none'; }} />
+                        : <svg viewBox="0 0 24 24" width="40" height="40" fill={primary} opacity="0.5">
+                            <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                          </svg>
+                      }
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium leading-tight mb-1 line-clamp-2">{p.name}</p>
+                    <p className="text-sm font-bold" style={{ color: primary }}>{fmt(p.price)}</p>
+                  </button>
+                ))
+            }
+          </div>
+        </div>
+
+        {/* ── My info ── */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <h3 className="font-semibold text-slate-900 mb-3 text-sm">Mi información</h3>
+          <div className="space-y-2.5 text-sm">
+            {client.address && (
+              <div className="flex items-start gap-2">
+                <span className="text-slate-400 flex-shrink-0">📍</span>
+                <span className="text-slate-700 leading-tight">{client.address}{client.city ? `, ${client.city}` : ''}</span>
+              </div>
+            )}
+            {client.phone && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">📞</span>
+                <span className="text-slate-700">{client.phone}</span>
+              </div>
+            )}
+            {client.email && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">✉️</span>
+                <span className="text-slate-700">{client.email}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">🔄</span>
+              <span className="text-slate-700 capitalize">{client.frequency || '—'}</span>
+              {client.deliveryDay && <span className="text-slate-500">· {client.deliveryDay}</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sticky CTA ── */}
+      <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="max-w-lg mx-auto pointer-events-auto">
+          <button onClick={() => onTab('order')}
+            className="w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2.5 active:scale-95 transition-transform"
+            style={{
+              background: 'linear-gradient(135deg,#0052D4 0%,#00D2FF 100%)',
+              boxShadow: '0 8px 24px rgba(0,82,212,0.35)',
+            }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+              <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+            </svg>
+            PEDIR AHORA
+          </button>
         </div>
       </div>
     </div>
