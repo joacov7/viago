@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>NATIVA — Portal del cliente</title>
   <meta name="theme-color" content="#2563EB">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="NATIVA">
+  <link rel="manifest" href="./manifest-client.json">
 
   <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
   <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -19,6 +24,16 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin { animation: spin 1s linear infinite; }
   </style>
+
+  <script>
+    // Persist token so PWA works after installation (without URL param)
+    const urlToken = new URLSearchParams(window.location.search).get('token');
+    if (urlToken) localStorage.setItem('nativa_client_token', urlToken);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw-client.js').catch(() => {});
+    }
+  </script>
 
   <div id="root"></div>
 
