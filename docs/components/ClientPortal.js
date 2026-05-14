@@ -202,25 +202,6 @@ function PortalHome({ client, config, onTab }) {
         </h1>
       </div>
 
-      {/* ── Weather + Hydration card ── */}
-      <div className="bg-white rounded-3xl p-5 border border-blue-50"
-        style={{ boxShadow: '0 4px 20px rgba(37,99,235,.08)' }}>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Weather Status</p>
-        <p className="text-xl font-bold text-slate-900 mb-4">Hoy: 24°C, Caluroso ☀️</p>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Hydration Progress</p>
-        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700"
-            style={{ width: '65%', background: `linear-gradient(90deg,${primary},#06b6d4)` }} />
-        </div>
-      </div>
-
-      {/* ── Carousel dots ── */}
-      <div className="flex items-center justify-center gap-2 -mt-2">
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: primary }} />
-        <span className="w-2 h-2 rounded-full bg-gray-200" />
-        <span className="w-2 h-2 rounded-full bg-gray-200" />
-      </div>
-
       {/* ── Products carousel ── */}
       <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-1"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
