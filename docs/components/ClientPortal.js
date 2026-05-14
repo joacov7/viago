@@ -55,17 +55,21 @@ function ClientNotFound() {
 // ─── Nav SVG icons ────────────────────────────────────────────────────────────
 
 function NavIconHome({ active, color }) {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
-      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  );
+  return active
+    ? (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill={color}>
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    );
 }
 function NavIconDrop({ active, color }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill={active ? color : 'none'}
+    <svg viewBox="0 0 24 24" width="24" height="24" fill={active ? color : 'none'}
       stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
     </svg>
@@ -73,7 +77,7 @@ function NavIconDrop({ active, color }) {
 }
 function NavIconBox({ active, color }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
       stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
       <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
@@ -83,7 +87,7 @@ function NavIconBox({ active, color }) {
 }
 function NavIconDoc({ active, color }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
       stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
@@ -94,7 +98,7 @@ function NavIconDoc({ active, color }) {
 }
 function NavIconGift({ active, color }) {
   return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
       stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 12 20 22 4 22 4 12"/>
       <rect x="2" y="7" width="20" height="5"/>
@@ -120,36 +124,34 @@ function ClientPortalApp({ client, config }) {
   ];
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: 'linear-gradient(180deg,#fff 0%,#F4F7FA 100%)' }}>
+    <div className="min-h-screen pb-20"
+      style={{ background: 'linear-gradient(155deg,#dbeafe 0%,#eff6ff 25%,#f8fafc 55%,#ffffff 80%)' }}>
+
       {/* ── Header ── */}
-      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <header className="px-5 pt-5 pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `linear-gradient(135deg,${primary},#00D2FF)` }}>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="white">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+            style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)' }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
               <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
             </svg>
           </div>
-          <span className="font-black text-slate-900 text-base" style={{ letterSpacing: '0.12em' }}>
+          <span className="font-black text-slate-900 text-xl" style={{ letterSpacing: '0.06em' }}>
             {(config.companyName || 'NATIVA').toUpperCase()}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <div className="flex items-center gap-2">
+          <div className="relative w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ background: '#00D2FF' }} />
-          </div>
-          <div className="text-right">
-            <p className="text-xs font-bold text-amber-500 leading-none">{client.points || 0} pts</p>
-            <p className="text-xs text-slate-400 leading-none mt-0.5">{client.name.split(' ')[0]}</p>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white" style={{ background: primary }} />
           </div>
         </div>
       </header>
 
-      <div className="p-4 max-w-lg mx-auto">
+      <div className="px-5 max-w-lg mx-auto">
         {tab === 'home'      && <PortalHome      client={client} config={config} onTab={setTab} />}
         {tab === 'order'     && <PortalOrder     client={client} onDone={() => setTab('orders')} />}
         {tab === 'orders'    && <PortalOrders    client={client} />}
@@ -164,7 +166,11 @@ function ClientPortalApp({ client, config }) {
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors">
+              className="flex-1 flex flex-col items-center gap-0.5 pt-3 pb-2.5 relative transition-colors">
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                  style={{ background: primary }} />
+              )}
               <t.Icon active={active} color={primary} />
               <span className="text-xs font-medium" style={{ color: active ? primary : '#94a3b8' }}>
                 {t.label}
@@ -181,163 +187,112 @@ function ClientPortalApp({ client, config }) {
 
 function PortalHome({ client, config, onTab }) {
   const [products, setProducts] = React.useState([]);
-  const primary = config.primaryColor || '#0052D4';
-  const pct = config.pointsForReward > 0
-    ? Math.min(100, Math.round((client.points || 0) / config.pointsForReward * 100))
-    : 0;
-  const remaining = Math.max(0, (config.pointsForReward || 100) - (client.points || 0));
+  const primary = config.primaryColor || '#2563EB';
 
   React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
 
   return (
-    <div className="-mx-4 -mt-2">
-      {/* ── Hero banner ── */}
-      <div className="relative overflow-hidden px-5 pt-6 pb-5"
-        style={{ background: `linear-gradient(145deg,${primary} 0%,#0ea5e9 55%,#00D2FF 100%)` }}>
-        {config.clientHeroImage && (
-          <img src={config.clientHeroImage} alt="" aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
-            onError={e => { e.target.style.display = 'none'; }} />
-        )}
-        <div className="relative z-10">
-          <p className="text-white/70 text-sm font-medium mb-0.5">
-            ¡Hola, {client.name.split(' ')[0]}! 👋
-          </p>
-          <h1 className="text-white text-xl font-extrabold leading-snug mb-4 tracking-tight">
-            Agua Pura de Vertiente,<br />
-            <span style={{ color: '#9CECFB' }}>{config.tagline || 'Directo a tu Hogar'}</span>
-          </h1>
+    <div className="pt-3 pb-36 space-y-5">
 
-          {/* Weather + Hydration */}
-          <div className="bg-white/15 rounded-2xl p-3.5 flex items-center">
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-2xl leading-none">☀️</span>
-              <div>
-                <p className="text-white text-xs font-semibold">24°C · Caluroso</p>
-                <p className="text-white/60 text-xs">Hoy</p>
-              </div>
-            </div>
-            <div className="w-px self-stretch bg-white/25 mx-3" />
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-white/80 text-xs font-medium">Hidratación</p>
-                <p className="text-xs font-bold" style={{ color: '#9CECFB' }}>65%</p>
-              </div>
-              <div className="h-1.5 bg-white/25 rounded-full overflow-hidden">
-                <div className="h-full rounded-full"
-                  style={{ width: '65%', background: 'linear-gradient(90deg,#9CECFB,#00D2FF)' }} />
-              </div>
-            </div>
-          </div>
+      {/* ── Hero title ── */}
+      <div>
+        <h1 className="text-4xl font-black text-slate-900 leading-tight tracking-tight">
+          Agua Pura de<br />Vertiente,<br />
+          <span className="text-slate-800">Directo a tu Hogar</span>
+        </h1>
+      </div>
+
+      {/* ── Weather + Hydration card ── */}
+      <div className="bg-white rounded-3xl p-5 border border-blue-50"
+        style={{ boxShadow: '0 4px 20px rgba(37,99,235,.08)' }}>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Weather Status</p>
+        <p className="text-xl font-bold text-slate-900 mb-4">Hoy: 24°C, Caluroso ☀️</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Hydration Progress</p>
+        <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-700"
+            style={{ width: '65%', background: `linear-gradient(90deg,${primary},#06b6d4)` }} />
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-4 pb-32">
-        {/* ── Points card ── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-            <span className="text-2xl leading-none">⭐</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline justify-between mb-1.5">
-              <p className="text-sm font-semibold text-slate-800">Mis puntos</p>
-              <p className="font-bold text-amber-500 text-lg leading-none">{client.points || 0}</p>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all"
-                style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />
-            </div>
-            <p className="text-xs text-slate-400 mt-1">{remaining} pts para tu próximo premio</p>
-          </div>
-        </div>
-
-        {/* ── Products carousel ── */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="font-bold text-slate-900">Nuestros Productos</p>
-            <button onClick={() => onTab('order')}
-              className="text-xs font-semibold" style={{ color: primary }}>
-              Ver todos →
-            </button>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {products.length === 0
-              ? [1, 2, 3].map(i => (
-                  <div key={i} className="w-36 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 snap-start">
-                    <div className="w-full h-24 bg-gray-100 rounded-xl mb-3 animate-pulse" />
-                    <div className="h-3 bg-gray-100 rounded mb-2 animate-pulse" />
-                    <div className="h-4 bg-gray-100 rounded w-2/3 animate-pulse" />
-                  </div>
-                ))
-              : products.map(p => (
-                  <button key={p.id} onClick={() => onTab('order')}
-                    className="w-36 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-gray-100 p-3.5 text-left snap-start active:scale-95 transition-transform">
-                    <div className="w-full h-24 rounded-xl mb-3 flex items-center justify-center overflow-hidden"
-                      style={{ background: 'linear-gradient(135deg,#EFF6FF,#E0F2FE)' }}>
-                      {p.imageUrl
-                        ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover rounded-xl"
-                            onError={e => { e.target.style.display='none'; }} />
-                        : <svg viewBox="0 0 24 24" width="40" height="40" fill={primary} opacity="0.5">
-                            <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-                          </svg>
-                      }
-                    </div>
-                    <p className="text-xs text-slate-600 font-medium leading-tight mb-1 line-clamp-2">{p.name}</p>
-                    <p className="text-sm font-bold" style={{ color: primary }}>{fmt(p.price)}</p>
-                  </button>
-                ))
-            }
-          </div>
-        </div>
-
-        {/* ── My info ── */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <h3 className="font-semibold text-slate-900 mb-3 text-sm">Mi información</h3>
-          <div className="space-y-2.5 text-sm">
-            {client.address && (
-              <div className="flex items-start gap-2">
-                <span className="text-slate-400 flex-shrink-0">📍</span>
-                <span className="text-slate-700 leading-tight">{client.address}{client.city ? `, ${client.city}` : ''}</span>
-              </div>
-            )}
-            {client.phone && (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">📞</span>
-                <span className="text-slate-700">{client.phone}</span>
-              </div>
-            )}
-            {client.email && (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">✉️</span>
-                <span className="text-slate-700">{client.email}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">🔄</span>
-              <span className="text-slate-700 capitalize">{client.frequency || '—'}</span>
-              {client.deliveryDay && <span className="text-slate-500">· {client.deliveryDay}</span>}
-            </div>
-          </div>
-        </div>
+      {/* ── Carousel dots ── */}
+      <div className="flex items-center justify-center gap-2 -mt-2">
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: primary }} />
+        <span className="w-2 h-2 rounded-full bg-gray-200" />
+        <span className="w-2 h-2 rounded-full bg-gray-200" />
       </div>
 
-      {/* ── Sticky CTA ── */}
-      <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
-        <div className="max-w-lg mx-auto pointer-events-auto">
-          <button onClick={() => onTab('order')}
-            className="w-full h-14 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2.5 active:scale-95 transition-transform"
-            style={{
-              background: 'linear-gradient(135deg,#0052D4 0%,#00D2FF 100%)',
-              boxShadow: '0 8px 24px rgba(0,82,212,0.35)',
-            }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
-              <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-            </svg>
-            PEDIR AHORA
-          </button>
-        </div>
+      {/* ── Products carousel ── */}
+      <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-1"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        {products.length === 0
+          ? [1, 2, 3].map(i => (
+              <div key={i} className="w-[120px] flex-shrink-0 bg-white rounded-2xl p-3 border border-gray-100"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
+                <div className="w-full h-28 bg-gray-100 rounded-xl mb-2 animate-pulse" />
+                <div className="h-3 bg-gray-100 rounded mb-1.5 animate-pulse" />
+                <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
+              </div>
+            ))
+          : products.map(p => (
+              <button key={p.id} onClick={() => onTab('order')}
+                className="w-[120px] flex-shrink-0 bg-white rounded-2xl p-3 text-left border border-gray-100 active:scale-95 transition-transform"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
+                <div className="w-full h-28 rounded-xl mb-2 flex items-center justify-center overflow-hidden bg-slate-50">
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-1"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    : <svg viewBox="0 0 24 24" width="44" height="44" fill={primary} opacity="0.25">
+                        <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                      </svg>
+                  }
+                </div>
+                <p className="text-xs font-semibold text-slate-800 leading-tight mb-0.5 line-clamp-2">{p.name}</p>
+                <p className="text-sm font-bold text-slate-900">{fmt(p.price)}</p>
+              </button>
+            ))
+        }
       </div>
+
+      {/* ── CTA pill button ── */}
+      <div className="flex justify-center pt-2">
+        <button onClick={() => onTab('order')}
+          className="flex items-center gap-2 px-10 py-4 rounded-full text-white font-bold text-base active:scale-95 transition-transform"
+          style={{
+            background: primary,
+            boxShadow: `0 6px 24px ${primary}55`,
+          }}>
+          PEDIR AHORA
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="white">
+            <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* ── Points card (compacta) ── */}
+      {(client.points > 0 || config.pointsForReward > 0) && (() => {
+        const pct = config.pointsForReward > 0
+          ? Math.min(100, Math.round((client.points || 0) / config.pointsForReward * 100))
+          : 0;
+        const remaining = Math.max(0, (config.pointsForReward || 100) - (client.points || 0));
+        return (
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-3"
+            style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl leading-none">⭐</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between mb-1.5">
+                <p className="text-sm font-semibold text-slate-700">Mis puntos</p>
+                <p className="font-bold text-amber-500 text-base leading-none">{client.points || 0}</p>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">{remaining} pts para tu próximo premio</p>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
