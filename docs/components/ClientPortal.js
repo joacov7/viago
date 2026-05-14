@@ -197,8 +197,7 @@ function PortalHome({ client, config, onTab }) {
       {/* ── Hero title ── */}
       <div>
         <h1 className="text-4xl font-black text-slate-900 leading-tight tracking-tight">
-          Agua Pura de<br />Vertiente,<br />
-          <span className="text-slate-800">Directo a tu Hogar</span>
+          {config.tagline || 'Agua Pura de Vertiente, Directo a tu Hogar'}
         </h1>
       </div>
 
