@@ -324,41 +324,66 @@ function PortalOrder({ client, onDone }) {
     await DataService.createOrder({ clientId: client.id, items: orderItems, total, deliveryDate: date, notes });
     setLoading(false);
     setSuccess(true);
-    setTimeout(() => { setSuccess(false); setQtys({}); setNotes(''); onDone(); }, 2000);
+    setTimeout(() => { setSuccess(false); setQtys({}); setNotes(''); onDone(); }, 2500);
   };
 
   if (success) {
     return (
-      <div className="text-center py-16">
-        <div className="text-5xl mb-4">✅</div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">¡Pedido enviado!</h2>
-        <p className="text-slate-500 text-sm">Te avisamos cuando esté en camino.</p>
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 8px 24px rgba(34,197,94,.35)' }}>
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pedido enviado!</h2>
+        <p className="text-slate-400 text-sm">Te avisamos cuando esté en camino.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-      <h2 className="text-lg font-bold text-slate-900">Nuevo pedido</h2>
+    <form onSubmit={handleSubmit} className="pt-3 pb-36 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Nuevo pedido</h1>
 
+      {/* Products list */}
       {products.length === 0 ? (
-        <div className="text-center py-8 text-slate-400">Cargando productos...</div>
+        <div className="flex flex-col items-center py-12 text-slate-400">
+          <Spinner />
+          <p className="mt-4 text-sm">Cargando productos...</p>
+        </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
-          {products.map(p => (
-            <div key={p.id} className="flex items-center gap-3 p-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 text-sm">{p.name}</p>
-                <p className="text-xs text-blue-600 font-semibold">{fmt(p.price)}</p>
+        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden"
+          style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          {products.map((p, i) => (
+            <div key={p.id}
+              className={`flex items-center gap-3 p-4 ${i < products.length - 1 ? 'border-b border-slate-50' : ''}`}>
+              {/* Thumbnail */}
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-50">
+                {p.imageUrl
+                  ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-0.5"
+                      onError={e => { e.target.style.display = 'none'; }} />
+                  : <svg viewBox="0 0 24 24" width="22" height="22" fill="#93c5fd">
+                      <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                    </svg>
+                }
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</p>
+                <p className="text-xs font-bold text-blue-600 mt-0.5">{fmt(p.price)}</p>
+              </div>
+              {/* Qty stepper */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button type="button" onClick={() => setQty(p.id, (qtys[p.id] || 0) - 1)}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-slate-700 font-bold text-lg flex items-center justify-center">
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">
                   −
                 </button>
-                <span className="w-8 text-center font-semibold text-slate-900">{qtys[p.id] || 0}</span>
+                <span className="w-7 text-center font-bold text-slate-900 text-sm tabular-nums">
+                  {qtys[p.id] || 0}
+                </span>
                 <button type="button" onClick={() => setQty(p.id, (qtys[p.id] || 0) + 1)}
-                  className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg flex items-center justify-center">
+                  className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center active:scale-90 transition-transform"
+                  style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)' }}>
                   +
                 </button>
               </div>
@@ -367,31 +392,55 @@ function PortalOrder({ client, onDone }) {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+      {/* Date + Notes */}
+      <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4"
+        style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Fecha deseada de entrega</label>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+            Fecha de entrega
+          </label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Notas (opcional)</label>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+            Notas (opcional)
+          </label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             placeholder="Horario, instrucciones especiales..." />
         </div>
       </div>
 
+      {/* Total */}
       {total > 0 && (
-        <div className="bg-blue-50 rounded-2xl p-4 flex items-center justify-between">
-          <span className="font-medium text-blue-800">Total estimado</span>
-          <span className="text-xl font-bold text-blue-900">{fmt(total)}</span>
+        <div className="bg-white rounded-2xl p-4 flex items-center justify-between border border-blue-100"
+          style={{ boxShadow: '0 4px 16px rgba(37,99,235,.08)' }}>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total estimado</p>
+            <p className="text-2xl font-black text-slate-900 mt-0.5">{fmt(total)}</p>
+          </div>
+          <div className="text-right text-xs text-slate-400 leading-relaxed">
+            {orderItems.map(i => (
+              <p key={i.productId}>{i.quantity}× {i.productName}</p>
+            ))}
+          </div>
         </div>
       )}
 
-      <button type="submit" disabled={loading || orderItems.length === 0}
-        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-60 transition-colors">
-        {loading ? 'Enviando...' : `Confirmar pedido${total > 0 ? ' · ' + fmt(total) : ''}`}
-      </button>
+      {/* Submit */}
+      <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="max-w-lg mx-auto pointer-events-auto">
+          <button type="submit" disabled={loading || orderItems.length === 0}
+            className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)', boxShadow: '0 6px 24px rgba(37,99,235,.4)' }}>
+            {loading
+              ? <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Enviando…</>
+              : <>Confirmar pedido{total > 0 ? ` · ${fmt(total)}` : ''}</>
+            }
+          </button>
+        </div>
+      </div>
     </form>
   );
 }
@@ -406,43 +455,64 @@ function PortalOrders({ client }) {
     DataService.getClientOrders(client.id).then(o => { setOrders(o); setLoading(false); });
   }, [client.id]);
 
-  const statusLabel = { pendiente: 'Pendiente', en_camino: 'En camino 🚚', entregado: 'Entregado ✅', cancelado: 'Cancelado' };
-  const statusStyle = {
-    pendiente: 'bg-amber-100 text-amber-700',
-    en_camino: 'bg-blue-100 text-blue-700',
-    entregado: 'bg-emerald-100 text-emerald-700',
-    cancelado: 'bg-red-100 text-red-700',
+  const STATUS = {
+    pendiente:  { label: 'Pendiente',   dot: '#f59e0b', bg: '#fffbeb', text: '#92400e' },
+    en_camino:  { label: 'En camino',   dot: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
+    entregado:  { label: 'Entregado',   dot: '#22c55e', bg: '#f0fdf4', text: '#166534' },
+    cancelado:  { label: 'Cancelado',   dot: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
   };
 
-  if (loading) return <div className="py-16"><Spinner /></div>;
+  if (loading) return <div className="py-20"><Spinner /></div>;
 
   return (
-    <div className="space-y-3 pt-2">
-      <h2 className="text-lg font-bold text-slate-900">Mis pedidos</h2>
+    <div className="pt-3 pb-8 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis pedidos</h1>
+
       {orders.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-3">📦</div>
-          <p className="text-slate-500">Todavía no hiciste ningún pedido</p>
+        <div className="flex flex-col items-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <p className="font-semibold text-slate-700 mb-1">Sin pedidos aún</p>
+          <p className="text-sm text-slate-400">Tus pedidos aparecerán acá cuando los hagas.</p>
         </div>
-      ) : orders.map(o => (
-        <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <p className="font-semibold text-slate-900">Pedido #{o.id}</p>
-              <p className="text-xs text-slate-400">{fmtDate(o.deliveryDate)}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-slate-900">{fmt(o.total)}</p>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle[o.status] || 'bg-gray-100 text-gray-600'}`}>
-                {statusLabel[o.status] || o.status}
+      ) : orders.map(o => {
+        const s = STATUS[o.status] || { label: o.status, dot: '#94a3b8', bg: '#f8fafc', text: '#475569' };
+        return (
+          <div key={o.id} className="bg-white rounded-3xl border border-gray-100 p-5"
+            style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="font-black text-slate-900 text-base">Pedido #{o.id}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{fmtDate(o.deliveryDate)}</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
+                style={{ background: s.bg, color: s.text }}>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
+                {s.label}
+                {o.status === 'en_camino' && ' 🚚'}
               </span>
             </div>
+            {(o.items || []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {o.items.map((i, idx) => (
+                  <span key={idx} className="px-2.5 py-1 bg-slate-50 rounded-full text-xs font-medium text-slate-600 border border-slate-100">
+                    {i.quantity}× {i.productName}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+              <p className="text-xs text-slate-400">Total</p>
+              <p className="font-black text-slate-900 text-lg">{fmt(o.total)}</p>
+            </div>
           </div>
-          {(o.items || []).length > 0 && (
-            <p className="text-xs text-slate-500">{o.items.map(i => `${i.quantity}x ${i.productName}`).join(' · ')}</p>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -457,30 +527,65 @@ function PortalInvoices({ client }) {
     DataService.getClientInvoices(client.id).then(i => { setInvoices(i); setLoading(false); });
   }, [client.id]);
 
-  if (loading) return <div className="py-16"><Spinner /></div>;
+  if (loading) return <div className="py-20"><Spinner /></div>;
+
+  const total = invoices.reduce((s, i) => s + (i.total || 0), 0);
+  const pending = invoices.filter(i => i.paymentStatus !== 'pagado').reduce((s, i) => s + (i.total || 0), 0);
 
   return (
-    <div className="space-y-3 pt-2">
-      <h2 className="text-lg font-bold text-slate-900">Mis facturas</h2>
+    <div className="pt-3 pb-8 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis facturas</h1>
+
+      {/* Summary cards */}
+      {invoices.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Histórico</p>
+            <p className="text-xl font-black text-slate-900">{fmt(total)}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Pendiente</p>
+            <p className={`text-xl font-black ${pending > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>{fmt(pending)}</p>
+          </div>
+        </div>
+      )}
+
       {invoices.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-3">📄</div>
-          <p className="text-slate-500">No hay facturas registradas</p>
+        <div className="flex flex-col items-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <p className="font-semibold text-slate-700 mb-1">Sin facturas aún</p>
+          <p className="text-sm text-slate-400">Tus facturas aparecerán acá.</p>
         </div>
       ) : invoices.map(inv => (
-        <div key={inv.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-start justify-between gap-3">
+        <div key={inv.id} className="bg-white rounded-3xl border border-gray-100 p-5"
+          style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="font-semibold text-slate-900">{inv.number}</p>
-              <p className="text-xs text-slate-400">{fmtDateTime(inv.createdAt)}</p>
-              <p className="text-xs text-slate-500 mt-0.5 capitalize">{inv.paymentMethod}</p>
+              <p className="font-black text-slate-900">{inv.number}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{fmtDateTime(inv.createdAt)}</p>
+              {inv.paymentMethod && (
+                <p className="text-xs text-slate-500 mt-0.5 capitalize">{inv.paymentMethod}</p>
+              )}
             </div>
-            <div className="text-right">
-              <p className="font-bold text-slate-900 text-lg">{fmt(inv.total)}</p>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${inv.paymentStatus === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                {inv.paymentStatus === 'pagado' ? '✅ Pagado' : '⏳ Pendiente'}
-              </span>
-            </div>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+              inv.paymentStatus === 'pagado'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${inv.paymentStatus === 'pagado' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+              {inv.paymentStatus === 'pagado' ? 'Pagado' : 'Pendiente'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+            <p className="text-xs text-slate-400">Total</p>
+            <p className="font-black text-slate-900 text-xl">{fmt(inv.total)}</p>
           </div>
         </div>
       ))}
@@ -493,7 +598,7 @@ function PortalInvoices({ client }) {
 function PortalReferrals({ client, config }) {
   const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
   const template = config.referralShareMessage ||
-    'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁';
+    'Hola! Te recomiendo el agua de {empresa}\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos!';
   const resolved = template
     .replace(/{empresa}/g, config.companyName || 'NATIVA')
     .replace(/{telefono}/g, config.phone || config.whatsappNumber || '')
@@ -506,71 +611,83 @@ function PortalReferrals({ client, config }) {
   const [copied, setCopied] = React.useState(false);
   const [copiedMsg, setCopiedMsg] = React.useState(false);
 
-  const handleWA = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-  };
-
-  const handleCopyMsg = () => {
-    navigator.clipboard.writeText(msg);
-    setCopiedMsg(true);
-    setTimeout(() => setCopiedMsg(false), 2000);
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(client.referralCode || client.code || '');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleWA = () => window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  const handleCopyMsg = () => { navigator.clipboard.writeText(msg); setCopiedMsg(true); setTimeout(() => setCopiedMsg(false), 2000); };
+  const handleCopyCode = () => { navigator.clipboard.writeText(client.referralCode || client.code || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-        <p className="text-green-100 text-sm mb-1">Programa de referidos</p>
-        <h2 className="text-xl font-bold">Referí y ganás</h2>
-        <p className="text-green-100 text-sm mt-1">
-          {config.referralMessage || 'Referí a un amigo y ambos ganan crédito en su cuenta.'}
-        </p>
+    <div className="pt-3 pb-8 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Referidos</h1>
+
+      {/* Hero */}
+      <div className="rounded-3xl p-5 text-white relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 8px 24px rgba(34,197,94,.3)' }}>
+        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/10" />
+        <div className="absolute -right-2 bottom-2 w-14 h-14 rounded-full bg-white/10" />
+        <div className="relative z-10">
+          <p className="text-green-100 text-sm font-medium mb-1">Programa de referidos</p>
+          <h2 className="text-2xl font-black mb-2">Referí y ganás</h2>
+          <p className="text-green-100 text-sm leading-relaxed">
+            {config.referralMessage || 'Referí a un amigo y ambos ganan crédito en su cuenta.'}
+          </p>
+        </div>
       </div>
 
+      {/* Rewards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-green-600">${config.referralReferrerReward || 500}</p>
-          <p className="text-xs text-slate-500 mt-1">crédito para vos</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <p className="text-2xl font-black text-emerald-600">${config.referralReferrerReward || 500}</p>
+          <p className="text-xs text-slate-400 mt-1 font-medium">crédito para vos</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-blue-600">{config.referralReferredDiscount || 10}%</p>
-          <p className="text-xs text-slate-500 mt-1">descuento para tu amigo</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <p className="text-2xl font-black text-blue-600">{config.referralReferredDiscount || 10}%</p>
+          <p className="text-xs text-slate-400 mt-1 font-medium">descuento para tu amigo</p>
         </div>
       </div>
 
+      {/* Code */}
       {(client.referralCode || client.code) && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tu código</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Tu código</p>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-lg font-bold text-slate-900 flex-1">{client.referralCode || client.code}</span>
+            <span className="font-mono text-xl font-black text-slate-900 flex-1 tracking-wider">
+              {client.referralCode || client.code}
+            </span>
             <button onClick={handleCopyCode}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-slate-700 hover:bg-gray-200'}`}>
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
+              style={copied
+                ? { background: '#f0fdf4', color: '#16a34a' }
+                : { background: '#f8fafc', color: '#475569' }}>
               {copied ? '✓ Copiado' : 'Copiar'}
             </button>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
-        <p className="text-sm font-semibold text-slate-700">Mensaje para compartir</p>
-        <textarea
-          value={msg}
-          onChange={e => setMsg(e.target.value)}
-          rows={5}
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none leading-relaxed"
-        />
+      {/* Share */}
+      <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4"
+        style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Mensaje para compartir</p>
+        <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5}
+          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none leading-relaxed" />
         <div className="flex gap-2">
           <button onClick={handleWA}
-            className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
-            <span>💬</span> Abrir WhatsApp
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold text-sm"
+            style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 4px 16px rgba(34,197,94,.35)' }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M11.973 2C6.465 2 2 6.465 2 11.973c0 1.89.525 3.658 1.438 5.168L2 22l4.978-1.408A9.96 9.96 0 0 0 11.973 22C17.481 22 22 17.535 22 12.027 22 6.519 17.481 2 11.973 2z" opacity=".3"/>
+            </svg>
+            Compartir por WhatsApp
           </button>
           <button onClick={handleCopyMsg}
-            className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-colors ${copiedMsg ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200 text-slate-600 hover:bg-gray-50'}`}>
+            className="px-4 py-3.5 rounded-2xl text-sm font-bold border transition-all"
+            style={copiedMsg
+              ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+              : { background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
             {copiedMsg ? '✓' : 'Copiar'}
           </button>
         </div>
