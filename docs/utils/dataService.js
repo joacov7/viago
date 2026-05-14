@@ -443,6 +443,33 @@ const DataService = {
     const { error } = await this._sb.from('costs').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
+  async getMonthRevenue(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    const start = `${ym}-01`;
+    const end = new Date(y, m, 1).toISOString().slice(0, 10);
+    const { data, error } = await this._sb.from('invoices')
+      .select('total')
+      .eq('payment_status', 'pagado')
+      .gte('created_at', start)
+      .lt('created_at', end);
+    if (error) throw new Error(error.message);
+    return (data || []).reduce((s, r) => s + (r.total || 0), 0);
+  },
+  async getMonthBottlesDelivered(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    const start = `${ym}-01`;
+    const end = new Date(y, m, 1).toISOString().slice(0, 10);
+    const { data, error } = await this._sb.from('orders')
+      .select('items')
+      .eq('status', 'entregado')
+      .gte('delivery_date', start)
+      .lt('delivery_date', end);
+    if (error) throw new Error(error.message);
+    return (data || []).reduce((s, o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      return s + items.reduce((si, i) => si + (i.quantity || 0), 0);
+    }, 0);
+  },
 
   // ─── DISPENSERS ──────────────────────────────────────────────────────────
   async getDispensers() {
