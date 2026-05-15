@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing — ViaGo</title>
+
+    <!-- Meta Pixel — reemplazá YOUR_PIXEL_ID con tu Pixel ID real -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', 'YOUR_PIXEL_ID');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=YOUR_PIXEL_ID&ev=PageView&noscript=1"/></noscript>
+    <!-- End Meta Pixel -->
+
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <style type="text/tailwindcss">
+    @layer base { body { font-family: 'Inter', sans-serif; } }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel" src="utils/metaService.js"></script>
+    <script type="text/babel" src="components/MetaLeads.js"></script>
+    <script type="text/babel" src="components/MetaCampaigns.js"></script>
+    <script type="text/babel" src="components/MetaCreator.js"></script>
+    <script type="text/babel" src="components/MetaPanel.js"></script>
+</body>
+</html>
