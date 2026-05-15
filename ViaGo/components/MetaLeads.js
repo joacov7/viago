@@ -1,25 +1,25 @@
 const MetaLeads = () => {
-  const [leads, setLeads] = React.useState([]);
+  const [leads, setLeads]     = React.useState([]);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [search, setSearch] = React.useState('');
+  const [error, setError]     = React.useState(null);
+  const [search, setSearch]   = React.useState('');
 
   React.useEffect(() => {
+    if (!MetaService.isConfigured()) {
+      setError('not_configured');
+      setLoading(false);
+      return;
+    }
     MetaService.getLeads()
-      .then(data => {
-        setLeads(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+      .then(data => setLeads(Array.isArray(data) ? data : []))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const filtered = leads.filter(l =>
     (l.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (l.email || '').toLowerCase().includes(search.toLowerCase()) ||
-    (l.phone || '').includes(search)
+    (l.email    || '').toLowerCase().includes(search.toLowerCase()) ||
+    (l.phone    || '').includes(search)
   );
 
   if (loading) return (
@@ -29,11 +29,17 @@ const MetaLeads = () => {
     </div>
   );
 
-  if (error) return (
+  if (error && error !== 'not_configured') return (
     <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
       <p className="font-semibold">Error al cargar leads</p>
-      <p className="text-sm mt-1">{error}</p>
-      <p className="text-xs mt-3 text-red-500">Verificá que META_SUPABASE_URL y META_SUPABASE_ANON_KEY estén configurados en metaService.js</p>
+      <p className="text-sm mt-1 font-mono">{error}</p>
+    </div>
+  );
+
+  if (error === 'not_configured') return (
+    <div className="text-center py-24 text-gray-400">
+      <span className="icon-settings text-5xl block mb-4"></span>
+      <p className="font-medium">Configurá las credenciales para ver los leads.</p>
     </div>
   );
 
@@ -58,7 +64,7 @@ const MetaLeads = () => {
           <span className="icon-users text-5xl block mb-4"></span>
           {leads.length === 0
             ? 'Todavía no llegaron leads. Configurá el webhook de Meta Lead Ads.'
-            : 'Sin resultados para esa búsqueda.'}
+            : 'Sin resultados.'}
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">

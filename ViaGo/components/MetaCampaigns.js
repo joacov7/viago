@@ -7,20 +7,20 @@ const STATUS_COLORS = {
 
 const MetaCampaigns = () => {
   const [campaigns, setCampaigns] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [toggling, setToggling] = React.useState(null);
+  const [loading, setLoading]     = React.useState(true);
+  const [error, setError]         = React.useState(null);
+  const [toggling, setToggling]   = React.useState(null);
 
   React.useEffect(() => {
+    if (!MetaService.isConfigured()) {
+      setError('not_configured');
+      setLoading(false);
+      return;
+    }
     MetaService.getCampaigns()
-      .then(data => {
-        setCampaigns(data.data || []);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+      .then(data => setCampaigns(data.data || []))
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   const toggleStatus = async (campaign) => {
@@ -29,9 +29,7 @@ const MetaCampaigns = () => {
     try {
       const res = await MetaService.updateCampaignStatus(campaign.id, newStatus);
       if (res.error) throw new Error(res.error.message);
-      setCampaigns(prev =>
-        prev.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c)
-      );
+      setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, status: newStatus } : c));
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
@@ -46,18 +44,25 @@ const MetaCampaigns = () => {
     </div>
   );
 
+  if (error === 'not_configured') return (
+    <div className="text-center py-24 text-gray-400">
+      <span className="icon-settings text-5xl block mb-4"></span>
+      <p className="font-medium">Configurá las credenciales para ver las campañas.</p>
+    </div>
+  );
+
   if (error) return (
     <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
       <p className="font-semibold">Error al conectar con Meta Ads API</p>
-      <p className="text-sm mt-1">{error}</p>
-      <p className="text-xs mt-3 text-red-500">Verificá que META_ACCESS_TOKEN y META_AD_ACCOUNT_ID estén configurados en Supabase Secrets.</p>
+      <p className="text-sm mt-1 font-mono">{error}</p>
+      <p className="text-xs mt-3 text-red-500">Verificá META_ACCESS_TOKEN y META_AD_ACCOUNT_ID en Supabase Secrets.</p>
     </div>
   );
 
   if (campaigns.length === 0) return (
     <div className="text-center py-24 text-gray-400">
       <span className="icon-megaphone text-5xl block mb-4"></span>
-      No hay campañas en esta cuenta. Creá tu primera campaña en la pestaña "Nueva campaña".
+      No hay campañas. Creá tu primera campaña en la pestaña "Nueva campaña".
     </div>
   );
 
