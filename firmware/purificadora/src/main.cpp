@@ -60,6 +60,7 @@ unsigned long tLastDisplay   = 0;
 unsigned long tLastTelegram  = 0;
 unsigned long tLastWs        = 0;
 unsigned long tLastSupabase  = 0;
+unsigned long tLastCmdPoll   = 0;
 unsigned long tPhaseStart    = 0;
 unsigned long tTankFull      = 0;
 bool          tankFullPending = false;
@@ -513,30 +514,103 @@ void updateDisplay() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  Supabase
+//  Supabase — push estado + poll comandos
 // ═══════════════════════════════════════════════════════
 void pushToSupabase() {
     if (WiFi.status() != WL_CONNECTED) return;
     WiFiClientSecure sc;
     sc.setInsecure();
     HTTPClient http;
-    http.begin(sc, String(SUPABASE_URL) + "/rest/v1/sensor_readings");
+    http.begin(sc, String(SUPABASE_URL) + "/rest/v1/purif_status");
     http.addHeader("Content-Type",  "application/json");
     http.addHeader("apikey",        SUPABASE_KEY);
     http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
-    http.addHeader("Prefer",        "return=minimal");
-    StaticJsonDocument<256> doc;
-    doc["tds_in"]    = (int)tdsin;
-    doc["tds_out"]   = (int)tdsout;
-    doc["presion"]   = (float)(round(presion * 100) / 100.0);
-    doc["estado"]    = stateLabel();
-    doc["cisterna"]  = flCisterna;
-    doc["mem_horas"] = secMembrane / 3600.0f;
-    doc["uv_horas"]  = secUV       / 3600.0f;
+    http.addHeader("Prefer",        "resolution=merge-duplicates,return=minimal");
+
+    DynamicJsonDocument outer(2048);
+    outer["device_id"] = "main";
+    JsonObject pay = outer.createNestedObject("payload");
+    pay["state"]    = stateLabel();
+    pay["autoMode"] = autoMode;
+    pay["tdsIn"]    = (int)tdsin;
+    pay["tdsOut"]   = (int)tdsout;
+    pay["pressure"] = (float)(round(presion * 100) / 100.0);
+    pay["alarm"]    = alarmMsg;
+    pay["time"]     = getTimeStr();
+    pay["memSec"]   = secMembrane;
+    pay["uvSec"]    = secUV;
+    JsonObject sched = pay.createNestedObject("schedule");
+    sched["enabled"] = schedEnabled;
+    sched["onH"]     = schedOnH;
+    sched["onM"]     = schedOnM;
+    sched["offH"]    = schedOffH;
+    sched["offM"]    = schedOffM;
+    JsonObject fl = pay.createNestedObject("floats");
+    fl["cisterna"] = flCisterna;
+    fl["tankLow"]  = flTkBajo;
+    fl["tankHigh"] = flTkAlto;
+    JsonObject rl = pay.createNestedObject("relays");
+    rl["alim"]  = rGet(PIN_R_ALIM);
+    rl["hp"]    = rGet(PIN_R_HP);
+    rl["sol"]   = rGet(PIN_R_SOL);
+    rl["uv"]    = rGet(PIN_R_UV);
+    rl["lav1"]  = rGet(PIN_R_LAV1);
+    rl["lav2"]  = rGet(PIN_R_LAV2);
+    rl["lav3"]  = rGet(PIN_R_LAV3);
+    rl["alarm"] = rGet(PIN_R_ALARM);
+
     String body;
-    serializeJson(doc, body);
+    serializeJson(outer, body);
     int code = http.POST(body);
-    if (code != 201) Serial.printf("[SUPA] Error %d\n", code);
+    if (code != 200 && code != 201) Serial.printf("[SUPA] Push error %d\n", code);
+    http.end();
+}
+
+void pollCommands() {
+    if (WiFi.status() != WL_CONNECTED) return;
+    WiFiClientSecure sc;
+    sc.setInsecure();
+    HTTPClient http;
+    http.begin(sc, String(SUPABASE_URL) +
+        "/rest/v1/purif_commands?executed=eq.false&order=id.asc&limit=1");
+    http.addHeader("apikey",        SUPABASE_KEY);
+    http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
+    int code = http.GET();
+    if (code == 200) {
+        String resp = http.getString();
+        DynamicJsonDocument doc(512);
+        if (deserializeJson(doc, resp) == DeserializationError::Ok
+            && doc.is<JsonArray>() && doc.size() > 0) {
+            JsonObject row = doc[0];
+            long cmdId = row["id"].as<long>();
+            String cmd = row["cmd"].as<String>();
+
+            if (cmd == "set_schedule" && row.containsKey("params")) {
+                JsonObject p = row["params"];
+                if (p.containsKey("enabled")) schedEnabled = p["enabled"].as<bool>();
+                if (p.containsKey("onH"))     schedOnH  = p["onH"].as<int>();
+                if (p.containsKey("onM"))     schedOnM  = p["onM"].as<int>();
+                if (p.containsKey("offH"))    schedOffH = p["offH"].as<int>();
+                if (p.containsKey("offM"))    schedOffM = p["offM"].as<int>();
+                saveSchedule();
+            } else if (cmd == "reset_membrane") {
+                resetCounter("membrane");
+            } else if (cmd == "reset_uv") {
+                resetCounter("uv");
+            } else {
+                handleWebCmd(cmd);
+            }
+
+            http.end();
+            http.begin(sc, String(SUPABASE_URL) +
+                "/rest/v1/purif_commands?id=eq." + String(cmdId));
+            http.addHeader("Content-Type",  "application/json");
+            http.addHeader("apikey",        SUPABASE_KEY);
+            http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
+            http.addHeader("Prefer",        "return=minimal");
+            http.sendRequest("PATCH", "{\"executed\":true}");
+        }
+    }
     http.end();
 }
 
@@ -959,6 +1033,11 @@ void loop() {
     if (now - tLastSupabase >= INTERVAL_SUPABASE) {
         tLastSupabase = now;
         pushToSupabase();
+    }
+
+    if (now - tLastCmdPoll >= 2000UL) {
+        tLastCmdPoll = now;
+        pollCommands();
     }
 
     if (now - tLastDisplay >= INTERVAL_DISPLAY) {
