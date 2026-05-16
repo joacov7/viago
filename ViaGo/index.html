@@ -23,7 +23,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    /* Base styles */
     *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; padding: 0; }
     body {
@@ -32,30 +31,18 @@
       background: #f8fafc;
     }
     #root { height: 100%; }
-
-    /* Custom scrollbar */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-    /* Smooth transitions */
     * { transition-property: color, background-color, border-color, box-shadow, opacity, transform;
         transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         transition-duration: 150ms; }
-
-    /* Spinner animation */
     @keyframes spin { to { transform: rotate(360deg); } }
     .animate-spin { animation: spin 1s linear infinite; }
-
-    /* Hide scrollbar for horizontal scroll */
     .overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
     .overflow-x-auto::-webkit-scrollbar { display: none; }
-
-    /* Focus ring */
     *:focus-visible { outline: 2px solid #2563EB; outline-offset: 2px; }
-
-    /* Number inputs: remove spinners */
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
     input[type=number] { -moz-appearance: textfield; }
@@ -63,21 +50,20 @@
 
   <div id="root"></div>
 
-  <!-- Utility services (load first, no dependencies) -->
   <script type="text/babel" src="utils/supabaseClient.js"></script>
   <script type="text/babel" src="utils/dataService.js"></script>
   <script type="text/babel" src="utils/icons.js"></script>
   <script type="text/babel" src="utils/whatsappService.js"></script>
   <script type="text/babel" src="utils/pdfService.js"></script>
   <script type="text/babel" src="utils/geoService.js"></script>
+  <script type="text/babel" src="utils/metaService.js"></script>
 
-  <!-- Shared UI primitives (Sidebar.js includes Modal, Btn, etc.) -->
   <script type="text/babel" src="components/Sidebar.js"></script>
   <script type="text/babel" src="components/Auth.js"></script>
 
-  <!-- Feature modules -->
   <script type="text/babel" src="components/Dashboard.js"></script>
   <script type="text/babel" src="components/Clients.js"></script>
+  <script type="text/babel" src="components/MetaAds.js"></script>
   <script type="text/babel" src="components/Prospecting.js"></script>
   <script type="text/babel" src="components/Orders.js"></script>
   <script type="text/babel" src="components/Delivery.js"></script>
@@ -92,7 +78,6 @@
   <script type="text/babel" src="components/LiveTracking.js"></script>
   <script type="text/babel" src="components/MapView.js"></script>
 
-  <!-- Root App -->
   <script type="text/babel" src="app.js"></script>
 </head>
 <body>
