@@ -1,0 +1,31 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches:
+      - claude/distribution-app-design-mlaJo
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/distribution-app-design-mlaJo
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy meta-api-proxy
+        run: supabase functions deploy meta-api-proxy --project-ref ezxfgawujagatrqylyvo
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy meta-webhook
+        run: supabase functions deploy meta-webhook --project-ref ezxfgawujagatrqylyvo
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
