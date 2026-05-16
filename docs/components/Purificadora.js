@@ -1,58 +1,61 @@
-// NATIVA - Purificadora module (ESP32 ósmosis inversa)
+// NATIVA - Purificadora module (Supabase cloud bridge)
 const MEMBRANE_WARN_H = 8760;
 const UV_WARN_H       = 9000;
 
-function Purificadora() {
-  const DEFAULT_IP = '192.168.1.100';
+const _PURIF_URL = 'https://ezxfgawujagatrqylyvo.supabase.co';
+const _PURIF_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6eGZnYXd1amFnYXRycXlseXZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwODQwMDEsImV4cCI6MjA5MjY2MDAwMX0.KLda0-iEnFWrN90GMzlkpZrC3d_aGVJUjnuhBP3EcuQ';
 
-  const [ip, setIp]               = React.useState(() => localStorage.getItem('nativa_purif_ip') || DEFAULT_IP);
-  const [ipInput, setIpInput]     = React.useState(ip);
-  const [showSettings, setShowSettings]   = React.useState(false);
-  const [showSchedule, setShowSchedule]   = React.useState(false);
-  const [showAlarms,   setShowAlarms]     = React.useState(false);
-  const [wsStatus, setWsStatus]   = React.useState('disconnected');
-  const [data, setData]           = React.useState(null);
-  const [cmdPending, setCmdPending] = React.useState(null);
-  const [alarmLog, setAlarmLog]   = React.useState([]);
-  const [loadingAlarms, setLoadingAlarms] = React.useState(false);
+function Purificadora() {
+  const [showSchedule, setShowSchedule] = React.useState(false);
+  const [showAlarms,   setShowAlarms]   = React.useState(false);
+  const [connStatus,   setConnStatus]   = React.useState('disconnected');
+  const [data,         setData]         = React.useState(null);
+  const [cmdPending,   setCmdPending]   = React.useState(null);
 
   // Schedule form
   const [schedEnabled, setSchedEnabled] = React.useState(false);
   const [schedOn,  setSchedOn]  = React.useState('08:00');
   const [schedOff, setSchedOff] = React.useState('18:00');
 
-  const wsRef    = React.useRef(null);
-  const retryRef = React.useRef(null);
+  const pollRef = React.useRef(null);
+  const lastUpd = React.useRef(0);
 
-  const connectWs = React.useCallback((espIp) => {
-    clearTimeout(retryRef.current);
-    if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); }
-    setWsStatus('connecting');
+  const fetchStatus = React.useCallback(async () => {
     try {
-      const socket = new WebSocket(`ws://${espIp}/ws`);
-      wsRef.current = socket;
-      socket.onopen    = () => setWsStatus('connected');
-      socket.onmessage = (e) => { try { setData(JSON.parse(e.data)); } catch {} };
-      socket.onerror   = () => socket.close();
-      socket.onclose   = () => {
-        setWsStatus('disconnected');
-        retryRef.current = setTimeout(() => connectWs(espIp), 4000);
-      };
-    } catch {
-      setWsStatus('disconnected');
-      retryRef.current = setTimeout(() => connectWs(espIp), 4000);
-    }
+      const res = await fetch(
+        `${_PURIF_URL}/rest/v1/purif_status?device_id=eq.main`,
+        { headers: { apikey: _PURIF_KEY, Authorization: `Bearer ${_PURIF_KEY}` } }
+      );
+      if (!res.ok) return;
+      const rows = await res.json();
+      if (rows.length > 0) {
+        const raw = rows[0].payload;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        setData(parsed);
+        lastUpd.current = Date.now();
+      }
+    } catch {}
   }, []);
 
+  // Poll status every 2 s
   React.useEffect(() => {
-    connectWs(ip);
-    return () => {
-      clearTimeout(retryRef.current);
-      if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); }
-    };
-  }, [ip, connectWs]);
+    fetchStatus();
+    pollRef.current = setInterval(fetchStatus, 2000);
+    return () => clearInterval(pollRef.current);
+  }, [fetchStatus]);
 
-  // Sync schedule form when ESP32 data arrives
+  // Update connection badge based on data age
+  React.useEffect(() => {
+    const tick = setInterval(() => {
+      if (lastUpd.current === 0)                          setConnStatus('disconnected');
+      else if (Date.now() - lastUpd.current < 8000)       setConnStatus('connected');
+      else if (Date.now() - lastUpd.current < 20000)      setConnStatus('slow');
+      else                                                 setConnStatus('disconnected');
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  // Sync schedule form when fresh data arrives
   React.useEffect(() => {
     if (!data?.schedule) return;
     const s = data.schedule;
@@ -61,20 +64,24 @@ function Purificadora() {
     setSchedOff(String(s.offH).padStart(2,'0') + ':' + String(s.offM).padStart(2,'0'));
   }, [data?.schedule?.enabled, data?.schedule?.onH, data?.schedule?.offH]);
 
-  const saveIp = () => {
-    const v = ipInput.trim();
-    if (v) { localStorage.setItem('nativa_purif_ip', v); setIp(v); }
-    setShowSettings(false);
+  const _postCmd = async (body) => {
+    const res = await fetch(`${_PURIF_URL}/rest/v1/purif_commands`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: _PURIF_KEY,
+        Authorization: `Bearer ${_PURIF_KEY}`,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
   };
 
   const sendCmd = async (cmd) => {
     setCmdPending(cmd);
     try {
-      await fetch(`http://${ip}/api/command`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cmd }),
-      });
+      await _postCmd({ cmd });
     } catch (e) {
       alert('Error al enviar comando: ' + e.message);
     } finally {
@@ -86,11 +93,7 @@ function Purificadora() {
     const [onH, onM]   = schedOn.split(':').map(Number);
     const [offH, offM] = schedOff.split(':').map(Number);
     try {
-      await fetch(`http://${ip}/api/schedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: schedEnabled, onH, onM, offH, offM }),
-      });
+      await _postCmd({ cmd: 'set_schedule', params: { enabled: schedEnabled, onH, onM, offH, offM } });
     } catch (e) { alert('Error: ' + e.message); }
     setShowSchedule(false);
   };
@@ -99,24 +102,9 @@ function Purificadora() {
     const label = counter === 'membrane' ? 'membrana' : 'UV';
     if (!confirm(`¿Resetear contador de ${label}?`)) return;
     try {
-      await fetch(`http://${ip}/api/reset_counter`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ counter }),
-      });
+      await _postCmd({ cmd: counter === 'membrane' ? 'reset_membrane' : 'reset_uv' });
     } catch (e) { alert('Error: ' + e.message); }
   };
-
-  const fetchAlarms = async () => {
-    setLoadingAlarms(true);
-    try {
-      const res = await fetch(`http://${ip}/api/alarms`);
-      setAlarmLog(await res.json());
-    } catch { setAlarmLog([]); }
-    finally { setLoadingAlarms(false); }
-  };
-
-  const openAlarms = () => { setShowAlarms(true); fetchAlarms(); };
 
   const STATE_CFG = {
     'ESPERA  ': { color: 'bg-slate-100 text-slate-600',   label: 'ESPERA'       },
@@ -128,14 +116,14 @@ function Purificadora() {
     'STANDBY ': { color: 'bg-slate-100 text-slate-500',   label: 'STANDBY'      },
   };
 
-  const WS_CFG = {
-    connecting:   { dot: 'bg-amber-400 animate-pulse', text: 'text-amber-600',   label: 'Conectando...' },
-    connected:    { dot: 'bg-emerald-500',             text: 'text-emerald-600', label: 'Conectado'     },
-    disconnected: { dot: 'bg-red-500',                 text: 'text-red-600',     label: 'Sin conexión'  },
+  const CONN_CFG = {
+    connected:    { dot: 'bg-emerald-500',             text: 'text-emerald-600', label: 'En línea'        },
+    slow:         { dot: 'bg-amber-400 animate-pulse', text: 'text-amber-600',   label: 'Respuesta lenta' },
+    disconnected: { dot: 'bg-red-500',                 text: 'text-red-600',     label: 'Sin conexión'    },
   };
 
-  const wsCfg    = WS_CFG[wsStatus];
-  const stateCfg = data ? (STATE_CFG[data.state] || { color: 'bg-slate-100 text-slate-700', label: data.state?.trim() }) : null;
+  const connCfg   = CONN_CFG[connStatus];
+  const stateCfg  = data ? (STATE_CFG[data.state] || { color: 'bg-slate-100 text-slate-700', label: data.state?.trim() }) : null;
   const relays    = data?.relays;
   const floats    = data?.floats;
   const isAlarm   = data?.state?.trim() === 'ALARMA!';
@@ -151,15 +139,9 @@ function Purificadora() {
         title="Purificadora"
         subtitle="Control ESP32 — Ósmosis inversa en tiempo real"
         action={
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${wsCfg.dot}`} />
-              <span className={`text-xs font-medium ${wsCfg.text}`}>{wsCfg.label}</span>
-            </div>
-            <Btn variant="secondary" size="sm" icon="settings"
-              onClick={() => { setIpInput(ip); setShowSettings(true); }}>
-              {ip}
-            </Btn>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${connCfg.dot}`} />
+            <span className={`text-xs font-medium ${connCfg.text}`}>{connCfg.label}</span>
           </div>
         }
       />
@@ -178,18 +160,17 @@ function Purificadora() {
         </div>
       )}
 
-      {/* Sin conexión */}
-      {!data && wsStatus !== 'connected' && (
+      {/* Sin datos */}
+      {!data && (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
             <Icon name="droplets" size={28} className="text-slate-400" />
           </div>
-          <p className="font-semibold text-slate-700 mb-1">Sin conexión al ESP32</p>
-          <p className="text-sm text-slate-400 mb-6">
-            Verificá que <strong>{ip}</strong> sea la IP correcta
-            y que el dispositivo esté encendido en la red local.
+          <p className="font-semibold text-slate-700 mb-1">Sin datos del ESP32</p>
+          <p className="text-sm text-slate-400">
+            Verificá que el ESP32 esté encendido y conectado a WiFi.<br />
+            Los datos se actualizan automáticamente cada 5 segundos.
           </p>
-          <Btn variant="secondary" size="sm" onClick={() => connectWs(ip)}>Reintentar</Btn>
         </div>
       )}
 
@@ -326,7 +307,7 @@ function Purificadora() {
             <div className="bg-white rounded-2xl border border-gray-100 p-4">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Mantenimiento</p>
-                <Btn variant="ghost" size="sm" onClick={openAlarms}>📋 Historial alarmas</Btn>
+                <Btn variant="ghost" size="sm" onClick={() => setShowAlarms(true)}>📋 Historial alarmas</Btn>
               </div>
               <div className="space-y-5">
                 <PurifCounter
@@ -383,23 +364,6 @@ function Purificadora() {
         </div>
       )}
 
-      {/* Modal IP */}
-      <Modal isOpen={showSettings} onClose={() => setShowSettings(false)} title="Configuración ESP32" size="sm">
-        <div className="space-y-4">
-          <FormField label="Dirección IP del ESP32"
-            hint="La IP aparece en el monitor serie al arrancar y en el mensaje de Telegram.">
-            <input autoFocus type="text" value={ipInput}
-              onChange={e => setIpInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveIp()}
-              className={inputCls()} placeholder="192.168.1.100" />
-          </FormField>
-          <div className="flex gap-2 justify-end">
-            <Btn variant="secondary" onClick={() => setShowSettings(false)}>Cancelar</Btn>
-            <Btn variant="primary"   onClick={saveIp}>Guardar</Btn>
-          </div>
-        </div>
-      </Modal>
-
       {/* Modal programación */}
       <Modal isOpen={showSchedule} onClose={() => setShowSchedule(false)} title="Programación horaria" size="sm">
         <div className="space-y-5">
@@ -435,27 +399,14 @@ function Purificadora() {
 
       {/* Modal historial alarmas */}
       <Modal isOpen={showAlarms} onClose={() => setShowAlarms(false)} title="Historial de alarmas" size="md">
-        {loadingAlarms ? (
-          <p className="text-sm text-slate-400 py-6 text-center">Cargando...</p>
-        ) : alarmLog.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-3xl mb-3">✅</p>
-            <p className="text-sm font-medium text-slate-600 mb-1">Sin alarmas registradas</p>
-            <p className="text-xs text-slate-400">El sistema no ha generado alarmas.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {alarmLog.map((entry, i) => (
-              <div key={i} className="py-3 flex items-start gap-3">
-                <span className="text-lg flex-shrink-0 mt-0.5">⚠️</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800">{entry.msg}</p>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{entry.ts}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="py-10 text-center">
+          <p className="text-3xl mb-3">📋</p>
+          <p className="text-sm font-medium text-slate-600 mb-1">No disponible en modo nube</p>
+          <p className="text-xs text-slate-400">
+            El historial se almacena localmente en el ESP32.<br />
+            Accedé a la IP local del dispositivo para verlo.
+          </p>
+        </div>
       </Modal>
     </div>
   );
