@@ -286,15 +286,20 @@ function Prospecting() {
 
   const reload = async () => {
     setLoading(true);
-    const [ls, comps, cfg] = await Promise.all([
-      DataService.getLeads(),
-      DataService.getCompetitors().catch(() => []),
-      DataService.getConfig(),
-    ]);
-    setLeads(ls);
-    setCompetitors(comps);
-    setConfig(cfg);
-    setLoading(false);
+    try {
+      const [ls, comps, cfg] = await Promise.all([
+        DataService.getLeads(),
+        DataService.getCompetitors().catch(() => []),
+        DataService.getConfig(),
+      ]);
+      setLeads(ls);
+      setCompetitors(comps);
+      setConfig(cfg);
+    } catch (err) {
+      console.error('[Captación] Error cargando datos:', err);
+    } finally {
+      setLoading(false);
+    }
   };
   React.useEffect(() => { reload(); }, []);
 
@@ -352,6 +357,7 @@ function Prospecting() {
     { id: 'google',        label: '📍 Google Places' },
     { id: 'competencia',   label: '📊 Competencia' },
     { id: 'mensajes',      label: '💬 Mensajes' },
+    { id: 'meta',          label: '📣 Meta Ads' },
   ];
 
   return (
@@ -395,6 +401,7 @@ function Prospecting() {
       {tab === 'mensajes' && (
         <TabMensajes leads={enriched} config={config} competitors={competitors} />
       )}
+      {tab === 'meta' && <TabMetaAds />}
 
       <LeadFormModal
         isOpen={showLeadForm}
