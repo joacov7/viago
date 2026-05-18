@@ -622,7 +622,7 @@ void pollCommands() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  Telegram
+//  Telegram — send (usa tlsClient global)
 // ═══════════════════════════════════════════════════════
 String buildTelegramStatus() {
     String s = "📊 *Estado — Purificadora*\n";
@@ -652,11 +652,8 @@ String buildTelegramStatus() {
     return s;
 }
 
-void processTelegramMsg(const telegramMessage& msg) {
-    const String& chat = msg.chat_id;
-    String text = msg.text;
-    text.trim();
-    Serial.printf("[TG] cmd='%s' chat=%s\n", text.c_str(), chat.c_str());
+void processTelegramMsg(const String& chatId, const String& text) {
+    Serial.printf("[TG] cmd='%s'\n", text.c_str());
 
     if (text == "/start" || text == "/ayuda") {
         String h = "🤖 *Purificadora — Comandos*\n\n";
@@ -687,16 +684,16 @@ void processTelegramMsg(const telegramMessage& msg) {
         h += "/alarma\\_reset — Resetear\n";
         h += "/reset\\_membrana — Resetear contador membrana\n";
         h += "/reset\\_uv — Resetear contador UV\n";
-        bot.sendMessage(chat, h, "Markdown");
+        bot.sendMessage(chatId, h, "Markdown");
     }
-    else if (text == "/estado")  { bot.sendMessage(chat, buildTelegramStatus(), "Markdown"); }
+    else if (text == "/estado")  { bot.sendMessage(chatId, buildTelegramStatus(), "Markdown"); }
     else if (text == "/tds") {
-        bot.sendMessage(chat,
+        bot.sendMessage(chatId,
             "💧 TDS Entrada: " + String((int)tdsin)  + " ppm\n"
             "💧 TDS Salida:  " + String((int)tdsout) + " ppm", "");
     }
     else if (text == "/presion") {
-        bot.sendMessage(chat, "🔵 Presión: " + String(presion, 2) + " bar", "");
+        bot.sendMessage(chatId, "🔵 Presión: " + String(presion, 2) + " bar", "");
     }
     else if (text == "/horas") {
         String h = "🔧 *Horas de uso*\n";
@@ -704,14 +701,14 @@ void processTelegramMsg(const telegramMessage& msg) {
         h += (secMembrane / 3600 >= MEMBRANE_WARN_H ? " ⚠️ CAMBIAR" : "");
         h += "\nLámpara UV:  " + String(secUV / 3600.0f, 1) + " h";
         h += (secUV / 3600 >= UV_WARN_H ? " ⚠️ CAMBIAR" : "");
-        bot.sendMessage(chat, h, "Markdown");
+        bot.sendMessage(chatId, h, "Markdown");
     }
     else if (text == "/alarmas") {
         if (!LittleFS.exists(ALARM_LOG_FILE)) {
-            bot.sendMessage(chat, "Sin alarmas registradas.", ""); return;
+            bot.sendMessage(chatId, "Sin alarmas registradas.", ""); return;
         }
         File f = LittleFS.open(ALARM_LOG_FILE, "r");
-        if (!f) { bot.sendMessage(chat, "Error al leer log.", ""); return; }
+        if (!f) { bot.sendMessage(chatId, "Error al leer log.", ""); return; }
         String lines[ALARM_LOG_MAX];
         int count = 0;
         while (f.available() && count < ALARM_LOG_MAX) {
@@ -724,23 +721,23 @@ void processTelegramMsg(const telegramMessage& msg) {
         int start = max(0, count - 5);
         for (int i = start; i < count; i++) resp += lines[i] + "\n";
         if (count == 0) resp = "Sin alarmas registradas.";
-        bot.sendMessage(chat, resp, "Markdown");
+        bot.sendMessage(chatId, resp, "Markdown");
     }
     else if (text == "/encender") { startPurification(); }
-    else if (text == "/apagar")   { stopPurification(); bot.sendMessage(chat, "🛑 Sistema detenido", ""); }
+    else if (text == "/apagar")   { stopPurification(); bot.sendMessage(chatId, "🛑 Sistema detenido", ""); }
     else if (text == "/lavar")    { startWashing(); }
     else if (text == "/standby")  {
         allOff(); sysState = ST_STANDBY; autoMode = false;
-        bot.sendMessage(chat, "💤 Modo standby activado", "");
+        bot.sendMessage(chatId, "💤 Modo standby activado", "");
     }
     else if (text == "/manual") {
         allOff(); sysState = ST_MANUAL; autoMode = false;
-        bot.sendMessage(chat, "🔧 Modo manual activado", "");
+        bot.sendMessage(chatId, "🔧 Modo manual activado", "");
     }
     else if (text == "/auto") {
         if (sysState == ST_ALARM)
-            bot.sendMessage(chat, "❌ Resetea la alarma primero con /alarma\\_reset", "Markdown");
-        else { sysState = ST_IDLE; autoMode = false; bot.sendMessage(chat, "🤖 Modo automático listo", ""); }
+            bot.sendMessage(chatId, "❌ Resetea la alarma primero con /alarma\\_reset", "Markdown");
+        else { sysState = ST_IDLE; autoMode = false; bot.sendMessage(chatId, "🤖 Modo automático listo", ""); }
     }
     else if (text.startsWith("/horario")) {
         String arg = text.substring(8); arg.trim();
@@ -749,10 +746,10 @@ void processTelegramMsg(const telegramMessage& msg) {
             snprintf(buf, sizeof(buf), "Estado: %s\nEncendido: %02d:%02d\nApagado:   %02d:%02d",
                 schedEnabled ? "✅ Activa" : "❌ Inactiva",
                 schedOnH, schedOnM, schedOffH, schedOffM);
-            bot.sendMessage(chat, "⏰ *Programación*\n" + String(buf), "Markdown");
+            bot.sendMessage(chatId, "⏰ *Programación*\n" + String(buf), "Markdown");
         } else if (arg == "off") {
             schedEnabled = false; saveSchedule();
-            bot.sendMessage(chat, "⏰ Programación desactivada", "");
+            bot.sendMessage(chatId, "⏰ Programación desactivada", "");
         } else {
             int sp = arg.indexOf(' ');
             if (sp > 0) {
@@ -766,45 +763,77 @@ void processTelegramMsg(const telegramMessage& msg) {
                     schedOffM = offStr.substring(c2+1).toInt();
                     schedEnabled = true;
                     saveSchedule();
-                    bot.sendMessage(chat, "⏰ Programación guardada: ON " + onStr + " OFF " + offStr, "");
+                    bot.sendMessage(chatId, "⏰ Programación guardada: ON " + onStr + " OFF " + offStr, "");
                 } else {
-                    bot.sendMessage(chat, "❌ Formato: /horario HH:MM HH:MM", "");
+                    bot.sendMessage(chatId, "❌ Formato: /horario HH:MM HH:MM", "");
                 }
             } else {
-                bot.sendMessage(chat, "❌ Formato: /horario HH:MM HH:MM", "");
+                bot.sendMessage(chatId, "❌ Formato: /horario HH:MM HH:MM", "");
             }
         }
     }
-    else if (text == "/bomba_alim on")  { rSet(PIN_R_ALIM, true);  bot.sendMessage(chat, "✅ Bomba alim ON",  ""); }
-    else if (text == "/bomba_alim off") { rSet(PIN_R_ALIM, false); bot.sendMessage(chat, "🛑 Bomba alim OFF", ""); }
-    else if (text == "/bomba_hp on")    { rSet(PIN_R_HP,   true);  bot.sendMessage(chat, "✅ Bomba HP ON",  ""); }
-    else if (text == "/bomba_hp off")   { rSet(PIN_R_HP,   false); bot.sendMessage(chat, "🛑 Bomba HP OFF", ""); }
-    else if (text == "/solenoide on")   { rSet(PIN_R_SOL,  true);  bot.sendMessage(chat, "✅ Solenoide ON",  ""); }
-    else if (text == "/solenoide off")  { rSet(PIN_R_SOL,  false); bot.sendMessage(chat, "🛑 Solenoide OFF", ""); }
-    else if (text == "/uv on")          { rSet(PIN_R_UV,   true);  bot.sendMessage(chat, "✅ UV ON",  ""); }
-    else if (text == "/uv off")         { rSet(PIN_R_UV,   false); bot.sendMessage(chat, "🛑 UV OFF", ""); }
-    else if (text == "/alarma_off")   { rSet(PIN_R_ALARM, false); bot.sendMessage(chat, "🔕 Alarma silenciada", ""); }
-    else if (text == "/alarma_reset") { clearAlarm(); bot.sendMessage(chat, "✅ Alarma reseteada", ""); }
+    else if (text == "/bomba_alim on")  { rSet(PIN_R_ALIM, true);  bot.sendMessage(chatId, "✅ Bomba alim ON",  ""); }
+    else if (text == "/bomba_alim off") { rSet(PIN_R_ALIM, false); bot.sendMessage(chatId, "🛑 Bomba alim OFF", ""); }
+    else if (text == "/bomba_hp on")    { rSet(PIN_R_HP,   true);  bot.sendMessage(chatId, "✅ Bomba HP ON",  ""); }
+    else if (text == "/bomba_hp off")   { rSet(PIN_R_HP,   false); bot.sendMessage(chatId, "🛑 Bomba HP OFF", ""); }
+    else if (text == "/solenoide on")   { rSet(PIN_R_SOL,  true);  bot.sendMessage(chatId, "✅ Solenoide ON",  ""); }
+    else if (text == "/solenoide off")  { rSet(PIN_R_SOL,  false); bot.sendMessage(chatId, "🛑 Solenoide OFF", ""); }
+    else if (text == "/uv on")          { rSet(PIN_R_UV,   true);  bot.sendMessage(chatId, "✅ UV ON",  ""); }
+    else if (text == "/uv off")         { rSet(PIN_R_UV,   false); bot.sendMessage(chatId, "🛑 UV OFF", ""); }
+    else if (text == "/alarma_off")   { rSet(PIN_R_ALARM, false); bot.sendMessage(chatId, "🔕 Alarma silenciada", ""); }
+    else if (text == "/alarma_reset") { clearAlarm(); bot.sendMessage(chatId, "✅ Alarma reseteada", ""); }
     else if (text == "/reset_membrana") {
         resetCounter("membrane");
-        bot.sendMessage(chat, "✅ Contador de membrana reseteado a 0 h", "");
+        bot.sendMessage(chatId, "✅ Contador de membrana reseteado a 0 h", "");
     }
     else if (text == "/reset_uv") {
         resetCounter("uv");
-        bot.sendMessage(chat, "✅ Contador UV reseteado a 0 h", "");
+        bot.sendMessage(chatId, "✅ Contador UV reseteado a 0 h", "");
     }
-    else { bot.sendMessage(chat, "❓ Comando no reconocido. Usa /ayuda", ""); }
+    else { bot.sendMessage(chatId, "❓ Comando no reconocido. Usa /ayuda", ""); }
 }
 
+// Polling manual con sc local — mismo patrón que Supabase
 void checkTelegram() {
     if (WiFi.status() != WL_CONNECTED) { WiFi.reconnect(); return; }
-    int n = bot.getUpdates(bot.last_message_received + 1);
-    if (n < 0) Serial.printf("[TG] getUpdates error: %d\n", n);
-    while (n > 0) {
-        Serial.printf("[TG] %d mensaje(s) nuevo(s)\n", n);
-        for (int i = 0; i < n; i++) processTelegramMsg(bot.messages[i]);
-        n = bot.getUpdates(bot.last_message_received + 1);
+
+    WiFiClientSecure sc;
+    sc.setInsecure();
+    HTTPClient http;
+    String url = "https://api.telegram.org/bot" + String(BOT_TOKEN) +
+                 "/getUpdates?offset=" + String(bot.last_message_received + 1) +
+                 "&limit=5&timeout=0";
+    http.begin(sc, url);
+    http.setTimeout(8000);
+    int code = http.GET();
+    Serial.printf("[TG] HTTP %d\n", code);
+
+    if (code == 200) {
+        String body = http.getString();
+        // Primeros 200 chars para debug
+        Serial.println("[TG] " + body.substring(0, 200));
+
+        DynamicJsonDocument doc(4096);
+        if (deserializeJson(doc, body) == DeserializationError::Ok
+            && doc["ok"].as<bool>()) {
+            JsonArray results = doc["result"].as<JsonArray>();
+            for (JsonObject upd : results) {
+                long uid = upd["update_id"].as<long>();
+                if (uid > bot.last_message_received) {
+                    bot.last_message_received = uid;
+                }
+                if (upd.containsKey("message")) {
+                    JsonObject m = upd["message"];
+                    String text   = m["text"] | "";
+                    String chatId = String(m["chat"]["id"].as<long>());
+                    text.trim();
+                    if (text.length() > 0) processTelegramMsg(chatId, text);
+                }
+            }
+        }
     }
+    http.end();
+    sc.stop();
 }
 
 // ═══════════════════════════════════════════════════════
