@@ -656,6 +656,7 @@ void processTelegramMsg(const telegramMessage& msg) {
     const String& chat = msg.chat_id;
     String text = msg.text;
     text.trim();
+    Serial.printf("[TG] cmd='%s' chat=%s\n", text.c_str(), chat.c_str());
 
     if (text == "/start" || text == "/ayuda") {
         String h = "🤖 *Purificadora — Comandos*\n\n";
@@ -677,15 +678,15 @@ void processTelegramMsg(const telegramMessage& msg) {
         h += "🔧 *Modo manual*\n";
         h += "/manual — Activar modo manual\n";
         h += "/auto — Volver a automático\n";
-        h += "/bomba\_alim on|off\n";
-        h += "/bomba\_hp on|off\n";
+        h += "/bomba\\_alim on|off\n";
+        h += "/bomba\\_hp on|off\n";
         h += "/solenoide on|off\n";
         h += "/uv on|off\n\n";
         h += "🔴 *Alarmas y mantenimiento*\n";
-        h += "/alarma\_off — Silenciar\n";
-        h += "/alarma\_reset — Resetear\n";
-        h += "/reset\_membrana — Resetear contador membrana\n";
-        h += "/reset\_uv — Resetear contador UV\n";
+        h += "/alarma\\_off — Silenciar\n";
+        h += "/alarma\\_reset — Resetear\n";
+        h += "/reset\\_membrana — Resetear contador membrana\n";
+        h += "/reset\\_uv — Resetear contador UV\n";
         bot.sendMessage(chat, h, "Markdown");
     }
     else if (text == "/estado")  { bot.sendMessage(chat, buildTelegramStatus(), "Markdown"); }
@@ -738,7 +739,7 @@ void processTelegramMsg(const telegramMessage& msg) {
     }
     else if (text == "/auto") {
         if (sysState == ST_ALARM)
-            bot.sendMessage(chat, "❌ Resetea la alarma primero con /alarma\_reset", "Markdown");
+            bot.sendMessage(chat, "❌ Resetea la alarma primero con /alarma\\_reset", "Markdown");
         else { sysState = ST_IDLE; autoMode = false; bot.sendMessage(chat, "🤖 Modo automático listo", ""); }
     }
     else if (text.startsWith("/horario")) {
@@ -798,7 +799,9 @@ void processTelegramMsg(const telegramMessage& msg) {
 void checkTelegram() {
     if (WiFi.status() != WL_CONNECTED) { WiFi.reconnect(); return; }
     int n = bot.getUpdates(bot.last_message_received + 1);
-    while (n) {
+    if (n < 0) Serial.printf("[TG] getUpdates error: %d\n", n);
+    while (n > 0) {
+        Serial.printf("[TG] %d mensaje(s) nuevo(s)\n", n);
         for (int i = 0; i < n; i++) processTelegramMsg(bot.messages[i]);
         n = bot.getUpdates(bot.last_message_received + 1);
     }
@@ -991,6 +994,19 @@ void setup() {
     }
 
     tlsClient.setInsecure();
+
+    // Eliminar webhook si estuviera activo (bloquea getUpdates)
+    {
+        WiFiClientSecure sc;
+        sc.setInsecure();
+        HTTPClient h;
+        h.begin(sc, "https://api.telegram.org/bot" + String(BOT_TOKEN) + "/deleteWebhook");
+        int r = h.GET();
+        Serial.printf("[TG] deleteWebhook=%d\n", r);
+        h.end();
+        sc.stop();
+    }
+
     bot.sendMessage(CHAT_ID,
         "🟢 *Purificadora online*\nIP: " + WiFi.localIP().toString() +
         "\nHora: " + getTimeStr() +
