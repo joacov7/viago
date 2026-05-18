@@ -160,9 +160,13 @@ function ProductFormModal({ isOpen, product, onClose, onSave }) {
             />
           </div>
         </FormField>
-        <FormField label="Imagen del producto (URL)" hint="Se muestra en la app del cliente. Pegá la URL de una foto.">
-          <input value={form.imageUrl || ''} onChange={e => set('imageUrl', e.target.value)}
-            className={inputCls()} placeholder="https://..." type="url" />
+        <FormField label="Imagen del producto (URL)" hint="Pegá una URL directa o un link de Google Drive (se convierte automáticamente).">
+          <input value={form.imageUrl || ''} onChange={e => {
+            let url = e.target.value.trim();
+            const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+            if (m) url = `https://drive.google.com/uc?export=view&id=${m[1]}`;
+            set('imageUrl', url);
+          }} className={inputCls()} placeholder="https://... o link de Google Drive" />
           {form.imageUrl && (
             <div className="mt-2 w-20 h-20 rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
               <img src={form.imageUrl} alt="preview" className="w-full h-full object-cover"
