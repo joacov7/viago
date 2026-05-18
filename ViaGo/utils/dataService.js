@@ -545,6 +545,12 @@ const DataService = {
       .limit(1);
     return data && data.length > 0 ? this._js(data[0]) : null;
   },
+  async upsertDriverLocation(lat, lng, driverName) {
+    await this._sb.from('driver_locations').upsert(
+      { id: 1, lat, lng, driver_name: driverName, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+  },
 
   // ─── AUTH ─────────────────────────────────────────────────────────────────
   async setAdminUser(userId) {
