@@ -535,6 +535,16 @@ const DataService = {
     return this._jsMany(data);
   },
 
+  // ─── DRIVER LOCATION ─────────────────────────────────────────────────────
+  async getDriverLocation() {
+    const { data } = await this._sb
+      .from('driver_locations')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    return data && data.length > 0 ? this._js(data[0]) : null;
+  },
+
   // ─── AUTH ─────────────────────────────────────────────────────────────────
   async setAdminUser(userId) {
     this._configCache = null;
