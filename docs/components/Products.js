@@ -163,8 +163,8 @@ function ProductFormModal({ isOpen, product, onClose, onSave }) {
         <FormField label="Imagen del producto (URL)" hint="Pegá una URL directa o un link de Google Drive (se convierte automáticamente).">
           <input value={form.imageUrl || ''} onChange={e => {
             let url = e.target.value.trim();
-            const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-            if (m) url = `https://drive.google.com/uc?export=view&id=${m[1]}`;
+            const m = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
+            if (m) url = `https://lh3.googleusercontent.com/d/${m[1]}`;
             set('imageUrl', url);
           }} className={inputCls()} placeholder="https://... o link de Google Drive" />
           {form.imageUrl && (
