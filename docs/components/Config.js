@@ -286,15 +286,17 @@ function Config({ onConfigChange }) {
                   </div>
                   {config.storeEnabled && (
                     <div className="space-y-4">
-                      <FormField label="Conversión de puntos ($ por punto)" hint="Cuántos pesos vale 1 punto. Ej: 1 = $1 por punto, 0.5 = $0,50 por punto">
-                        <input type="number" value={config.pointsConversionRate ?? 1}
+                      <FormField label="Puntos por peso ($)" hint="Cuántos puntos equivalen a $1. Ej: 0.3 = un producto de $1000 cuesta 300 pts; 1 = $1000 cuesta 1000 pts">
+                        <input type="number" value={config.pointsConversionRate ?? 0.1}
                           onChange={e => set('pointsConversionRate', e.target.value)}
-                          onBlur={e => { const n = parseFloat(e.target.value); set('pointsConversionRate', (!n || n <= 0) ? 1 : n); }}
-                          className={inputCls()} min="0.01" step="0.25" />
+                          onBlur={e => { const n = parseFloat(e.target.value); set('pointsConversionRate', (!n || n <= 0) ? 0.1 : n); }}
+                          className={inputCls()} min="0.01" step="0.05" />
                       </FormField>
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-sm text-blue-800">
-                        <strong>Ejemplo:</strong> Con tasa {config.pointsConversionRate || 1} — un cliente con 200 puntos puede descontar <strong>${((config.pointsConversionRate || 1) * 200).toFixed(0)}</strong> de su compra,
-                        o canjear un producto de ${(200 * (config.pointsConversionRate || 1)).toFixed(0)} enteramente con puntos.
+                        {(() => { const r = parseFloat(config.pointsConversionRate) || 0.1; return (<>
+                          <strong>Ejemplo con tasa {r}:</strong> un producto de $4.000 cuesta <strong>{Math.ceil(4000 * r)} pts</strong>.
+                          Un cliente con 200 pts puede descontar <strong>${(200 / r).toFixed(0)}</strong> de su compra.
+                        </>); })()}
                       </div>
                     </div>
                   )}

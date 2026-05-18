@@ -610,7 +610,7 @@ function PortalStore({ client, config, onTab }) {
     { id: 'accesorio',label: '🔧 Accesorios' },
   ];
 
-  const ptPrice = (p) => Math.ceil(p.price / rate);
+  const ptPrice = (p) => Math.ceil(p.price * rate);
   const filtered = cat === 'all' ? products : products.filter(p => CAT_MAP[p.type] === cat);
 
   const setQty = (id, q) => setCart(prev => ({ ...prev, [id]: Math.max(0, q) }));
@@ -619,15 +619,15 @@ function PortalStore({ client, config, onTab }) {
     .filter(p => (cart[p.id] || 0) > 0)
     .map(p => ({ ...p, qty: cart[p.id], subtotal: p.price * cart[p.id], ptSubtotal: ptPrice(p) * cart[p.id] }));
 
-  const totalCash = cartItems.reduce((s, i) => s + i.subtotal, 0);
-  const totalPts  = cartItems.reduce((s, i) => s + i.ptSubtotal, 0);
-  const maxPts    = Math.min(clientPoints, Math.floor(totalCash / rate));
-  const discount  = Math.min(pointsUsed * rate, totalCash);
+  const totalCash  = cartItems.reduce((s, i) => s + i.subtotal, 0);
+  const totalPts   = cartItems.reduce((s, i) => s + i.ptSubtotal, 0);
+  const maxPts     = Math.min(clientPoints, Math.floor(totalCash * rate));
+  const discount   = Math.min(pointsUsed / rate, totalCash);
   const finalTotal = Math.max(0, totalCash - discount);
 
   React.useEffect(() => {
     if (payMode !== 'mixed') setPointsUsed(0);
-    else setPointsUsed(prev => Math.min(prev, Math.min(clientPoints, Math.floor(totalCash / rate))));
+    else setPointsUsed(prev => Math.min(prev, Math.min(clientPoints, Math.floor(totalCash * rate))));
   }, [payMode, cart]);
 
   const handleConfirm = async () => {
@@ -739,7 +739,7 @@ function PortalStore({ client, config, onTab }) {
           {/* Points balance */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-400">Tus puntos</span>
-            <span className="font-bold text-amber-500">🪙 {clientPoints} pts = {fmt(clientPoints * rate)}</span>
+            <span className="font-bold text-amber-500">🪙 {clientPoints} pts = {fmt(clientPoints / rate)}</span>
           </div>
 
           {/* Points-only warning */}
@@ -752,7 +752,7 @@ function PortalStore({ client, config, onTab }) {
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">Puntos a usar</span>
-                <span className="font-bold text-amber-500">🪙 {pointsUsed} pts = {fmt(pointsUsed * rate)}</span>
+                <span className="font-bold text-amber-500">🪙 {pointsUsed} pts = {fmt(pointsUsed / rate)}</span>
               </div>
               <input type="range" min="0" max={maxPts} value={pointsUsed}
                 onChange={e => setPointsUsed(parseInt(e.target.value))}
@@ -811,7 +811,7 @@ function PortalStore({ client, config, onTab }) {
           <span className="text-2xl leading-none flex-shrink-0">🪙</span>
           <div className="flex-1 min-w-0">
             <p className="text-white font-bold text-sm">{clientPoints} puntos disponibles</p>
-            <p className="text-xs" style={{ color: '#fcd34d' }}>= {fmt(clientPoints * rate)} de descuento</p>
+            <p className="text-xs" style={{ color: '#fcd34d' }}>= {fmt(clientPoints / rate)} de descuento</p>
           </div>
         </div>
       )}
