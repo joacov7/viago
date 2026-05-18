@@ -71,7 +71,7 @@
 // ──────────────────────────────────────────────────────
 #define INTERVAL_SENSOR    500UL
 #define INTERVAL_DISPLAY  1000UL
-#define INTERVAL_TELEGRAM 2000UL
+#define INTERVAL_TELEGRAM 5000UL
 #define INTERVAL_WS       1000UL
 #define INTERVAL_COUNTER  1000UL
 #define INTERVAL_SCHEDULE 30000UL
