@@ -98,8 +98,16 @@ function LiveTracking() {
     map.setView([lat, lng], Math.max(map.getZoom(), 14));
   }, [driverPos]);
 
-  // Supabase Realtime subscription
+  // Supabase Realtime + polling fallback
   React.useEffect(() => {
+    const refresh = () =>
+      DataService.getDriverLocation().then(pos => {
+        if (pos?.lat) {
+          setDriverPos({ lat: pos.lat, lng: pos.lng, driverName: pos.driverName });
+          setLastUpdate(new Date(pos.updatedAt));
+        }
+      }).catch(() => {});
+
     channelRef.current = SupabaseDB
       .channel('driver-live')
       .on('postgres_changes', {
@@ -112,7 +120,11 @@ function LiveTracking() {
         }
       })
       .subscribe();
+
+    // Poll every 15s as fallback when Realtime isn't available
+    const poll = setInterval(refresh, 15000);
     return () => {
+      clearInterval(poll);
       if (channelRef.current) SupabaseDB.removeChannel(channelRef.current);
     };
   }, []);

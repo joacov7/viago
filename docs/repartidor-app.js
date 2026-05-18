@@ -132,10 +132,15 @@ function DeliveryApp({ config }) {
     const send = pos => {
       DataService.upsertDriverLocation(
         pos.coords.latitude, pos.coords.longitude, config.companyName || 'Repartidor'
-      ).catch(() => {});
+      ).catch(err => console.error('upsertDriverLocation error:', err));
     };
-    watchIdRef.current = navigator.geolocation.watchPosition(send, () => {}, {
-      enableHighAccuracy: true, maximumAge: 15000, timeout: 15000,
+    const onError = err => {
+      const msgs = { 1: 'Permiso de ubicación denegado. Habilitá el GPS en tu navegador.', 2: 'Ubicación no disponible.', 3: 'Tiempo agotado para obtener ubicación.' };
+      alert(msgs[err.code] || 'Error de GPS: ' + err.message);
+      setSharing(false);
+    };
+    watchIdRef.current = navigator.geolocation.watchPosition(send, onError, {
+      enableHighAccuracy: true, maximumAge: 15000, timeout: 20000,
     });
   };
 
