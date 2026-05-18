@@ -99,7 +99,7 @@ const DataService = {
   },
   async createProduct(productData) {
     const { data } = await this._sb.from('products')
-      .insert(this._db({ name: productData.name, type: productData.type || 'bidon', price: parseFloat(productData.price) || 0, unit: productData.unit || 'unidad', active: true }))
+      .insert(this._db({ name: productData.name, type: productData.type || 'bidon', price: parseFloat(productData.price) || 0, unit: productData.unit || 'unidad', imageUrl: productData.imageUrl || null, active: true }))
       .select().single();
     return this._js(data);
   },
