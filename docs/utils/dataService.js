@@ -56,6 +56,7 @@ const DataService = {
       referralsEnabled: false, referralReferrerReward: 500, referralReferredDiscount: 10,
       referralMessage: 'Referí a un amigo y ambos ganan crédito en su cuenta.',
       referralShareMessage: 'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁',
+      referralPrizeEvery: 0, referralPrizePts: 200,
       mpPublicKey: '', whatsappNumber: '',
       paymentMethods: ['efectivo', 'transferencia', 'mercadopago'],
       storeEnabled: false, pointsConversionRate: 1,
@@ -159,6 +160,14 @@ const DataService = {
     if (clientData.referredBy) {
       const cfg = await this.getConfig();
       await this.addPoints(clientData.referredBy, cfg.referralBonus, 'referral', 'Nuevo referido registrado');
+      if (cfg.referralPrizeEvery > 0) {
+        const { count } = await this._sb.from('clients').select('*', { count: 'exact', head: true })
+          .eq('referred_by', clientData.referredBy);
+        if (count > 0 && count % cfg.referralPrizeEvery === 0) {
+          await this.addPoints(clientData.referredBy, cfg.referralPrizePts || 200, 'referral',
+            `🎁 Premio: ${count} referidos acumulados`);
+        }
+      }
     }
     return client;
   },

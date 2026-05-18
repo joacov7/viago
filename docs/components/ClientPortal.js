@@ -896,6 +896,17 @@ function PortalStore({ client, config, onTab }) {
 // ─── Referrals ───────────────────────────────────────────────────────────────────
 
 function PortalReferrals({ client, config }) {
+  const [referralCount, setReferralCount] = React.useState(client.referralCount || 0);
+  React.useEffect(() => {
+    DataService.getClients().then(all => {
+      setReferralCount(all.filter(c => c.referredBy === client.id).length);
+    }).catch(() => {});
+  }, [client.id]);
+
+  const prizeEvery = config.referralPrizeEvery || 0;
+  const nextPrize  = prizeEvery > 0 ? prizeEvery - (referralCount % prizeEvery) : null;
+  const prizePct   = prizeEvery > 0 ? ((referralCount % prizeEvery) / prizeEvery * 100) : 0;
+
   const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
   const template = config.referralShareMessage ||
     'Hola! Te recomiendo el agua de {empresa}\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos!';
@@ -946,6 +957,26 @@ function PortalReferrals({ client, config }) {
           <p className="text-xs text-slate-400 mt-1 font-medium">descuento para tu amigo</p>
         </div>
       </div>
+
+      {/* Prize milestone progress */}
+      {prizeEvery > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Premio por referidos 🎁</p>
+            <p className="text-xs font-bold text-violet-600">{referralCount % prizeEvery}/{prizeEvery}</p>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+            <div className="h-full rounded-full bg-gradient-to-r from-violet-400 to-violet-600 transition-all"
+              style={{ width: `${prizePct}%` }} />
+          </div>
+          <p className="text-xs text-slate-500">
+            {nextPrize === prizeEvery
+              ? `Referí ${prizeEvery} amigos y ganás ${config.referralPrizePts || 200} puntos extra`
+              : `Te faltan ${nextPrize} referido${nextPrize !== 1 ? 's' : ''} para tu próximo premio de ${config.referralPrizePts || 200} puntos`}
+          </p>
+        </div>
+      )}
 
       {/* Code */}
       {(client.referralCode || client.code) && (

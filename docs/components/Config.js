@@ -236,6 +236,26 @@ function Config({ onConfigChange }) {
                           placeholder={`Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Llamalos al {telefono} y mencioná mi código *{codigo}* para que los dos ganemos crédito 🎁`} />
                         <p className="text-xs text-slate-400 mt-1">Variables: <code>{'{link}'}</code> · <code>{'{empresa}'}</code> · <code>{'{telefono}'}</code> · <code>{'{codigo}'}</code> · <code>{'{nombre}'}</code></p>
                       </FormField>
+                      <div className="border-t border-green-100 pt-4 space-y-3">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Premio por cantidad de referidos</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <FormField label="Premio cada N referidos" hint="Cantidad de referidos para recibir el premio. 0 = desactivado">
+                            <input type="number" value={config.referralPrizeEvery || 0}
+                              onChange={e => set('referralPrizeEvery', parseInt(e.target.value) || 0)}
+                              className={inputCls()} min="0" step="1" placeholder="0" />
+                          </FormField>
+                          <FormField label="Puntos del premio" hint="Puntos extra que recibe el referidor al alcanzar el hito">
+                            <input type="number" value={config.referralPrizePts || 200}
+                              onChange={e => set('referralPrizePts', parseInt(e.target.value) || 0)}
+                              className={inputCls()} min="0" step="50" />
+                          </FormField>
+                        </div>
+                        {(config.referralPrizeEvery || 0) > 0 && (
+                          <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 border border-green-100">
+                            Cada {config.referralPrizeEvery} referidos el cliente recibe <strong>{config.referralPrizePts} puntos extra</strong> de bonificación.
+                          </p>
+                        )}
+                      </div>
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-sm text-green-800">
                         <strong>Ejemplo:</strong> Juan refiere a María. María paga su primera factura de $3.000.
                         María recibe <strong>${((config.referralReferredDiscount || 10) / 100 * 3000).toFixed(0)} de crédito</strong>.

@@ -122,6 +122,9 @@ function Loyalty() {
                 <div className="space-y-4">
                   {referrers.map(c => {
                     const refs = clients.filter(r => r.referredBy === c.id);
+                    const prizeEvery = config.referralPrizeEvery || 0;
+                    const nextPrize = prizeEvery > 0 ? prizeEvery - (refs.length % prizeEvery) : null;
+                    const prizePct  = prizeEvery > 0 ? ((refs.length % prizeEvery) / prizeEvery * 100) : 0;
                     return (
                       <div key={c.id} className="bg-gray-50 rounded-xl p-4">
                         <div className="flex items-center justify-between mb-3">
@@ -134,6 +137,17 @@ function Loyalty() {
                             <p className="text-xs text-slate-400">referidos</p>
                           </div>
                         </div>
+                        {prizeEvery > 0 && (
+                          <div className="mb-3">
+                            <div className="flex justify-between text-xs text-slate-500 mb-1">
+                              <span>Próximo premio 🎁</span>
+                              <span>{refs.length % prizeEvery}/{prizeEvery} — faltan {nextPrize}</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full bg-violet-500 transition-all" style={{width:`${prizePct}%`}} />
+                            </div>
+                          </div>
+                        )}
                         <div className="space-y-1.5">
                           {refs.map(r => (
                             <div key={r.id} className="flex items-center justify-between text-sm p-2 bg-white rounded-lg border border-gray-100">
