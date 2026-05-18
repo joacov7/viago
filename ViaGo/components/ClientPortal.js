@@ -17,7 +17,7 @@ function fmtDateTime(s) {
   return new Date(s).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── No token screen ─────────────────────────────────────────────────────────
+// ─── No token screen ─────────────────────────────────────────────────────
 
 function NoAccess() {
   return (
@@ -33,7 +33,7 @@ function NoAccess() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
           <div className="text-4xl mb-3">🔗</div>
           <h2 className="font-bold text-slate-900 mb-2">Link de acceso requerido</h2>
-          <p className="text-sm text-slate-500">Pedile a NATIVA que te envíe tu link personal de acceso por WhatsApp.</p>
+          <p className="text-sm text-slate-500">Pedíle a NATIVA que te envíe tu link personal de acceso por WhatsApp.</p>
         </div>
       </div>
     </div>
@@ -46,129 +46,250 @@ function ClientNotFound() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-sm text-center">
         <div className="text-4xl mb-3">❌</div>
         <h2 className="font-bold text-slate-900 mb-2">Link inválido o expirado</h2>
-        <p className="text-sm text-slate-500">Pedile a NATIVA que te envíe un nuevo link de acceso.</p>
+        <p className="text-sm text-slate-500">Pedíle a NATIVA que te envíe un nuevo link de acceso.</p>
       </div>
     </div>
   );
 }
 
-// ─── Client Portal App ───────────────────────────────────────────────────────
+// ─── Nav SVG icons ────────────────────────────────────────────────────────────
+
+function NavIconHome({ active, color }) {
+  return active
+    ? (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill={color}>
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+      </svg>
+    ) : (
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    );
+}
+function NavIconDrop({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill={active ? color : 'none'}
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+    </svg>
+  );
+}
+function NavIconBox({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+      <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  );
+}
+function NavIconDoc({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+  );
+}
+function NavIconGift({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 12 20 22 4 22 4 12"/>
+      <rect x="2" y="7" width="20" height="5"/>
+      <line x1="12" y1="22" x2="12" y2="7"/>
+      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+    </svg>
+  );
+}
+function NavIconShop({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 0 1-8 0"/>
+    </svg>
+  );
+}
+
+// ─── Client Portal App ───────────────────────────────────────────────────────────────
 
 function ClientPortalApp({ client, config }) {
   const [tab, setTab] = React.useState('home');
+  const primary = config.primaryColor || '#2563EB';
 
   const tabs = [
-    { id: 'home',     label: 'Inicio',      icon: '🏠' },
-    { id: 'order',    label: 'Pedir',       icon: '💧' },
-    { id: 'orders',   label: 'Mis pedidos', icon: '📦' },
-    { id: 'invoices', label: 'Facturas',    icon: '📄' },
-    ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', icon: '🎁' }] : []),
+    { id: 'home',     label: 'Inicio',   Icon: NavIconHome },
+    { id: 'order',    label: 'Pedir',    Icon: NavIconDrop },
+    { id: 'orders',   label: 'Pedidos',  Icon: NavIconBox },
+    { id: 'invoices', label: 'Facturas', Icon: NavIconDoc },
+    ...(config.storeEnabled    ? [{ id: 'store',    label: 'Tienda',   Icon: NavIconShop }] : []),
+    ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', Icon: NavIconGift }] : []),
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
-            <span className="text-white text-sm">💧</span>
+    <div className="min-h-screen pb-20"
+      style={{ background: 'linear-gradient(155deg,#dbeafe 0%,#eff6ff 25%,#f8fafc 55%,#ffffff 80%)' }}>
+
+      {/* ── Header ── */}
+      <header className="px-5 pt-5 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+            style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)' }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+              <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+            </svg>
           </div>
-          <div>
-            <p className="font-bold text-slate-900 text-sm leading-none">{config.companyName || 'NATIVA'}</p>
-            <p className="text-xs text-slate-400 leading-none mt-0.5">{client.name}</p>
-          </div>
+          <span className="font-black text-slate-900 text-xl" style={{ letterSpacing: '0.06em' }}>
+            {(config.companyName || 'NATIVA').toUpperCase()}
+          </span>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-amber-600">{client.points || 0} pts</p>
-          <p className="text-xs text-slate-400">mis puntos</p>
+        <div className="flex items-center gap-2">
+          <div className="relative w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white" style={{ background: primary }} />
+          </div>
         </div>
       </header>
 
-      <div className="p-4 max-w-lg mx-auto">
+      <div className="px-5 max-w-lg mx-auto">
         {tab === 'home'      && <PortalHome      client={client} config={config} onTab={setTab} />}
         {tab === 'order'     && <PortalOrder     client={client} onDone={() => setTab('orders')} />}
         {tab === 'orders'    && <PortalOrders    client={client} />}
         {tab === 'invoices'  && <PortalInvoices  client={client} />}
+        {tab === 'store'     && <PortalStore     client={client} config={config} onTab={setTab} />}
         {tab === 'referrals' && <PortalReferrals client={client} config={config} />}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-10">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${tab === t.id ? 'text-blue-600' : 'text-slate-400'}`}>
-            <span className="text-lg leading-none">{t.icon}</span>
-            {t.label}
-          </button>
-        ))}
+      {/* ── Bottom Nav ── */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-10"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom,0px)' }}>
+        {tabs.map(t => {
+          const active = tab === t.id;
+          return (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="flex-1 flex flex-col items-center gap-0.5 pt-3 pb-2.5 relative transition-colors">
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                  style={{ background: primary }} />
+              )}
+              <t.Icon active={active} color={primary} />
+              <span className="text-xs font-medium" style={{ color: active ? primary : '#94a3b8' }}>
+                {t.label}
+              </span>
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
 }
 
-// ─── Home ────────────────────────────────────────────────────────────────────
+// ─── Home ─────────────────────────────────────────────────────────────────────
 
 function PortalHome({ client, config, onTab }) {
-  const pct = config.pointsForReward > 0
-    ? Math.min(100, Math.round((client.points || 0) / config.pointsForReward * 100))
-    : 0;
+  const [products, setProducts] = React.useState([]);
+  const primary = config.primaryColor || '#2563EB';
+
+  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-5 text-white">
-        <p className="text-blue-200 text-sm mb-1">¡Hola!</p>
-        <h2 className="text-xl font-bold">{client.name}</h2>
-        <p className="text-blue-200 text-xs mt-0.5">{client.code}</p>
+    <div className="pt-3 pb-36 space-y-5">
+
+      {/* ── Hero title ── */}
+      <div>
+        <h1 className="text-4xl font-black text-slate-900 leading-tight tracking-tight">
+          {config.tagline || 'Agua Pura de Vertiente, Directo a tu Hogar'}
+        </h1>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-slate-900">Mis puntos</h3>
-          <span className="text-2xl font-bold text-amber-600">{client.points || 0}</span>
-        </div>
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-          <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="text-xs text-slate-400 mt-2">
-          {client.points || 0} / {config.pointsForReward || 100} pts para tu próximo premio
-        </p>
+      {/* ── Products carousel ── */}
+      <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-1"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        {products.length === 0
+          ? [1, 2, 3].map(i => (
+              <div key={i} className="w-[120px] flex-shrink-0 bg-white rounded-2xl p-3 border border-gray-100"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
+                <div className="w-full h-28 bg-gray-100 rounded-xl mb-2 animate-pulse" />
+                <div className="h-3 bg-gray-100 rounded mb-1.5 animate-pulse" />
+                <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
+              </div>
+            ))
+          : products.map(p => (
+              <button key={p.id} onClick={() => onTab('order')}
+                className="w-[120px] flex-shrink-0 bg-white rounded-2xl p-3 text-left border border-gray-100 active:scale-95 transition-transform"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
+                <div className="w-full h-28 rounded-xl mb-2 flex items-center justify-center overflow-hidden bg-slate-50">
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-1"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    : <svg viewBox="0 0 24 24" width="44" height="44" fill={primary} opacity="0.25">
+                        <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                      </svg>
+                  }
+                </div>
+                <p className="text-xs font-semibold text-slate-800 leading-tight mb-0.5 line-clamp-2">{p.name}</p>
+                <p className="text-sm font-bold text-slate-900">{fmt(p.price)}</p>
+              </button>
+            ))
+        }
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* ── CTA pill button ── */}
+      <div className="flex justify-center pt-2">
         <button onClick={() => onTab('order')}
-          className="bg-blue-600 text-white rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-blue-700 transition-colors">
-          <span className="text-2xl">💧</span>
-          <span className="text-sm font-semibold">Hacer pedido</span>
-        </button>
-        <button onClick={() => onTab('orders')}
-          className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 text-slate-700 shadow-sm">
-          <span className="text-2xl">📦</span>
-          <span className="text-sm font-semibold">Mis pedidos</span>
+          className="flex items-center gap-2 px-10 py-4 rounded-full text-white font-bold text-base active:scale-95 transition-transform"
+          style={{
+            background: primary,
+            boxShadow: `0 6px 24px ${primary}55`,
+          }}>
+          PEDIR AHORA
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="white">
+            <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+          </svg>
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-        <h3 className="font-semibold text-slate-900 mb-3 text-sm">Mi información</h3>
-        <div className="space-y-2 text-sm">
-          {client.address && (
-            <div className="flex items-start gap-2">
-              <span className="text-slate-400 flex-shrink-0">📍</span>
-              <span className="text-slate-700">{client.address}{client.city ? `, ${client.city}` : ''}</span>
+      {/* ── Points card (compacta) ── */}
+      {(client.points > 0 || config.pointsForReward > 0) && (() => {
+        const pct = config.pointsForReward > 0
+          ? Math.min(100, Math.round((client.points || 0) / config.pointsForReward * 100))
+          : 0;
+        const remaining = Math.max(0, (config.pointsForReward || 100) - (client.points || 0));
+        return (
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-3"
+            style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <span className="text-xl leading-none">⭐</span>
             </div>
-          )}
-          {client.phone && <div className="flex items-center gap-2"><span className="text-slate-400">📞</span><span className="text-slate-700">{client.phone}</span></div>}
-          {client.email && <div className="flex items-center gap-2"><span className="text-slate-400">✉️</span><span className="text-slate-700">{client.email}</span></div>}
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">🔄</span>
-            <span className="text-slate-700 capitalize">{client.frequency || '—'}</span>
-            {client.deliveryDay && <span className="text-slate-500">· {client.deliveryDay}</span>}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between mb-1.5">
+                <p className="text-sm font-semibold text-slate-700">Mis puntos</p>
+                <p className="font-bold text-amber-500 text-base leading-none">{client.points || 0}</p>
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">{remaining} pts para tu próximo premio</p>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }
 
-// ─── Order ───────────────────────────────────────────────────────────────────
+// ─── Order ──────────────────────────────────────────────────────────────────────
 
 function PortalOrder({ client, onDone }) {
   const [products, setProducts] = React.useState([]);
@@ -195,41 +316,66 @@ function PortalOrder({ client, onDone }) {
     await DataService.createOrder({ clientId: client.id, items: orderItems, total, deliveryDate: date, notes });
     setLoading(false);
     setSuccess(true);
-    setTimeout(() => { setSuccess(false); setQtys({}); setNotes(''); onDone(); }, 2000);
+    setTimeout(() => { setSuccess(false); setQtys({}); setNotes(''); onDone(); }, 2500);
   };
 
   if (success) {
     return (
-      <div className="text-center py-16">
-        <div className="text-5xl mb-4">✅</div>
-        <h2 className="text-xl font-bold text-slate-900 mb-2">¡Pedido enviado!</h2>
-        <p className="text-slate-500 text-sm">Te avisamos cuando esté en camino.</p>
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 8px 24px rgba(34,197,94,.35)' }}>
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pedido enviado!</h2>
+        <p className="text-slate-400 text-sm">Te avisamos cuando esté en camino.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-      <h2 className="text-lg font-bold text-slate-900">Nuevo pedido</h2>
+    <form onSubmit={handleSubmit} className="pt-3 pb-36 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Nuevo pedido</h1>
 
+      {/* Products list */}
       {products.length === 0 ? (
-        <div className="text-center py-8 text-slate-400">Cargando productos...</div>
+        <div className="flex flex-col items-center py-12 text-slate-400">
+          <Spinner />
+          <p className="mt-4 text-sm">Cargando productos...</p>
+        </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
-          {products.map(p => (
-            <div key={p.id} className="flex items-center gap-3 p-4">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 text-sm">{p.name}</p>
-                <p className="text-xs text-blue-600 font-semibold">{fmt(p.price)}</p>
+        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden"
+          style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          {products.map((p, i) => (
+            <div key={p.id}
+              className={`flex items-center gap-3 p-4 ${i < products.length - 1 ? 'border-b border-slate-50' : ''}`}>
+              {/* Thumbnail */}
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-50">
+                {p.imageUrl
+                  ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-0.5"
+                      onError={e => { e.target.style.display = 'none'; }} />
+                  : <svg viewBox="0 0 24 24" width="22" height="22" fill="#93c5fd">
+                      <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                    </svg>
+                }
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</p>
+                <p className="text-xs font-bold text-blue-600 mt-0.5">{fmt(p.price)}</p>
+              </div>
+              {/* Qty stepper */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button type="button" onClick={() => setQty(p.id, (qtys[p.id] || 0) - 1)}
-                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-slate-700 font-bold text-lg flex items-center justify-center">
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">
                   −
                 </button>
-                <span className="w-8 text-center font-semibold text-slate-900">{qtys[p.id] || 0}</span>
+                <span className="w-7 text-center font-bold text-slate-900 text-sm tabular-nums">
+                  {qtys[p.id] || 0}
+                </span>
                 <button type="button" onClick={() => setQty(p.id, (qtys[p.id] || 0) + 1)}
-                  className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg flex items-center justify-center">
+                  className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center active:scale-90 transition-transform"
+                  style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)' }}>
                   +
                 </button>
               </div>
@@ -238,36 +384,60 @@ function PortalOrder({ client, onDone }) {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+      {/* Date + Notes */}
+      <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4"
+        style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Fecha deseada de entrega</label>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+            Fecha de entrega
+          </label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Notas (opcional)</label>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+            Notas (opcional)
+          </label>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2"
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             placeholder="Horario, instrucciones especiales..." />
         </div>
       </div>
 
+      {/* Total */}
       {total > 0 && (
-        <div className="bg-blue-50 rounded-2xl p-4 flex items-center justify-between">
-          <span className="font-medium text-blue-800">Total estimado</span>
-          <span className="text-xl font-bold text-blue-900">{fmt(total)}</span>
+        <div className="bg-white rounded-2xl p-4 flex items-center justify-between border border-blue-100"
+          style={{ boxShadow: '0 4px 16px rgba(37,99,235,.08)' }}>
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total estimado</p>
+            <p className="text-2xl font-black text-slate-900 mt-0.5">{fmt(total)}</p>
+          </div>
+          <div className="text-right text-xs text-slate-400 leading-relaxed">
+            {orderItems.map(i => (
+              <p key={i.productId}>{i.quantity}× {i.productName}</p>
+            ))}
+          </div>
         </div>
       )}
 
-      <button type="submit" disabled={loading || orderItems.length === 0}
-        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-2xl hover:bg-blue-700 disabled:opacity-60 transition-colors">
-        {loading ? 'Enviando...' : `Confirmar pedido${total > 0 ? ' · ' + fmt(total) : ''}`}
-      </button>
+      {/* Submit */}
+      <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+        <div className="max-w-lg mx-auto pointer-events-auto">
+          <button type="submit" disabled={loading || orderItems.length === 0}
+            className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)', boxShadow: '0 6px 24px rgba(37,99,235,.4)' }}>
+            {loading
+              ? <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Enviando…</>
+              : <>Confirmar pedido{total > 0 ? ` · ${fmt(total)}` : ''}</>
+            }
+          </button>
+        </div>
+      </div>
     </form>
   );
 }
 
-// ─── Orders ──────────────────────────────────────────────────────────────────
+// ─── Orders ───────────────────────────────────────────────────────────────────
 
 function PortalOrders({ client }) {
   const [orders, setOrders] = React.useState([]);
@@ -277,48 +447,69 @@ function PortalOrders({ client }) {
     DataService.getClientOrders(client.id).then(o => { setOrders(o); setLoading(false); });
   }, [client.id]);
 
-  const statusLabel = { pendiente: 'Pendiente', en_camino: 'En camino 🚚', entregado: 'Entregado ✅', cancelado: 'Cancelado' };
-  const statusStyle = {
-    pendiente: 'bg-amber-100 text-amber-700',
-    en_camino: 'bg-blue-100 text-blue-700',
-    entregado: 'bg-emerald-100 text-emerald-700',
-    cancelado: 'bg-red-100 text-red-700',
+  const STATUS = {
+    pendiente:  { label: 'Pendiente',   dot: '#f59e0b', bg: '#fffbeb', text: '#92400e' },
+    en_camino:  { label: 'En camino',   dot: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
+    entregado:  { label: 'Entregado',   dot: '#22c55e', bg: '#f0fdf4', text: '#166534' },
+    cancelado:  { label: 'Cancelado',   dot: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
   };
 
-  if (loading) return <div className="py-16"><Spinner /></div>;
+  if (loading) return <div className="py-20"><Spinner /></div>;
 
   return (
-    <div className="space-y-3 pt-2">
-      <h2 className="text-lg font-bold text-slate-900">Mis pedidos</h2>
+    <div className="pt-3 pb-8 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis pedidos</h1>
+
       {orders.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-3">📦</div>
-          <p className="text-slate-500">Todavía no hiciste ningún pedido</p>
+        <div className="flex flex-col items-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <p className="font-semibold text-slate-700 mb-1">Sin pedidos aún</p>
+          <p className="text-sm text-slate-400">Tus pedidos aparecerán acá cuando los hagas.</p>
         </div>
-      ) : orders.map(o => (
-        <div key={o.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div>
-              <p className="font-semibold text-slate-900">Pedido #{o.id}</p>
-              <p className="text-xs text-slate-400">{fmtDate(o.deliveryDate)}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-slate-900">{fmt(o.total)}</p>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyle[o.status] || 'bg-gray-100 text-gray-600'}`}>
-                {statusLabel[o.status] || o.status}
+      ) : orders.map(o => {
+        const s = STATUS[o.status] || { label: o.status, dot: '#94a3b8', bg: '#f8fafc', text: '#475569' };
+        return (
+          <div key={o.id} className="bg-white rounded-3xl border border-gray-100 p-5"
+            style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="font-black text-slate-900 text-base">Pedido #{o.id}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{fmtDate(o.deliveryDate)}</p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
+                style={{ background: s.bg, color: s.text }}>
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
+                {s.label}
+                {o.status === 'en_camino' && ' 🚚'}
               </span>
             </div>
+            {(o.items || []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {o.items.map((i, idx) => (
+                  <span key={idx} className="px-2.5 py-1 bg-slate-50 rounded-full text-xs font-medium text-slate-600 border border-slate-100">
+                    {i.quantity}× {i.productName}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+              <p className="text-xs text-slate-400">Total</p>
+              <p className="font-black text-slate-900 text-lg">{fmt(o.total)}</p>
+            </div>
           </div>
-          {(o.items || []).length > 0 && (
-            <p className="text-xs text-slate-500">{o.items.map(i => `${i.quantity}x ${i.productName}`).join(' · ')}</p>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-// ─── Invoices ────────────────────────────────────────────────────────────────
+// ─── Invoices ──────────────────────────────────────────────────────────────
 
 function PortalInvoices({ client }) {
   const [invoices, setInvoices] = React.useState([]);
@@ -328,30 +519,65 @@ function PortalInvoices({ client }) {
     DataService.getClientInvoices(client.id).then(i => { setInvoices(i); setLoading(false); });
   }, [client.id]);
 
-  if (loading) return <div className="py-16"><Spinner /></div>;
+  if (loading) return <div className="py-20"><Spinner /></div>;
+
+  const total = invoices.reduce((s, i) => s + (i.total || 0), 0);
+  const pending = invoices.filter(i => i.paymentStatus !== 'pagado').reduce((s, i) => s + (i.total || 0), 0);
 
   return (
-    <div className="space-y-3 pt-2">
-      <h2 className="text-lg font-bold text-slate-900">Mis facturas</h2>
+    <div className="pt-3 pb-8 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis facturas</h1>
+
+      {/* Summary cards */}
+      {invoices.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Histórico</p>
+            <p className="text-xl font-black text-slate-900">{fmt(total)}</p>
+          </div>
+          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Pendiente</p>
+            <p className={`text-xl font-black ${pending > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>{fmt(pending)}</p>
+          </div>
+        </div>
+      )}
+
       {invoices.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="text-4xl mb-3">📄</div>
-          <p className="text-slate-500">No hay facturas registradas</p>
+        <div className="flex flex-col items-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <p className="font-semibold text-slate-700 mb-1">Sin facturas aún</p>
+          <p className="text-sm text-slate-400">Tus facturas aparecerán acá.</p>
         </div>
       ) : invoices.map(inv => (
-        <div key={inv.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-start justify-between gap-3">
+        <div key={inv.id} className="bg-white rounded-3xl border border-gray-100 p-5"
+          style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="font-semibold text-slate-900">{inv.number}</p>
-              <p className="text-xs text-slate-400">{fmtDateTime(inv.createdAt)}</p>
-              <p className="text-xs text-slate-500 mt-0.5 capitalize">{inv.paymentMethod}</p>
+              <p className="font-black text-slate-900">{inv.number}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{fmtDateTime(inv.createdAt)}</p>
+              {inv.paymentMethod && (
+                <p className="text-xs text-slate-500 mt-0.5 capitalize">{inv.paymentMethod}</p>
+              )}
             </div>
-            <div className="text-right">
-              <p className="font-bold text-slate-900 text-lg">{fmt(inv.total)}</p>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${inv.paymentStatus === 'pagado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                {inv.paymentStatus === 'pagado' ? '✅ Pagado' : '⏳ Pendiente'}
-              </span>
-            </div>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+              inv.paymentStatus === 'pagado'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-amber-50 text-amber-700'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${inv.paymentStatus === 'pagado' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+              {inv.paymentStatus === 'pagado' ? 'Pagado' : 'Pendiente'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between pt-3 border-t border-slate-50">
+            <p className="text-xs text-slate-400">Total</p>
+            <p className="font-black text-slate-900 text-xl">{fmt(inv.total)}</p>
           </div>
         </div>
       ))}
@@ -359,12 +585,320 @@ function PortalInvoices({ client }) {
   );
 }
 
-// ─── Referrals ───────────────────────────────────────────────────────────────
+// ─── Store ───────────────────────────────────────────────────────────────────────
+
+function PortalStore({ client, config, onTab }) {
+  const [products, setProducts] = React.useState([]);
+  const [cat, setCat] = React.useState('all');
+  const [payMode, setPayMode] = React.useState('cash');
+  const [cart, setCart] = React.useState({});
+  const [screen, setScreen] = React.useState('browse');
+  const [pointsUsed, setPointsUsed] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const primary = config.primaryColor || '#2563EB';
+
+  const rate = config.pointsConversionRate || 1;
+  const clientPoints = client.points || 0;
+
+  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
+
+  const CAT_MAP = { bidon: 'agua', botella: 'agua', limpieza: 'limpieza', accesorio: 'accesorio' };
+  const CATS = [
+    { id: 'all',      label: 'Todos' },
+    { id: 'agua',     label: '💧 Agua' },
+    { id: 'limpieza', label: '🧴 Limpieza' },
+    { id: 'accesorio',label: '🔧 Accesorios' },
+  ];
+
+  const ptPrice = (p) => Math.ceil(p.price / rate);
+  const filtered = cat === 'all' ? products : products.filter(p => CAT_MAP[p.type] === cat);
+
+  const setQty = (id, q) => setCart(prev => ({ ...prev, [id]: Math.max(0, q) }));
+
+  const cartItems = products
+    .filter(p => (cart[p.id] || 0) > 0)
+    .map(p => ({ ...p, qty: cart[p.id], subtotal: p.price * cart[p.id], ptSubtotal: ptPrice(p) * cart[p.id] }));
+
+  const totalCash = cartItems.reduce((s, i) => s + i.subtotal, 0);
+  const totalPts  = cartItems.reduce((s, i) => s + i.ptSubtotal, 0);
+  const maxPts    = Math.min(clientPoints, Math.floor(totalCash / rate));
+  const discount  = Math.min(pointsUsed * rate, totalCash);
+  const finalTotal = Math.max(0, totalCash - discount);
+
+  React.useEffect(() => {
+    if (payMode !== 'mixed') setPointsUsed(0);
+  }, [payMode, cart]);
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    const items = cartItems.map(i => ({
+      productId: i.id, productName: i.name,
+      quantity: i.qty, price: i.price, subtotal: i.subtotal,
+    }));
+
+    let ptsToRedeem = 0;
+    let orderTotal = totalCash;
+
+    if (payMode === 'points') {
+      orderTotal = 0;
+      ptsToRedeem = totalPts;
+    } else if (payMode === 'mixed') {
+      orderTotal = finalTotal;
+      ptsToRedeem = pointsUsed;
+    }
+
+    await DataService.createOrder({
+      clientId: client.id, items, total: orderTotal,
+      deliveryDate: DataService.today(),
+      notes: ptsToRedeem > 0 ? `Puntos canjeados: ${ptsToRedeem}` : '',
+    });
+
+    if (ptsToRedeem > 0) {
+      await DataService.redeemPoints(client.id, ptsToRedeem, 'Canje en tienda');
+      client.points = Math.max(0, clientPoints - ptsToRedeem);
+    }
+
+    setLoading(false);
+    setScreen('success');
+    setTimeout(() => { setCart({}); setPointsUsed(0); setPayMode('cash'); setScreen('browse'); onTab('orders'); }, 3000);
+  };
+
+  // ── Success screen
+  if (screen === 'success') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center pt-10">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 8px 24px rgba(34,197,94,.35)' }}>
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pedido enviado!</h2>
+        <p className="text-slate-400 text-sm">Te avisamos cuando esté en camino.</p>
+        {client.points != null && (
+          <div className="mt-5 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-3">
+            <p className="text-amber-700 font-bold text-lg">🪙 {client.points} pts</p>
+            <p className="text-amber-500 text-xs">saldo actual</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Checkout screen
+  if (screen === 'checkout') {
+    return (
+      <div className="pt-3 pb-36 space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setScreen('browse')}
+            className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center active:scale-90 transition-transform">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <h1 className="text-2xl font-black text-slate-900">Confirmar pedido</h1>
+        </div>
+
+        {/* Items */}
+        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          {cartItems.map((item, i) => (
+            <div key={item.id} className={`flex items-center gap-3 px-4 py-3 ${i < cartItems.length - 1 ? 'border-b border-slate-50' : ''}`}>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
+                <p className="text-xs text-slate-400">{item.qty}× {fmt(item.price)}</p>
+              </div>
+              <p className="font-bold text-slate-900 text-sm flex-shrink-0">{fmt(item.subtotal)}</p>
+            </div>
+          ))}
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-slate-100">
+            <p className="text-sm font-semibold text-slate-600">Subtotal</p>
+            <p className="font-black text-slate-900">{fmt(totalCash)}</p>
+          </div>
+        </div>
+
+        {/* Pay mode */}
+        <div className="bg-white rounded-3xl border border-gray-100 p-4 space-y-3" style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Forma de pago</p>
+          <div className="flex gap-2">
+            {[
+              { id: 'cash',   label: '💵 Solo dinero' },
+              { id: 'points', label: '🪙 Solo puntos', disabled: totalPts > clientPoints },
+              { id: 'mixed',  label: '⚡ Mixto',       disabled: clientPoints === 0 },
+            ].map(m => (
+              <button key={m.id} onClick={() => !m.disabled && setPayMode(m.id)} disabled={!!m.disabled}
+                className="flex-1 py-2.5 rounded-2xl text-xs font-bold border transition-all disabled:opacity-40"
+                style={payMode === m.id
+                  ? { background: primary, color: 'white', borderColor: primary }
+                  : { background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Points balance */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-400">Tus puntos</span>
+            <span className="font-bold text-amber-500">🪙 {clientPoints} pts = {fmt(clientPoints * rate)}</span>
+          </div>
+
+          {/* Points-only warning */}
+          {payMode === 'points' && totalPts > clientPoints && (
+            <p className="text-xs text-red-500">No tenés suficientes puntos ({totalPts} necesarios, tenés {clientPoints}).</p>
+          )}
+
+          {/* Mixed slider */}
+          {payMode === 'mixed' && maxPts > 0 && (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Puntos a usar</span>
+                <span className="font-bold text-amber-500">🪙 {pointsUsed} pts = {fmt(pointsUsed * rate)}</span>
+              </div>
+              <input type="range" min="0" max={maxPts} value={pointsUsed}
+                onChange={e => setPointsUsed(parseInt(e.target.value))}
+                className="w-full accent-amber-400" />
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>0</span><span>{maxPts} pts máx</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="bg-white rounded-2xl p-4 border border-blue-100" style={{ boxShadow: '0 4px 16px rgba(37,99,235,.08)' }}>
+          {payMode === 'mixed' && pointsUsed > 0 && (
+            <div className="flex items-center justify-between text-sm text-amber-600 mb-2 pb-2 border-b border-slate-100">
+              <span>Descuento puntos</span>
+              <span className="font-bold">− {fmt(discount)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total a pagar</p>
+            <p className="text-2xl font-black text-slate-900">
+              {payMode === 'points' ? '🪙 ' + totalPts + ' pts' : fmt(payMode === 'mixed' ? finalTotal : totalCash)}
+            </p>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+          <div className="max-w-lg mx-auto pointer-events-auto">
+            <button onClick={handleConfirm}
+              disabled={loading || (payMode === 'points' && totalPts > clientPoints)}
+              className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+              style={{ background: `linear-gradient(135deg,${primary},${primary}cc)`, boxShadow: `0 6px 24px ${primary}55` }}>
+              {loading
+                ? <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Procesando…</>
+                : 'Confirmar pedido'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Browse screen
+  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
+
+  return (
+    <div className="pt-3 pb-36 space-y-4">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Tienda & Canje</h1>
+
+      {/* Points banner */}
+      {clientPoints > 0 && (
+        <div className="rounded-2xl p-3 flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg,#451a03,#78350f)', border: '1px solid #92400e' }}>
+          <span className="text-2xl leading-none flex-shrink-0">🪙</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-sm">{clientPoints} puntos disponibles</p>
+            <p className="text-xs" style={{ color: '#fcd34d' }}>= {fmt(clientPoints * rate)} de descuento</p>
+          </div>
+        </div>
+      )}
+
+      {/* Category chips */}
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {CATS.map(c => (
+          <button key={c.id} onClick={() => setCat(c.id)}
+            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all"
+            style={cat === c.id
+              ? { background: primary, color: 'white' }
+              : { background: '#f1f5f9', color: '#475569' }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Products */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-slate-400">
+          <span className="text-4xl mb-3">📦</span>
+          <p className="text-sm">Sin productos en esta categoría.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(p => {
+            const qty = cart[p.id] || 0;
+            return (
+              <div key={p.id} className="bg-white rounded-3xl border border-gray-100 p-4 flex items-center gap-3"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-50">
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-1"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    : <svg viewBox="0 0 24 24" width="28" height="28" fill="#93c5fd">
+                        <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                      </svg>
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</p>
+                  <p className="text-sm font-bold mt-0.5" style={{ color: primary }}>{fmt(p.price)}</p>
+                  <p className="text-xs text-amber-500 font-medium">🪙 {ptPrice(p)} pts</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => setQty(p.id, qty - 1)}
+                    className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">
+                    −
+                  </button>
+                  <span className="w-6 text-center font-bold text-slate-900 text-sm tabular-nums">{qty}</span>
+                  <button onClick={() => setQty(p.id, qty + 1)}
+                    className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center active:scale-90 transition-transform"
+                    style={{ background: `linear-gradient(135deg,${primary},${primary}cc)` }}>
+                    +
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Floating cart bar */}
+      {cartCount > 0 && (
+        <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+          <div className="max-w-lg mx-auto pointer-events-auto">
+            <button onClick={() => setScreen('checkout')}
+              className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-3 transition-all"
+              style={{ background: `linear-gradient(135deg,${primary},${primary}cc)`, boxShadow: `0 6px 24px ${primary}55` }}>
+              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-black">{cartCount}</span>
+              Ver carrito · {fmt(totalCash)}
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Referrals ───────────────────────────────────────────────────────────────────
 
 function PortalReferrals({ client, config }) {
   const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
   const template = config.referralShareMessage ||
-    'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁';
+    'Hola! Te recomiendo el agua de {empresa}\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos!';
   const resolved = template
     .replace(/{empresa}/g, config.companyName || 'NATIVA')
     .replace(/{telefono}/g, config.phone || config.whatsappNumber || '')
@@ -377,75 +911,83 @@ function PortalReferrals({ client, config }) {
   const [copied, setCopied] = React.useState(false);
   const [copiedMsg, setCopiedMsg] = React.useState(false);
 
-  const handleWA = () => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-  };
-
-  const handleCopyMsg = () => {
-    navigator.clipboard.writeText(msg);
-    setCopiedMsg(true);
-    setTimeout(() => setCopiedMsg(false), 2000);
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(client.referralCode || client.code || '');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleWA = () => window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  const handleCopyMsg = () => { navigator.clipboard.writeText(msg); setCopiedMsg(true); setTimeout(() => setCopiedMsg(false), 2000); };
+  const handleCopyCode = () => { navigator.clipboard.writeText(client.referralCode || client.code || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   return (
-    <div className="space-y-4 pt-2">
-      {/* Banner */}
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-        <p className="text-green-100 text-sm mb-1">Programa de referidos</p>
-        <h2 className="text-xl font-bold">Referí y ganás</h2>
-        <p className="text-green-100 text-sm mt-1">
-          {config.referralMessage || 'Referí a un amigo y ambos ganan crédito en su cuenta.'}
-        </p>
+    <div className="pt-3 pb-8 space-y-5">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Referidos</h1>
+
+      {/* Hero */}
+      <div className="rounded-3xl p-5 text-white relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 8px 24px rgba(34,197,94,.3)' }}>
+        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/10" />
+        <div className="absolute -right-2 bottom-2 w-14 h-14 rounded-full bg-white/10" />
+        <div className="relative z-10">
+          <p className="text-green-100 text-sm font-medium mb-1">Programa de referidos</p>
+          <h2 className="text-2xl font-black mb-2">Referí y ganás</h2>
+          <p className="text-green-100 text-sm leading-relaxed">
+            {config.referralMessage || 'Referí a un amigo y ambos ganan crédito en su cuenta.'}
+          </p>
+        </div>
       </div>
 
-      {/* Beneficios */}
+      {/* Rewards */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-green-600">${config.referralReferrerReward || 500}</p>
-          <p className="text-xs text-slate-500 mt-1">crédito para vos</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <p className="text-2xl font-black text-emerald-600">${config.referralReferrerReward || 500}</p>
+          <p className="text-xs text-slate-400 mt-1 font-medium">crédito para vos</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
-          <p className="text-2xl font-bold text-blue-600">{config.referralReferredDiscount || 10}%</p>
-          <p className="text-xs text-slate-500 mt-1">descuento para tu amigo</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <p className="text-2xl font-black text-blue-600">{config.referralReferredDiscount || 10}%</p>
+          <p className="text-xs text-slate-400 mt-1 font-medium">descuento para tu amigo</p>
         </div>
       </div>
 
-      {/* Código */}
+      {/* Code */}
       {(client.referralCode || client.code) && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Tu código</p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4"
+          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Tu código</p>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-lg font-bold text-slate-900 flex-1">{client.referralCode || client.code}</span>
+            <span className="font-mono text-xl font-black text-slate-900 flex-1 tracking-wider">
+              {client.referralCode || client.code}
+            </span>
             <button onClick={handleCopyCode}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${copied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-slate-700 hover:bg-gray-200'}`}>
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
+              style={copied
+                ? { background: '#f0fdf4', color: '#16a34a' }
+                : { background: '#f8fafc', color: '#475569' }}>
               {copied ? '✓ Copiado' : 'Copiar'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Mensaje editable */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
-        <p className="text-sm font-semibold text-slate-700">Mensaje para compartir</p>
-        <textarea
-          value={msg}
-          onChange={e => setMsg(e.target.value)}
-          rows={5}
-          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none leading-relaxed"
-        />
+      {/* Share */}
+      <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4"
+        style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Mensaje para compartir</p>
+        <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5}
+          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none leading-relaxed" />
         <div className="flex gap-2">
           <button onClick={handleWA}
-            className="flex-1 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
-            <span>💬</span> Abrir WhatsApp
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold text-sm"
+            style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 4px 16px rgba(34,197,94,.35)' }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M11.973 2C6.465 2 2 6.465 2 11.973c0 1.89.525 3.658 1.438 5.168L2 22l4.978-1.408A9.96 9.96 0 0 0 11.973 22C17.481 22 22 17.535 22 12.027 22 6.519 17.481 2 11.973 2z" opacity=".3"/>
+            </svg>
+            Compartir por WhatsApp
           </button>
           <button onClick={handleCopyMsg}
-            className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-colors ${copiedMsg ? 'border-green-300 bg-green-50 text-green-700' : 'border-gray-200 text-slate-600 hover:bg-gray-50'}`}>
+            className="px-4 py-3.5 rounded-2xl text-sm font-bold border transition-all"
+            style={copiedMsg
+              ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+              : { background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
             {copiedMsg ? '✓' : 'Copiar'}
           </button>
         </div>
@@ -454,7 +996,7 @@ function PortalReferrals({ client, config }) {
     </div>
   );
 }
-// ─── Referral Landing (amigo que recibió el link) ────────────────────────────
+// ─── Referral Landing (amigo que recibió el link) ────────────────────────────────────────
 
 function ReferralLanding({ refCode, config }) {
   const [referrer, setReferrer] = React.useState(null);
@@ -550,18 +1092,19 @@ function ReferralLanding({ refCode, config }) {
   );
 }
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
-
+// ─── Root ─────────────────────────────────────────────────────────────────────────────
 function ClientPortalRoot() {
-  const [state, setState] = React.useState('loading'); // loading | referral | no-token | not-found | ready
+  const [state, setState] = React.useState('loading');
   const [client, setClient] = React.useState(null);
   const [config, setConfig] = React.useState({});
   const [refCode, setRefCode] = React.useState('');
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
     const ref = params.get('ref');
+
+    // Token: URL tiene prioridad, sino lee localStorage (para PWA instalada)
+    const token = params.get('token') || localStorage.getItem('nativa_client_token');
 
     if (!token && ref) {
       setRefCode(ref);

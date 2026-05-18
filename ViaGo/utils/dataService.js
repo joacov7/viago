@@ -51,12 +51,14 @@ const DataService = {
     return {
       companyName: 'NATIVA', tagline: 'Agua que llega. Siempre.',
       phone: '', email: '', address: '', city: '', primaryColor: '#2563EB',
+      clientHeroImage: '',
       pointsPerOrder: 10, pointsForReward: 100, freeProductId: 1, referralBonus: 50,
       referralsEnabled: false, referralReferrerReward: 500, referralReferredDiscount: 10,
       referralMessage: 'Referí a un amigo y ambos ganan crédito en su cuenta.',
       referralShareMessage: 'Hola! Te recomiendo el agua de {empresa} 💧\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos crédito! 🎁',
       mpPublicKey: '', whatsappNumber: '',
       paymentMethods: ['efectivo', 'transferencia', 'mercadopago'],
+      storeEnabled: false, pointsConversionRate: 1,
     };
   },
 
@@ -169,13 +171,6 @@ const DataService = {
   async deleteClient(id) {
     await this._sb.from('clients').update({ active: false }).eq('id', id);
   },
-  async updateClientEnvases(clientId, envasesEntregados, envasesRecuperados) {
-    const { data } = await this._sb.from('clients').select('envases_prestados').eq('id', clientId).single();
-    const current = data?.envases_prestados || 0;
-    const newBalance = Math.max(0, current + envasesEntregados - envasesRecuperados);
-    await this._sb.from('clients').update({ envases_prestados: newBalance }).eq('id', clientId);
-    return newBalance;
-  },
   async getInactiveClients(days = 21) {
     const [clients, { data: orders }] = await Promise.all([
       this.getClients(),
@@ -235,8 +230,6 @@ const DataService = {
       name: leadData.name, phone: leadData.phone || '', address: leadData.address || '',
       city: leadData.city || '', type: leadData.type || 'empresa', source: leadData.source || 'manual',
       notes, status: 'nuevo', osmId: leadData.osmId || '', website: leadData.website || '',
-      businessType: leadData.businessType || leadData.type || null,
-      employeeCount: leadData.employeeCount ? parseInt(leadData.employeeCount) : null,
     })).select().single();
     if (error) throw new Error(error.message);
     return this._js(data);
@@ -423,10 +416,11 @@ const DataService = {
     let q = this._sb.from('costs').select('*').order('date', { ascending: false });
     if (month) {
       const [y, m] = month.split('-').map(Number);
-      const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-      q = q.gte('date', `${month}-01`).lt('date', `${nextMonth}-01`);
+      const nextStart = new Date(y, m, 1).toISOString().slice(0, 10);
+      q = q.gte('date', `${month}-01`).lt('date', nextStart);
     }
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
     return this._jsMany(data);
   },
   _costRow(data) {
@@ -450,6 +444,33 @@ const DataService = {
   async deleteCost(id) {
     const { error } = await this._sb.from('costs').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  },
+  async getMonthRevenue(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    const start = `${ym}-01`;
+    const end = new Date(y, m, 1).toISOString().slice(0, 10);
+    const { data, error } = await this._sb.from('invoices')
+      .select('total')
+      .eq('payment_status', 'pagado')
+      .gte('created_at', start)
+      .lt('created_at', end);
+    if (error) throw new Error(error.message);
+    return (data || []).reduce((s, r) => s + (r.total || 0), 0);
+  },
+  async getMonthBottlesDelivered(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    const start = `${ym}-01`;
+    const end = new Date(y, m, 1).toISOString().slice(0, 10);
+    const { data, error } = await this._sb.from('orders')
+      .select('items')
+      .eq('status', 'entregado')
+      .gte('delivery_date', start)
+      .lt('delivery_date', end);
+    if (error) throw new Error(error.message);
+    return (data || []).reduce((s, o) => {
+      const items = Array.isArray(o.items) ? o.items : [];
+      return s + items.reduce((si, i) => si + (i.quantity || 0), 0);
+    }, 0);
   },
 
   // ─── DISPENSERS ──────────────────────────────────────────────────────────
@@ -515,52 +536,14 @@ const DataService = {
     return this._jsMany(data);
   },
 
-  // ─── COMPETITORS ─────────────────────────────────────────────────────────
-  _competitorRow(data) {
-    const w = data.weaknesses;
-    const weaknesses = Array.isArray(w)
-      ? w
-      : (w ? w.split(',').map(s => s.trim()).filter(Boolean) : null);
-    return {
-      name: data.name,
-      zone: data.zone || null,
-      strength: data.strength || 'intermedio',
-      weaknesses,
-      rating: (data.rating !== '' && data.rating != null) ? Number(data.rating) : null,
-      reviews_count: (data.reviewsCount !== '' && data.reviewsCount != null) ? Number(data.reviewsCount) : null,
-      notes: data.notes || null,
-    };
-  },
-  async getCompetitors() {
-    const { data } = await this._sb.from('competitors').select('*').order('name');
-    return this._jsMany(data);
-  },
-  async createCompetitor(data) {
-    const { data: row, error } = await this._sb.from('competitors').insert(this._competitorRow(data)).select().single();
-    if (error) throw new Error(error.message);
-    return this._js(row);
-  },
-  async updateCompetitor(id, data) {
-    const { data: row, error } = await this._sb.from('competitors').update(this._competitorRow(data)).eq('id', id).select().single();
-    if (error) throw new Error(error.message);
-    return this._js(row);
-  },
-  async deleteCompetitor(id) {
-    const { error } = await this._sb.from('competitors').delete().eq('id', id);
-    if (error) throw new Error(error.message);
-  },
-
   // ─── DRIVER LOCATION ─────────────────────────────────────────────────────
-  async upsertDriverLocation(lat, lng, driverName = 'Repartidor') {
-    const { error } = await this._sb.from('driver_locations').upsert(
-      { id: 1, driver_name: driverName, lat, lng, updated_at: new Date().toISOString() },
-      { onConflict: 'id' }
-    );
-    if (error) throw new Error(error.message);
-  },
   async getDriverLocation() {
-    const { data } = await this._sb.from('driver_locations').select('*').eq('id', 1).single();
-    return this._js(data);
+    const { data } = await this._sb
+      .from('driver_locations')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+    return data && data.length > 0 ? this._js(data[0]) : null;
   },
 
   // ─── AUTH ─────────────────────────────────────────────────────────────────

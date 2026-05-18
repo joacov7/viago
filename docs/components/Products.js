@@ -140,6 +140,7 @@ function ProductFormModal({ isOpen, product, onClose, onSave }) {
               <option value="bidon">Bidón</option>
               <option value="botella">Botella</option>
               <option value="accesorio">Accesorio</option>
+              <option value="limpieza">Limpieza</option>
             </select>
           </FormField>
           <FormField label="Unidad">

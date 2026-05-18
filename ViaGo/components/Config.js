@@ -228,6 +228,35 @@ function Config({ onConfigChange }) {
                     </div>
                   )}
                 </div>
+
+                {/* TIENDA & CANJE */}
+                <div className="border-t border-gray-100 pt-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="font-semibold text-slate-900 text-sm">Tienda & Canje</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Permite al cliente comprar productos con dinero, puntos o una combinación de ambos.</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={!!config.storeEnabled}
+                        onChange={e => set('storeEnabled', e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600" />
+                      <span className="text-sm font-medium text-slate-700">{config.storeEnabled ? 'Activo' : 'Inactivo'}</span>
+                    </label>
+                  </div>
+                  {config.storeEnabled && (
+                    <div className="space-y-4">
+                      <FormField label="Conversión de puntos ($ por punto)" hint="Cuántos pesos vale 1 punto. Ej: 1 = $1 por punto, 0.5 = $0,50 por punto">
+                        <input type="number" value={config.pointsConversionRate || 1}
+                          onChange={e => set('pointsConversionRate', parseFloat(e.target.value) || 1)}
+                          className={inputCls()} min="0.01" step="0.25" />
+                      </FormField>
+                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-sm text-blue-800">
+                        <strong>Ejemplo:</strong> Con tasa {config.pointsConversionRate || 1} — un cliente con 200 puntos puede descontar <strong>${((config.pointsConversionRate || 1) * 200).toFixed(0)}</strong> de su compra,
+                        o canjear un producto de ${(200 * (config.pointsConversionRate || 1)).toFixed(0)} enteramente con puntos.
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

@@ -108,6 +108,16 @@ function NavIconGift({ active, color }) {
     </svg>
   );
 }
+function NavIconShop({ active, color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
+      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 0 1-8 0"/>
+    </svg>
+  );
+}
 
 // ─── Client Portal App ───────────────────────────────────────────────────────────────
 
@@ -120,6 +130,7 @@ function ClientPortalApp({ client, config }) {
     { id: 'order',    label: 'Pedir',    Icon: NavIconDrop },
     { id: 'orders',   label: 'Pedidos',  Icon: NavIconBox },
     { id: 'invoices', label: 'Facturas', Icon: NavIconDoc },
+    ...(config.storeEnabled    ? [{ id: 'store',    label: 'Tienda',   Icon: NavIconShop }] : []),
     ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', Icon: NavIconGift }] : []),
   ];
 
@@ -156,6 +167,7 @@ function ClientPortalApp({ client, config }) {
         {tab === 'order'     && <PortalOrder     client={client} onDone={() => setTab('orders')} />}
         {tab === 'orders'    && <PortalOrders    client={client} />}
         {tab === 'invoices'  && <PortalInvoices  client={client} />}
+        {tab === 'store'     && <PortalStore     client={client} config={config} onTab={setTab} />}
         {tab === 'referrals' && <PortalReferrals client={client} config={config} />}
       </div>
 
@@ -569,6 +581,314 @@ function PortalInvoices({ client }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────────────
+
+function PortalStore({ client, config, onTab }) {
+  const [products, setProducts] = React.useState([]);
+  const [cat, setCat] = React.useState('all');
+  const [payMode, setPayMode] = React.useState('cash');
+  const [cart, setCart] = React.useState({});
+  const [screen, setScreen] = React.useState('browse');
+  const [pointsUsed, setPointsUsed] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const primary = config.primaryColor || '#2563EB';
+
+  const rate = config.pointsConversionRate || 1;
+  const clientPoints = client.points || 0;
+
+  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
+
+  const CAT_MAP = { bidon: 'agua', botella: 'agua', limpieza: 'limpieza', accesorio: 'accesorio' };
+  const CATS = [
+    { id: 'all',      label: 'Todos' },
+    { id: 'agua',     label: '💧 Agua' },
+    { id: 'limpieza', label: '🧴 Limpieza' },
+    { id: 'accesorio',label: '🔧 Accesorios' },
+  ];
+
+  const ptPrice = (p) => Math.ceil(p.price / rate);
+  const filtered = cat === 'all' ? products : products.filter(p => CAT_MAP[p.type] === cat);
+
+  const setQty = (id, q) => setCart(prev => ({ ...prev, [id]: Math.max(0, q) }));
+
+  const cartItems = products
+    .filter(p => (cart[p.id] || 0) > 0)
+    .map(p => ({ ...p, qty: cart[p.id], subtotal: p.price * cart[p.id], ptSubtotal: ptPrice(p) * cart[p.id] }));
+
+  const totalCash = cartItems.reduce((s, i) => s + i.subtotal, 0);
+  const totalPts  = cartItems.reduce((s, i) => s + i.ptSubtotal, 0);
+  const maxPts    = Math.min(clientPoints, Math.floor(totalCash / rate));
+  const discount  = Math.min(pointsUsed * rate, totalCash);
+  const finalTotal = Math.max(0, totalCash - discount);
+
+  React.useEffect(() => {
+    if (payMode !== 'mixed') setPointsUsed(0);
+  }, [payMode, cart]);
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    const items = cartItems.map(i => ({
+      productId: i.id, productName: i.name,
+      quantity: i.qty, price: i.price, subtotal: i.subtotal,
+    }));
+
+    let ptsToRedeem = 0;
+    let orderTotal = totalCash;
+
+    if (payMode === 'points') {
+      orderTotal = 0;
+      ptsToRedeem = totalPts;
+    } else if (payMode === 'mixed') {
+      orderTotal = finalTotal;
+      ptsToRedeem = pointsUsed;
+    }
+
+    await DataService.createOrder({
+      clientId: client.id, items, total: orderTotal,
+      deliveryDate: DataService.today(),
+      notes: ptsToRedeem > 0 ? `Puntos canjeados: ${ptsToRedeem}` : '',
+    });
+
+    if (ptsToRedeem > 0) {
+      await DataService.redeemPoints(client.id, ptsToRedeem, 'Canje en tienda');
+      client.points = Math.max(0, clientPoints - ptsToRedeem);
+    }
+
+    setLoading(false);
+    setScreen('success');
+    setTimeout(() => { setCart({}); setPointsUsed(0); setPayMode('cash'); setScreen('browse'); onTab('orders'); }, 3000);
+  };
+
+  // ── Success screen
+  if (screen === 'success') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center pt-10">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
+          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 8px 24px rgba(34,197,94,.35)' }}>
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pedido enviado!</h2>
+        <p className="text-slate-400 text-sm">Te avisamos cuando esté en camino.</p>
+        {client.points != null && (
+          <div className="mt-5 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-3">
+            <p className="text-amber-700 font-bold text-lg">🪙 {client.points} pts</p>
+            <p className="text-amber-500 text-xs">saldo actual</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Checkout screen
+  if (screen === 'checkout') {
+    return (
+      <div className="pt-3 pb-36 space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setScreen('browse')}
+            className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center active:scale-90 transition-transform">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <h1 className="text-2xl font-black text-slate-900">Confirmar pedido</h1>
+        </div>
+
+        {/* Items */}
+        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          {cartItems.map((item, i) => (
+            <div key={item.id} className={`flex items-center gap-3 px-4 py-3 ${i < cartItems.length - 1 ? 'border-b border-slate-50' : ''}`}>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
+                <p className="text-xs text-slate-400">{item.qty}× {fmt(item.price)}</p>
+              </div>
+              <p className="font-bold text-slate-900 text-sm flex-shrink-0">{fmt(item.subtotal)}</p>
+            </div>
+          ))}
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-slate-100">
+            <p className="text-sm font-semibold text-slate-600">Subtotal</p>
+            <p className="font-black text-slate-900">{fmt(totalCash)}</p>
+          </div>
+        </div>
+
+        {/* Pay mode */}
+        <div className="bg-white rounded-3xl border border-gray-100 p-4 space-y-3" style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Forma de pago</p>
+          <div className="flex gap-2">
+            {[
+              { id: 'cash',   label: '💵 Solo dinero' },
+              { id: 'points', label: '🪙 Solo puntos', disabled: totalPts > clientPoints },
+              { id: 'mixed',  label: '⚡ Mixto',       disabled: clientPoints === 0 },
+            ].map(m => (
+              <button key={m.id} onClick={() => !m.disabled && setPayMode(m.id)} disabled={!!m.disabled}
+                className="flex-1 py-2.5 rounded-2xl text-xs font-bold border transition-all disabled:opacity-40"
+                style={payMode === m.id
+                  ? { background: primary, color: 'white', borderColor: primary }
+                  : { background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Points balance */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-400">Tus puntos</span>
+            <span className="font-bold text-amber-500">🪙 {clientPoints} pts = {fmt(clientPoints * rate)}</span>
+          </div>
+
+          {/* Points-only warning */}
+          {payMode === 'points' && totalPts > clientPoints && (
+            <p className="text-xs text-red-500">No tenés suficientes puntos ({totalPts} necesarios, tenés {clientPoints}).</p>
+          )}
+
+          {/* Mixed slider */}
+          {payMode === 'mixed' && maxPts > 0 && (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500">Puntos a usar</span>
+                <span className="font-bold text-amber-500">🪙 {pointsUsed} pts = {fmt(pointsUsed * rate)}</span>
+              </div>
+              <input type="range" min="0" max={maxPts} value={pointsUsed}
+                onChange={e => setPointsUsed(parseInt(e.target.value))}
+                className="w-full accent-amber-400" />
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>0</span><span>{maxPts} pts máx</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="bg-white rounded-2xl p-4 border border-blue-100" style={{ boxShadow: '0 4px 16px rgba(37,99,235,.08)' }}>
+          {payMode === 'mixed' && pointsUsed > 0 && (
+            <div className="flex items-center justify-between text-sm text-amber-600 mb-2 pb-2 border-b border-slate-100">
+              <span>Descuento puntos</span>
+              <span className="font-bold">− {fmt(discount)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total a pagar</p>
+            <p className="text-2xl font-black text-slate-900">
+              {payMode === 'points' ? '🪙 ' + totalPts + ' pts' : fmt(payMode === 'mixed' ? finalTotal : totalCash)}
+            </p>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+          <div className="max-w-lg mx-auto pointer-events-auto">
+            <button onClick={handleConfirm}
+              disabled={loading || (payMode === 'points' && totalPts > clientPoints)}
+              className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+              style={{ background: `linear-gradient(135deg,${primary},${primary}cc)`, boxShadow: `0 6px 24px ${primary}55` }}>
+              {loading
+                ? <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Procesando…</>
+                : 'Confirmar pedido'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Browse screen
+  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
+
+  return (
+    <div className="pt-3 pb-36 space-y-4">
+      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Tienda & Canje</h1>
+
+      {/* Points banner */}
+      {clientPoints > 0 && (
+        <div className="rounded-2xl p-3 flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg,#451a03,#78350f)', border: '1px solid #92400e' }}>
+          <span className="text-2xl leading-none flex-shrink-0">🪙</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-sm">{clientPoints} puntos disponibles</p>
+            <p className="text-xs" style={{ color: '#fcd34d' }}>= {fmt(clientPoints * rate)} de descuento</p>
+          </div>
+        </div>
+      )}
+
+      {/* Category chips */}
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {CATS.map(c => (
+          <button key={c.id} onClick={() => setCat(c.id)}
+            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all"
+            style={cat === c.id
+              ? { background: primary, color: 'white' }
+              : { background: '#f1f5f9', color: '#475569' }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Products */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center py-16 text-slate-400">
+          <span className="text-4xl mb-3">📦</span>
+          <p className="text-sm">Sin productos en esta categoría.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(p => {
+            const qty = cart[p.id] || 0;
+            return (
+              <div key={p.id} className="bg-white rounded-3xl border border-gray-100 p-4 flex items-center gap-3"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-50">
+                  {p.imageUrl
+                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-1"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    : <svg viewBox="0 0 24 24" width="28" height="28" fill="#93c5fd">
+                        <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
+                      </svg>
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</p>
+                  <p className="text-sm font-bold mt-0.5" style={{ color: primary }}>{fmt(p.price)}</p>
+                  <p className="text-xs text-amber-500 font-medium">🪙 {ptPrice(p)} pts</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => setQty(p.id, qty - 1)}
+                    className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">
+                    −
+                  </button>
+                  <span className="w-6 text-center font-bold text-slate-900 text-sm tabular-nums">{qty}</span>
+                  <button onClick={() => setQty(p.id, qty + 1)}
+                    className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center active:scale-90 transition-transform"
+                    style={{ background: `linear-gradient(135deg,${primary},${primary}cc)` }}>
+                    +
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Floating cart bar */}
+      {cartCount > 0 && (
+        <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
+          <div className="max-w-lg mx-auto pointer-events-auto">
+            <button onClick={() => setScreen('checkout')}
+              className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-3 transition-all"
+              style={{ background: `linear-gradient(135deg,${primary},${primary}cc)`, boxShadow: `0 6px 24px ${primary}55` }}>
+              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-black">{cartCount}</span>
+              Ver carrito · {fmt(totalCash)}
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
