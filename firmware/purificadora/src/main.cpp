@@ -622,7 +622,7 @@ void pollCommands() {
 }
 
 // ═══════════════════════════════════════════════════════
-//  Telegram — send (usa tlsClient global)
+//  Telegram
 // ═══════════════════════════════════════════════════════
 String buildTelegramStatus() {
     String s = "📊 *Estado — Purificadora*\n";
@@ -793,47 +793,56 @@ void processTelegramMsg(const String& chatId, const String& text) {
     else { bot.sendMessage(chatId, "❓ Comando no reconocido. Usa /ayuda", ""); }
 }
 
-// Polling manual con sc local — mismo patrón que Supabase
+// Recolecta mensajes, cierra SSL, LUEGO procesa (libera slot SSL para sendMessage)
 void checkTelegram() {
     if (WiFi.status() != WL_CONNECTED) { WiFi.reconnect(); return; }
 
-    WiFiClientSecure sc;
-    sc.setInsecure();
-    HTTPClient http;
-    String url = "https://api.telegram.org/bot" + String(BOT_TOKEN) +
-                 "/getUpdates?offset=" + String(bot.last_message_received + 1) +
-                 "&limit=5&timeout=0";
-    http.begin(sc, url);
-    http.setTimeout(8000);
-    int code = http.GET();
-    Serial.printf("[TG] HTTP %d\n", code);
+    struct PendingMsg { String chatId; String text; };
+    PendingMsg pending[5];
+    int count = 0;
 
-    if (code == 200) {
-        String body = http.getString();
-        // Primeros 200 chars para debug
-        Serial.println("[TG] " + body.substring(0, 200));
+    {
+        WiFiClientSecure sc;
+        sc.setInsecure();
+        HTTPClient http;
+        String url = "https://api.telegram.org/bot" + String(BOT_TOKEN) +
+                     "/getUpdates?offset=" + String(bot.last_message_received + 1) +
+                     "&limit=5&timeout=0";
+        http.begin(sc, url);
+        http.setTimeout(8000);
+        int code = http.GET();
+        Serial.printf("[TG] HTTP %d\n", code);
 
-        DynamicJsonDocument doc(4096);
-        if (deserializeJson(doc, body) == DeserializationError::Ok
-            && doc["ok"].as<bool>()) {
-            JsonArray results = doc["result"].as<JsonArray>();
-            for (JsonObject upd : results) {
-                long uid = upd["update_id"].as<long>();
-                if (uid > bot.last_message_received) {
-                    bot.last_message_received = uid;
-                }
-                if (upd.containsKey("message")) {
-                    JsonObject m = upd["message"];
-                    String text   = m["text"] | "";
-                    String chatId = String(m["chat"]["id"].as<long>());
-                    text.trim();
-                    if (text.length() > 0) processTelegramMsg(chatId, text);
+        if (code == 200) {
+            String body = http.getString();
+            DynamicJsonDocument doc(4096);
+            if (deserializeJson(doc, body) == DeserializationError::Ok
+                && doc["ok"].as<bool>()) {
+                JsonArray results = doc["result"].as<JsonArray>();
+                for (JsonObject upd : results) {
+                    long uid = upd["update_id"].as<long>();
+                    if (uid > bot.last_message_received) bot.last_message_received = uid;
+                    if (upd.containsKey("message") && count < 5) {
+                        JsonObject m = upd["message"];
+                        String txt = m["text"] | "";
+                        txt.trim();
+                        if (txt.length() > 0) {
+                            pending[count].chatId = String(m["chat"]["id"].as<long>());
+                            pending[count].text   = txt;
+                            count++;
+                        }
+                    }
                 }
             }
         }
+        http.end();
+        sc.stop();
+    } // sc destruido aquí — slot SSL liberado
+
+    // Ahora bot.sendMessage() tiene el slot libre
+    for (int i = 0; i < count; i++) {
+        processTelegramMsg(pending[i].chatId, pending[i].text);
     }
-    http.end();
-    sc.stop();
 }
 
 // ═══════════════════════════════════════════════════════
