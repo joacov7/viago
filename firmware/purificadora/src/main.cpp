@@ -67,7 +67,7 @@ bool          tankFullPending = false;
 
 String alarmMsg = "";
 
-// ── Programación horaria ──────────────────────────────
+// ── Programación horaria ────────────────────────────────────
 bool    schedEnabled = false;
 uint8_t schedOnH = 8,  schedOnM = 0;
 uint8_t schedOffH = 18, schedOffM = 0;
@@ -514,6 +514,11 @@ void updateDisplay() {
 }
 
 // ═══════════════════════════════════════════════════════
+//  Forward declaration
+// ═══════════════════════════════════════════════════════
+void handleWebCmd(const String& cmd);
+
+// ═══════════════════════════════════════════════════════
 //  Supabase — push estado + poll comandos
 // ═══════════════════════════════════════════════════════
 void pushToSupabase() {
@@ -562,8 +567,9 @@ void pushToSupabase() {
     String body;
     serializeJson(outer, body);
     int code = http.POST(body);
-    if (code != 200 && code != 201) Serial.printf("[SUPA] Push error %d\n", code);
+    Serial.printf("[SUPA] push %d\n", code);
     http.end();
+    sc.stop();
 }
 
 void pollCommands() {
@@ -612,6 +618,7 @@ void pollCommands() {
         }
     }
     http.end();
+    sc.stop();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -670,15 +677,15 @@ void processTelegramMsg(const telegramMessage& msg) {
         h += "🔧 *Modo manual*\n";
         h += "/manual — Activar modo manual\n";
         h += "/auto — Volver a automático\n";
-        h += "/bomba\\_alim on|off\n";
-        h += "/bomba\\_hp on|off\n";
+        h += "/bomba\_alim on|off\n";
+        h += "/bomba\_hp on|off\n";
         h += "/solenoide on|off\n";
         h += "/uv on|off\n\n";
         h += "🔴 *Alarmas y mantenimiento*\n";
-        h += "/alarma\\_off — Silenciar\n";
-        h += "/alarma\\_reset — Resetear\n";
-        h += "/reset\\_membrana — Resetear contador membrana\n";
-        h += "/reset\\_uv — Resetear contador UV\n";
+        h += "/alarma\_off — Silenciar\n";
+        h += "/alarma\_reset — Resetear\n";
+        h += "/reset\_membrana — Resetear contador membrana\n";
+        h += "/reset\_uv — Resetear contador UV\n";
         bot.sendMessage(chat, h, "Markdown");
     }
     else if (text == "/estado")  { bot.sendMessage(chat, buildTelegramStatus(), "Markdown"); }
@@ -731,7 +738,7 @@ void processTelegramMsg(const telegramMessage& msg) {
     }
     else if (text == "/auto") {
         if (sysState == ST_ALARM)
-            bot.sendMessage(chat, "❌ Resetea la alarma primero con /alarma\\_reset", "Markdown");
+            bot.sendMessage(chat, "❌ Resetea la alarma primero con /alarma\_reset", "Markdown");
         else { sysState = ST_IDLE; autoMode = false; bot.sendMessage(chat, "🤖 Modo automático listo", ""); }
     }
     else if (text.startsWith("/horario")) {
@@ -1035,7 +1042,7 @@ void loop() {
         pushToSupabase();
     }
 
-    if (now - tLastCmdPoll >= 2000UL) {
+    if (now - tLastCmdPoll >= 10000UL) {
         tLastCmdPoll = now;
         pollCommands();
     }
