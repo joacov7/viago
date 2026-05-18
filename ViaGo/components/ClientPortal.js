@@ -597,7 +597,7 @@ function PortalStore({ client, config, onTab }) {
   const [loading, setLoading] = React.useState(false);
   const primary = config.primaryColor || '#2563EB';
 
-  const rate = config.pointsConversionRate || 1;
+  const rate = parseFloat(config.pointsConversionRate) || 1;
   const clientPoints = client.points || 0;
 
   React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
@@ -627,6 +627,7 @@ function PortalStore({ client, config, onTab }) {
 
   React.useEffect(() => {
     if (payMode !== 'mixed') setPointsUsed(0);
+    else setPointsUsed(prev => Math.min(prev, Math.min(clientPoints, Math.floor(totalCash / rate))));
   }, [payMode, cart]);
 
   const handleConfirm = async () => {

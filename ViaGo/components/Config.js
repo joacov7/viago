@@ -266,8 +266,9 @@ function Config({ onConfigChange }) {
                   {config.storeEnabled && (
                     <div className="space-y-4">
                       <FormField label="Conversión de puntos ($ por punto)" hint="Cuántos pesos vale 1 punto. Ej: 1 = $1 por punto, 0.5 = $0,50 por punto">
-                        <input type="number" value={config.pointsConversionRate || 1}
-                          onChange={e => set('pointsConversionRate', parseFloat(e.target.value) || 1)}
+                        <input type="number" value={config.pointsConversionRate ?? 1}
+                          onChange={e => set('pointsConversionRate', e.target.value)}
+                          onBlur={e => { const n = parseFloat(e.target.value); set('pointsConversionRate', (!n || n <= 0) ? 1 : n); }}
                           className={inputCls()} min="0.01" step="0.25" />
                       </FormField>
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-sm text-blue-800">
