@@ -116,6 +116,7 @@ function DeliveryApp({ config }) {
   const [optimizeMsg, setOptimizeMsg] = React.useState('');
   const [sharing, setSharing] = React.useState(false);
   const [lastReceipt, setLastReceipt] = React.useState(null);
+  const [gpsCoords, setGpsCoords] = React.useState(null);
   const watchIdRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -130,9 +131,13 @@ function DeliveryApp({ config }) {
     if (!navigator.geolocation) { alert('GPS no disponible en este dispositivo.'); return; }
     setSharing(true);
     const send = pos => {
-      DataService.upsertDriverLocation(
-        pos.coords.latitude, pos.coords.longitude, config.companyName || 'Repartidor'
-      ).catch(err => console.error('upsertDriverLocation error:', err));
+      const { latitude: lat, longitude: lng } = pos.coords;
+      setGpsCoords({ lat: lat.toFixed(5), lng: lng.toFixed(5) });
+      DataService.upsertDriverLocation(lat, lng, config.companyName || 'Repartidor')
+        .catch(err => {
+          console.error('upsertDriverLocation error:', err);
+          setGpsCoords(prev => prev ? { ...prev, err: err.message } : null);
+        });
     };
     const onError = err => {
       const msgs = { 1: 'Permiso de ubicación denegado. Habilitá el GPS en tu navegador.', 2: 'Ubicación no disponible.', 3: 'Tiempo agotado para obtener ubicación.' };
@@ -296,12 +301,19 @@ function DeliveryApp({ config }) {
             <h1 className="text-white text-2xl font-bold">Mis entregas</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={sharing ? stopSharing : startSharing}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-              style={{background: sharing ? '#dc2626' : 'rgba(255,255,255,0.2)', color: 'white'}}>
-              <span className={`w-2 h-2 rounded-full ${sharing ? 'bg-white animate-pulse' : 'bg-white opacity-50'}`} />
-              {sharing ? 'GPS ON' : 'GPS'}
-            </button>
+            <div className="flex flex-col items-end gap-0.5">
+              <button onClick={sharing ? stopSharing : startSharing}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+                style={{background: sharing ? '#dc2626' : 'rgba(255,255,255,0.2)', color: 'white'}}>
+                <span className={`w-2 h-2 rounded-full ${sharing ? 'bg-white animate-pulse' : 'bg-white opacity-50'}`} />
+                {sharing ? 'GPS ON' : 'GPS'}
+              </button>
+              {gpsCoords && (
+                <p className="text-xs font-mono" style={{color: gpsCoords.err ? '#fca5a5' : '#bfdbfe', fontSize: '9px'}}>
+                  {gpsCoords.err ? '⚠ ' + gpsCoords.err : `${gpsCoords.lat}, ${gpsCoords.lng}`}
+                </p>
+              )}
+            </div>
             <button onClick={() => setShowSummary(true)}
               className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl"
               style={{background:'rgba(255,255,255,0.2)'}}>
