@@ -16,9 +16,10 @@ function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
     { id: 'loyalty',    icon: 'star',         label: 'Fidelización' },
     { id: 'products',   icon: 'shoppingBag',  label: 'Productos' },
     { id: 'costs',      icon: 'dollarSign',   label: 'Costos' },
-    { id: 'dispensers', icon: 'droplets',     label: 'Comodatos' },
-    { id: 'machines',   icon: 'settings',     label: 'Máquinas' },
-    { id: 'config',     icon: 'settings',     label: 'Configuración' },
+    { id: 'dispensers',   icon: 'droplets',     label: 'Comodatos' },
+    { id: 'machines',     icon: 'settings',     label: 'Máquinas' },
+    { id: 'purificadora', icon: 'droplets',     label: 'Purificadora 💧' },
+    { id: 'config',       icon: 'settings',     label: 'Configuración' },
   ];
 
   const handleNav = (id) => { onNavigate(id); onClose(); };
