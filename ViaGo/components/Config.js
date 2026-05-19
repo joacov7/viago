@@ -272,9 +272,9 @@ function Config({ onConfigChange }) {
                           className={inputCls()} min="0.01" step="1" />
                       </FormField>
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-sm text-blue-800">
-                        {(() => { const r = parseFloat(config.pointsConversionRate) || 1; return (<>
+                        {(() => { const r = parseFloat(config.pointsConversionRate) || 1; const fmtArs = n => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(n); return (<>
                           <strong>Ejemplo con tasa {r}:</strong> un producto de $4.000 cuesta <strong>{Math.ceil(4000 / r)} pts</strong>.
-                          Un cliente con 200 pts puede descontar <strong>{fmt(200 * r)}</strong> de su compra.
+                          Un cliente con 200 pts puede descontar <strong>{fmtArs(200 * r)}</strong> de su compra.
                         </>); })()}
                       </div>
                     </div>
