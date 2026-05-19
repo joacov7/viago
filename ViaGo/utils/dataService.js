@@ -85,6 +85,8 @@ const DataService = {
       mpPublicKey: '', whatsappNumber: '',
       paymentMethods: ['efectivo', 'transferencia', 'mercadopago'],
       storeEnabled: false, pointsConversionRate: 1,
+      streakOrderRewardEvery: 0, streakOrderRewardPts: 50,
+      streakPayRewardEvery: 0, streakPayRewardPts: 100,
     };
   },
 
@@ -310,15 +312,27 @@ const DataService = {
     return this._js(data);
   },
   async updateOrder(id, orderData) {
-    const { data: current } = await this._sb.from('orders').select('status').eq('id', id).single();
+    const { data: current } = await this._sb.from('orders').select('status, client_id').eq('id', id).single();
     const wasDelivered = current && current.status !== 'entregado' && orderData.status === 'entregado';
+    const wasCancelled = current && current.status !== 'cancelado' && orderData.status === 'cancelado';
     const { data } = await this._sb.from('orders')
       .update({ ...this._db(orderData), updated_at: new Date().toISOString() })
       .eq('id', id).select().single();
     const order = this._js(data);
-    if (wasDelivered) {
+    const clientId = order.clientId || current?.client_id;
+    if (wasDelivered && clientId) {
       const cfg = await this.getConfig();
-      await this.addPoints(order.clientId, cfg.pointsPerOrder, 'earned', `Pedido #${id} entregado`);
+      await this.addPoints(clientId, cfg.pointsPerOrder, 'earned', `Pedido #${id} entregado`);
+      // Order streak
+      const { data: cd } = await this._sb.from('clients').select('order_streak').eq('id', clientId).single();
+      const newStreak = (cd?.order_streak || 0) + 1;
+      await this._sb.from('clients').update({ order_streak: newStreak }).eq('id', clientId);
+      if (cfg.streakOrderRewardEvery > 0 && newStreak % cfg.streakOrderRewardEvery === 0) {
+        await this.addPoints(clientId, cfg.streakOrderRewardPts || 50, 'streak', `🔥 Racha de ${newStreak} pedidos consecutivos`);
+      }
+    }
+    if (wasCancelled && clientId) {
+      await this._sb.from('clients').update({ order_streak: 0 }).eq('id', clientId);
     }
     return order;
   },
@@ -358,11 +372,19 @@ const DataService = {
   },
   async updateInvoice(id, invoiceData) {
     const updateData = { ...invoiceData };
-    if (updateData.paymentStatus === 'pagado') {
-      const { data: curr } = await this._sb.from('invoices').select('paid_at').eq('id', id).single();
-      if (!curr?.paid_at) updateData.paidAt = new Date().toISOString();
-    }
+    const { data: curr } = await this._sb.from('invoices').select('paid_at, payment_status, client_id').eq('id', id).single();
+    const firstTimePaid = curr && curr.payment_status !== 'pagado' && updateData.paymentStatus === 'pagado';
+    if (firstTimePaid && !curr.paid_at) updateData.paidAt = new Date().toISOString();
     const { data } = await this._sb.from('invoices').update(this._db(updateData)).eq('id', id).select().single();
+    if (firstTimePaid && curr.client_id) {
+      const cfg = await this.getConfig();
+      const { data: cd } = await this._sb.from('clients').select('pay_streak').eq('id', curr.client_id).single();
+      const newStreak = (cd?.pay_streak || 0) + 1;
+      await this._sb.from('clients').update({ pay_streak: newStreak }).eq('id', curr.client_id);
+      if (cfg.streakPayRewardEvery > 0 && newStreak % cfg.streakPayRewardEvery === 0) {
+        await this.addPoints(curr.client_id, cfg.streakPayRewardPts || 100, 'streak', `💳 Racha de ${newStreak} pagos al día`);
+      }
+    }
     return this._js(data);
   },
 

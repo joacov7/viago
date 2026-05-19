@@ -285,6 +285,56 @@ function PortalHome({ client, config, onTab }) {
           </div>
         );
       })()}
+
+      {/* ── Streak chips ── */}
+      {((client.orderStreak || 0) > 0 || (client.payStreak || 0) > 0) && (
+        <div className="flex gap-3">
+          {(client.orderStreak || 0) > 0 && (
+            <div className="flex-1 bg-white rounded-2xl p-3.5 border border-orange-100 flex items-center gap-3"
+              style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+              <span className="text-2xl leading-none">🔥</span>
+              <div>
+                <p className="text-lg font-black text-orange-500 leading-none">{client.orderStreak}</p>
+                <p className="text-xs text-slate-400 mt-0.5">pedidos seguidos</p>
+                {(config.streakOrderRewardEvery || 0) > 0 && (() => {
+                  const next = config.streakOrderRewardEvery - (client.orderStreak % config.streakOrderRewardEvery);
+                  const pct = ((client.orderStreak % config.streakOrderRewardEvery) / config.streakOrderRewardEvery) * 100;
+                  return (
+                    <div className="mt-1.5">
+                      <div className="h-1 bg-orange-100 rounded-full overflow-hidden w-16">
+                        <div className="h-full rounded-full bg-orange-400" style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-xs text-orange-400 mt-0.5">faltan {next} para {config.streakOrderRewardPts} pts</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+          {(client.payStreak || 0) > 0 && (
+            <div className="flex-1 bg-white rounded-2xl p-3.5 border border-blue-100 flex items-center gap-3"
+              style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+              <span className="text-2xl leading-none">💳</span>
+              <div>
+                <p className="text-lg font-black text-blue-500 leading-none">{client.payStreak}</p>
+                <p className="text-xs text-slate-400 mt-0.5">pagos seguidos</p>
+                {(config.streakPayRewardEvery || 0) > 0 && (() => {
+                  const next = config.streakPayRewardEvery - (client.payStreak % config.streakPayRewardEvery);
+                  const pct = ((client.payStreak % config.streakPayRewardEvery) / config.streakPayRewardEvery) * 100;
+                  return (
+                    <div className="mt-1.5">
+                      <div className="h-1 bg-blue-100 rounded-full overflow-hidden w-16">
+                        <div className="h-full rounded-full bg-blue-400" style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-xs text-blue-400 mt-0.5">faltan {next} para {config.streakPayRewardPts} pts</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -27,11 +27,15 @@ function Loyalty() {
   const topClients = clients.filter(c => (c.points || 0) > 0).slice(0, 10);
   const referrers = clients.filter(c => clients.some(r => r.referredBy === c.id));
 
+  const topOrderStreak = clients.filter(c => (c.orderStreak || 0) > 0).sort((a,b) => (b.orderStreak||0)-(a.orderStreak||0)).slice(0,10);
+  const topPayStreak   = clients.filter(c => (c.payStreak   || 0) > 0).sort((a,b) => (b.payStreak  ||0)-(a.payStreak  ||0)).slice(0,10);
+
   const tabs = [
-    { id: 'puntos', label: `Ranking puntos (${topClients.length})` },
-    { id: 'referidos', label: `Referidos (${referrers.length})` },
-    { id: 'promociones', label: `Promociones (${promotions.length})` },
-    { id: 'historial', label: `Historial (${pointsHistory.length})` },
+    { id: 'puntos',     label: `Ranking puntos (${topClients.length})` },
+    { id: 'rachas',     label: `Rachas 🔥` },
+    { id: 'referidos',  label: `Referidos (${referrers.length})` },
+    { id: 'promociones',label: `Promociones (${promotions.length})` },
+    { id: 'historial',  label: `Historial (${pointsHistory.length})` },
   ];
 
   return (
@@ -109,6 +113,81 @@ function Loyalty() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* RACHAS TAB */}
+          {activeTab === 'rachas' && (
+            <div className="space-y-6">
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-orange-50 rounded-2xl p-4">
+                  <div className="text-2xl font-bold text-orange-500">{topOrderStreak[0]?.orderStreak || 0}</div>
+                  <div className="text-xs text-orange-600 mt-0.5">🔥 Racha más larga de pedidos</div>
+                </div>
+                <div className="bg-blue-50 rounded-2xl p-4">
+                  <div className="text-2xl font-bold text-blue-600">{topPayStreak[0]?.payStreak || 0}</div>
+                  <div className="text-xs text-blue-600 mt-0.5">💳 Racha más larga de pagos</div>
+                </div>
+              </div>
+
+              {/* Config summary */}
+              {(config.streakOrderRewardEvery > 0 || config.streakPayRewardEvery > 0) && (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-100 text-xs text-amber-700 space-y-1">
+                  {config.streakOrderRewardEvery > 0 && (
+                    <p>🔥 Cada <strong>{config.streakOrderRewardEvery}</strong> pedidos consecutivos → <strong>{config.streakOrderRewardPts} pts</strong></p>
+                  )}
+                  {config.streakPayRewardEvery > 0 && (
+                    <p>💳 Cada <strong>{config.streakPayRewardEvery}</strong> pagos consecutivos → <strong>{config.streakPayRewardPts} pts</strong></p>
+                  )}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Order streak ranking */}
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-3">🔥 Pedidos consecutivos</p>
+                  {topOrderStreak.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-6">Sin rachas aún. Se activan al marcar pedidos como entregados.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {topOrderStreak.map((c, idx) => (
+                        <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${idx===0?'bg-orange-400':idx===1?'bg-slate-400':idx===2?'bg-amber-700':'bg-gray-300'}`}>
+                            {idx+1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                          </div>
+                          <span className="text-base font-black text-orange-500 flex-shrink-0">{c.orderStreak} 🔥</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Pay streak ranking */}
+                <div>
+                  <p className="text-sm font-semibold text-slate-700 mb-3">💳 Pagos consecutivos</p>
+                  {topPayStreak.length === 0 ? (
+                    <p className="text-sm text-slate-400 text-center py-6">Sin rachas aún. Se activan al registrar pagos de facturas.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {topPayStreak.map((c, idx) => (
+                        <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:bg-gray-50">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${idx===0?'bg-blue-500':idx===1?'bg-slate-400':idx===2?'bg-amber-700':'bg-gray-300'}`}>
+                            {idx+1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                          </div>
+                          <span className="text-base font-black text-blue-500 flex-shrink-0">{c.payStreak} 💳</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -227,7 +306,7 @@ function Loyalty() {
                 <div className="space-y-2">
                   {pointsHistory.map(h => {
                     const client = clients.find(c => c.id === h.clientId);
-                    const actionColors = { earned: 'text-emerald-600', redeemed: 'text-red-500', referral: 'text-violet-600' };
+                    const actionColors = { earned: 'text-emerald-600', redeemed: 'text-red-500', referral: 'text-violet-600', streak: 'text-orange-500' };
                     return (
                       <div key={h.id} className="flex items-center justify-between py-2.5 px-3 rounded-xl border border-gray-100 hover:bg-gray-50">
                         <div className="min-w-0">

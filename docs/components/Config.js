@@ -130,27 +130,6 @@ function Config({ onConfigChange }) {
                     </div>
                   </div>
                 </FormField>
-
-                <FormField label="Imagen hero de la app del cliente" hint="Pegá una URL directa o un link de Google Drive (se convierte automáticamente).">
-                  <input type="url" value={config.clientHeroImage || ''} onChange={e => {
-                    let url = e.target.value.trim();
-                    const m = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/);
-                    if (m) url = `https://lh3.googleusercontent.com/d/${m[1]}`;
-                    set('clientHeroImage', url);
-                  }} className={inputCls()} placeholder="https://... o link de Google Drive" />
-                  {config.clientHeroImage && (
-                    <div className="mt-3 rounded-2xl overflow-hidden border border-gray-200 relative"
-                      style={{ height: 120, background: 'linear-gradient(135deg, #0052D4, #00D2FF)' }}>
-                      <img src={config.clientHeroImage} alt="Hero preview"
-                        className="absolute inset-0 w-full h-full object-cover opacity-40"
-                        onError={e => { e.target.style.display = 'none'; }} />
-                      <div className="absolute inset-0 flex flex-col justify-center px-5">
-                        <p className="text-white/70 text-xs mb-0.5 font-medium">¡Hola, Cliente!</p>
-                        <p className="text-white font-extrabold text-sm leading-snug">Agua Pura,<br/><span style={{color:'#9CECFB'}}>Directo a tu Hogar</span></p>
-                      </div>
-                    </div>
-                  )}
-                </FormField>
               </div>
             )}
 
@@ -300,6 +279,56 @@ function Config({ onConfigChange }) {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* RACHAS */}
+                <div className="border-t border-gray-100 pt-5">
+                  <div className="mb-4">
+                    <h4 className="font-semibold text-slate-900 text-sm">Rachas 🔥</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">Premiá a los clientes que hacen pedidos o pagan de forma consecutiva.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="p-4 border border-orange-100 bg-orange-50 rounded-xl space-y-3">
+                      <p className="text-xs font-semibold text-orange-700 uppercase tracking-widest">Racha de pedidos</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField label="Premio cada N pedidos" hint="Pedidos consecutivos para recibir el premio. 0 = desactivado">
+                          <input type="number" value={config.streakOrderRewardEvery || 0}
+                            onChange={e => set('streakOrderRewardEvery', parseInt(e.target.value) || 0)}
+                            className={inputCls()} min="0" step="1" placeholder="0" />
+                        </FormField>
+                        <FormField label="Puntos del premio">
+                          <input type="number" value={config.streakOrderRewardPts || 50}
+                            onChange={e => set('streakOrderRewardPts', parseInt(e.target.value) || 0)}
+                            className={inputCls()} min="0" step="10" />
+                        </FormField>
+                      </div>
+                      {(config.streakOrderRewardEvery || 0) > 0 && (
+                        <p className="text-xs text-orange-700">
+                          Cada <strong>{config.streakOrderRewardEvery}</strong> pedidos entregados seguidos → <strong>{config.streakOrderRewardPts} puntos</strong>. Se reinicia si el cliente cancela un pedido.
+                        </p>
+                      )}
+                    </div>
+                    <div className="p-4 border border-blue-100 bg-blue-50 rounded-xl space-y-3">
+                      <p className="text-xs font-semibold text-blue-700 uppercase tracking-widest">Racha de pagos 💳</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField label="Premio cada N pagos" hint="Pagos consecutivos de facturas para recibir el premio. 0 = desactivado">
+                          <input type="number" value={config.streakPayRewardEvery || 0}
+                            onChange={e => set('streakPayRewardEvery', parseInt(e.target.value) || 0)}
+                            className={inputCls()} min="0" step="1" placeholder="0" />
+                        </FormField>
+                        <FormField label="Puntos del premio">
+                          <input type="number" value={config.streakPayRewardPts || 100}
+                            onChange={e => set('streakPayRewardPts', parseInt(e.target.value) || 0)}
+                            className={inputCls()} min="0" step="10" />
+                        </FormField>
+                      </div>
+                      {(config.streakPayRewardEvery || 0) > 0 && (
+                        <p className="text-xs text-blue-700">
+                          Cada <strong>{config.streakPayRewardEvery}</strong> facturas pagadas seguidas → <strong>{config.streakPayRewardPts} puntos</strong>.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
