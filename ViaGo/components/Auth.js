@@ -207,11 +207,7 @@ function Auth({ onLogin }) {
                 </button>
               </form>
               <p className="text-center text-xs text-slate-400 mt-5">
-                ¿Primera vez?{' '}
-                <button onClick={() => { setMode('signup'); setError(''); }}
-                  className="text-blue-600 hover:underline font-medium">
-                  Crear cuenta de administrador
-                </button>
+                Gestioná usuarios en Supabase Dashboard → Authentication → Users
               </p>
             </>
           ) : (
