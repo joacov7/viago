@@ -182,6 +182,7 @@ const DataService = {
       type: clientData.type || 'hogar', frequency: clientData.frequency || 'semanal',
       deliveryDay: clientData.deliveryDay || '', points: 0, referralCode,
       referredBy: clientData.referredBy || null, active: true, notes: clientData.notes || '',
+      abono: clientData.abono || [],
     });
     const { data, error } = await this._sb.from('clients').insert(dbData).select().single();
     if (error) throw new Error(error.message);
