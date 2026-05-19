@@ -287,7 +287,7 @@ function PortalHome({ client, config, onTab }) {
       })()}
 
       {/* ── Streak chips ── */}
-      {((client.orderStreak || 0) > 0 || (client.payStreak || 0) > 0) && (
+      {((client.orderStreak || 0) > 0 || (client.payStreak || 0) > 0 || (client.containerStreak || 0) > 0) && (
         <div className="flex gap-3">
           {(client.orderStreak || 0) > 0 && (
             <div className="flex-1 bg-white rounded-2xl p-3.5 border border-orange-100 flex items-center gap-3"
@@ -305,6 +305,28 @@ function PortalHome({ client, config, onTab }) {
                         <div className="h-full rounded-full bg-orange-400" style={{ width: `${pct}%` }} />
                       </div>
                       <p className="text-xs text-orange-400 mt-0.5">faltan {next} para {config.streakOrderRewardPts} pts</p>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+          {(client.containerStreak || 0) > 0 && (
+            <div className="flex-1 bg-white rounded-2xl p-3.5 border border-emerald-100 flex items-center gap-3"
+              style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+              <span className="text-2xl leading-none">♻️</span>
+              <div>
+                <p className="text-lg font-black text-emerald-500 leading-none">{client.containerStreak}</p>
+                <p className="text-xs text-slate-400 mt-0.5">bidones devueltos</p>
+                {(config.streakContainerRewardEvery || 0) > 0 && (() => {
+                  const next = config.streakContainerRewardEvery - (client.containerStreak % config.streakContainerRewardEvery);
+                  const pct = ((client.containerStreak % config.streakContainerRewardEvery) / config.streakContainerRewardEvery) * 100;
+                  return (
+                    <div className="mt-1.5">
+                      <div className="h-1 bg-emerald-100 rounded-full overflow-hidden w-16">
+                        <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-xs text-emerald-400 mt-0.5">faltan {next} para {config.streakContainerRewardPts} pts</p>
                     </div>
                   );
                 })()}

@@ -85,8 +85,10 @@ const DataService = {
       mpPublicKey: '', whatsappNumber: '',
       paymentMethods: ['efectivo', 'transferencia', 'mercadopago'],
       storeEnabled: false, pointsConversionRate: 1,
+      streaksEnabled: false,
       streakOrderRewardEvery: 0, streakOrderRewardPts: 50,
       streakPayRewardEvery: 0, streakPayRewardPts: 100,
+      streakContainerRewardEvery: 0, streakContainerRewardPts: 75,
     };
   },
 
@@ -323,16 +325,30 @@ const DataService = {
     if (wasDelivered && clientId) {
       const cfg = await this.getConfig();
       await this.addPoints(clientId, cfg.pointsPerOrder, 'earned', `Pedido #${id} entregado`);
-      // Order streak
-      const { data: cd } = await this._sb.from('clients').select('order_streak').eq('id', clientId).single();
-      const newStreak = (cd?.order_streak || 0) + 1;
-      await this._sb.from('clients').update({ order_streak: newStreak }).eq('id', clientId);
-      if (cfg.streakOrderRewardEvery > 0 && newStreak % cfg.streakOrderRewardEvery === 0) {
-        await this.addPoints(clientId, cfg.streakOrderRewardPts || 50, 'streak', `🔥 Racha de ${newStreak} pedidos consecutivos`);
+      if (cfg.streaksEnabled) {
+        const { data: cd } = await this._sb.from('clients').select('order_streak, container_streak').eq('id', clientId).single();
+        // Order streak
+        const newOrderStreak = (cd?.order_streak || 0) + 1;
+        const streakUpdates = { order_streak: newOrderStreak };
+        if (cfg.streakOrderRewardEvery > 0 && newOrderStreak % cfg.streakOrderRewardEvery === 0) {
+          await this.addPoints(clientId, cfg.streakOrderRewardPts || 50, 'streak', `🔥 Racha de ${newOrderStreak} pedidos consecutivos`);
+        }
+        // Container streak
+        if (orderData.bidonesDevueltos === true) {
+          const newContainerStreak = (cd?.container_streak || 0) + 1;
+          streakUpdates.container_streak = newContainerStreak;
+          if (cfg.streakContainerRewardEvery > 0 && newContainerStreak % cfg.streakContainerRewardEvery === 0) {
+            await this.addPoints(clientId, cfg.streakContainerRewardPts || 75, 'streak', `♻️ Racha de ${newContainerStreak} bidones devueltos`);
+          }
+        } else if (orderData.bidonesDevueltos === false) {
+          streakUpdates.container_streak = 0;
+        }
+        await this._sb.from('clients').update(streakUpdates).eq('id', clientId);
       }
     }
     if (wasCancelled && clientId) {
-      await this._sb.from('clients').update({ order_streak: 0 }).eq('id', clientId);
+      const cfg = await this.getConfig();
+      if (cfg.streaksEnabled) await this._sb.from('clients').update({ order_streak: 0 }).eq('id', clientId);
     }
     return order;
   },
@@ -378,11 +394,13 @@ const DataService = {
     const { data } = await this._sb.from('invoices').update(this._db(updateData)).eq('id', id).select().single();
     if (firstTimePaid && curr.client_id) {
       const cfg = await this.getConfig();
-      const { data: cd } = await this._sb.from('clients').select('pay_streak').eq('id', curr.client_id).single();
-      const newStreak = (cd?.pay_streak || 0) + 1;
-      await this._sb.from('clients').update({ pay_streak: newStreak }).eq('id', curr.client_id);
-      if (cfg.streakPayRewardEvery > 0 && newStreak % cfg.streakPayRewardEvery === 0) {
-        await this.addPoints(curr.client_id, cfg.streakPayRewardPts || 100, 'streak', `💳 Racha de ${newStreak} pagos al día`);
+      if (cfg.streaksEnabled) {
+        const { data: cd } = await this._sb.from('clients').select('pay_streak').eq('id', curr.client_id).single();
+        const newStreak = (cd?.pay_streak || 0) + 1;
+        await this._sb.from('clients').update({ pay_streak: newStreak }).eq('id', curr.client_id);
+        if (cfg.streakPayRewardEvery > 0 && newStreak % cfg.streakPayRewardEvery === 0) {
+          await this.addPoints(curr.client_id, cfg.streakPayRewardPts || 100, 'streak', `💳 Racha de ${newStreak} pagos al día`);
+        }
       }
     }
     return this._js(data);

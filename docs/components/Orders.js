@@ -12,6 +12,7 @@ function Orders({ onNavigate, navParams }) {
   const [showModal, setShowModal] = React.useState(false);
   const [showAgenda, setShowAgenda] = React.useState(false);
   const [detail, setDetail] = React.useState(null);
+  const [deliveryConfirm, setDeliveryConfirm] = React.useState(null); // { orderId, afterCb }
 
   const reload = async () => {
     const [allOrders, allClients, allZones, allProducts] = await Promise.all([
@@ -43,10 +44,19 @@ function Orders({ onNavigate, navParams }) {
       && (!filterZone || o.zone.id == filterZone);
   });
 
-  const handleStatus = async (id, status) => {
-    await DataService.updateOrder(id, { status });
+  const handleStatus = async (id, status, extra = {}) => {
+    await DataService.updateOrder(id, { status, ...extra });
     await reload();
     if (detail && detail.id === id) DataService.getOrder(id).then(o => setDetail(o));
+  };
+
+  const handleDeliver = (orderId, afterCb = null) => {
+    const cfg = DataService.getConfigSync();
+    if (cfg.streaksEnabled) {
+      setDeliveryConfirm({ orderId, afterCb });
+    } else {
+      handleStatus(orderId, 'entregado').then(() => afterCb && afterCb());
+    }
   };
 
   const handleDelete = async (o) => {
@@ -63,7 +73,7 @@ function Orders({ onNavigate, navParams }) {
   if (detail) {
     const client = clients.find(c => c.id === detail.clientId) || {};
     const zone = zones.find(z => z.id === client.zoneId) || {};
-    return <OrderDetail order={detail} client={client} zone={zone} products={products} onBack={() => { setDetail(null); reload(); }} onStatus={handleStatus} onNavigate={onNavigate} />;
+    return <OrderDetail order={detail} client={client} zone={zone} products={products} onBack={() => { setDetail(null); reload(); }} onStatus={handleStatus} onDeliver={(id) => handleDeliver(id, () => { setDetail(null); reload(); })} onNavigate={onNavigate} />;
   }
 
   return (
@@ -112,7 +122,7 @@ function Orders({ onNavigate, navParams }) {
         <EmptyState icon="package" title="No hay pedidos" description="Creá el primer pedido para comenzar" action={<Btn onClick={() => setShowModal(true)} icon="plus" variant="primary">Nuevo pedido</Btn>} />
       ) : (
         <div className="space-y-3">
-          {filtered.map(o => <OrderCard key={o.id} order={o} onStatus={handleStatus} onDelete={handleDelete} onDetail={() => setDetail(o)} onNavigate={onNavigate} />)}
+          {filtered.map(o => <OrderCard key={o.id} order={o} onStatus={handleStatus} onDeliver={handleDeliver} onDelete={handleDelete} onDetail={() => setDetail(o)} onNavigate={onNavigate} />)}
         </div>
       )}
 
@@ -126,11 +136,21 @@ function Orders({ onNavigate, navParams }) {
         preClientId={navParams && navParams.clientId}
       />
       <AgendaModal isOpen={showAgenda} clients={clients} products={products} onClose={() => setShowAgenda(false)} onCreated={() => { reload(); setShowAgenda(false); }} />
+      <DeliveryConfirmModal
+        confirm={deliveryConfirm}
+        onClose={() => setDeliveryConfirm(null)}
+        onConfirm={async (bidonDevuelto) => {
+          const { orderId, afterCb } = deliveryConfirm;
+          await handleStatus(orderId, 'entregado', { bidonesDevueltos: bidonDevuelto });
+          setDeliveryConfirm(null);
+          if (afterCb) afterCb();
+        }}
+      />
     </div>
   );
 }
 
-function OrderCard({ order, onStatus, onDelete, onDetail, onNavigate }) {
+function OrderCard({ order, onStatus, onDeliver, onDelete, onDetail, onNavigate }) {
   const statusStyle = { pendiente: 'border-l-amber-500', entregado: 'border-l-emerald-500', cancelado: 'border-l-red-400' };
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 border-l-4 ${statusStyle[order.status] || ''} p-4`}>
@@ -173,7 +193,7 @@ function OrderCard({ order, onStatus, onDelete, onDetail, onNavigate }) {
         <div className="ml-auto flex gap-1.5">
           {order.status === 'pendiente' && (
             <>
-              <button onClick={() => onStatus(order.id, 'entregado')}
+              <button onClick={() => onDeliver ? onDeliver(order.id) : onStatus(order.id, 'entregado')}
                 className="flex items-center gap-1 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-medium rounded-lg">
                 <Icon name="checkCircle" size={13} />Entregar
               </button>
@@ -192,7 +212,7 @@ function OrderCard({ order, onStatus, onDelete, onDetail, onNavigate }) {
   );
 }
 
-function OrderDetail({ order, client, zone, products, onBack, onStatus, onNavigate }) {
+function OrderDetail({ order, client, zone, products, onBack, onStatus, onDeliver, onNavigate }) {
   const [invoice, setInvoice] = React.useState(null);
   React.useEffect(() => {
     DataService.getInvoices().then(invs => setInvoice(invs.find(i => i.orderId === order.id) || null));
@@ -256,7 +276,13 @@ function OrderDetail({ order, client, zone, products, onBack, onStatus, onNaviga
         <div className="flex flex-wrap gap-3">
           {client.phone && <a href={WhatsAppService.orderConfirmation(client, order)} target="_blank" rel="noopener noreferrer"><Btn variant="secondary" icon="messageCircle">Confirmar WA</Btn></a>}
           {client.phone && <a href={WhatsAppService.deliveryNotice(client, order)} target="_blank" rel="noopener noreferrer"><Btn variant="secondary" icon="truck">Aviso entrega</Btn></a>}
-          {order.status === 'pendiente' && <Btn onClick={() => { onStatus(order.id, 'entregado'); onBack(); }} variant="success" icon="checkCircle">Marcar entregado</Btn>}
+          <Btn onClick={() => PDFService.printRemito(order, client, DataService.getConfigSync())} variant="secondary" icon="printer">Remito</Btn>
+          {client.phone && order.status === 'entregado' && (
+            <a href={`https://wa.me/${(client.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(PDFService.textReceipt(order, client, DataService.getConfigSync()))}`} target="_blank" rel="noopener noreferrer">
+              <Btn variant="secondary" icon="messageCircle">Comprobante WA</Btn>
+            </a>
+          )}
+          {order.status === 'pendiente' && <Btn onClick={() => onDeliver ? onDeliver(order.id) : onStatus(order.id, 'entregado')} variant="success" icon="checkCircle">Marcar entregado</Btn>}
           {order.status === 'entregado' && !invoice && <Btn onClick={() => onNavigate('billing', { orderId: order.id, clientId: client.id, items: order.items, total: order.total })} variant="primary" icon="fileText">Generar factura</Btn>}
           {invoice && <Btn onClick={() => onNavigate('billing', { invoiceId: invoice.id })} variant="secondary" icon="eye">Ver factura {invoice.number}</Btn>}
         </div>
@@ -543,6 +569,31 @@ function AgendaModal({ isOpen, clients, products, onClose, onCreated }) {
         {!generated && (
           <p className="text-sm text-slate-400 text-center py-4">Seleccioná un mes y hacé clic en "Previsualizar" para ver los pedidos que se generarán basados en la frecuencia de cada cliente.</p>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+function DeliveryConfirmModal({ confirm, onClose, onConfirm }) {
+  const [bidon, setBidon] = React.useState(false);
+  React.useEffect(() => { if (confirm) setBidon(false); }, [confirm]);
+
+  return (
+    <Modal isOpen={!!confirm} onClose={onClose} title="Confirmar entrega" size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-slate-600">¿Confirmar la entrega de este pedido?</p>
+        <label className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-100 rounded-xl cursor-pointer hover:bg-emerald-100 transition-colors">
+          <input type="checkbox" checked={bidon} onChange={e => setBidon(e.target.checked)}
+            className="w-5 h-5 text-emerald-600 rounded flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">♻️ El cliente devolvió el bidón</p>
+            <p className="text-xs text-slate-500 mt-0.5">Suma a su racha de devoluciones y puede dar puntos extra</p>
+          </div>
+        </label>
+        <div className="flex gap-3 pt-2 border-t border-gray-100">
+          <Btn type="button" onClick={onClose} variant="secondary">Cancelar</Btn>
+          <Btn type="button" onClick={() => onConfirm(bidon)} variant="success" icon="checkCircle">Confirmar entrega</Btn>
+        </div>
       </div>
     </Modal>
   );

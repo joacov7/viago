@@ -283,11 +283,22 @@ function Config({ onConfigChange }) {
 
                 {/* RACHAS */}
                 <div className="border-t border-gray-100 pt-5">
-                  <div className="mb-4">
-                    <h4 className="font-semibold text-slate-900 text-sm">Rachas 🔥</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Premiá a los clientes que hacen pedidos o pagan de forma consecutiva.</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="font-semibold text-slate-900 text-sm">Rachas 🔥</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Premiá a los clientes que hacen pedidos, devuelven bidones y pagan de forma consecutiva.</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={!!config.streaksEnabled}
+                        onChange={e => set('streaksEnabled', e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600" />
+                      <span className="text-sm font-medium text-slate-700">{config.streaksEnabled ? 'Activo' : 'Inactivo'}</span>
+                    </label>
                   </div>
-                  <div className="space-y-4">
+                  {!config.streaksEnabled && (
+                    <p className="text-xs text-slate-400 bg-gray-50 rounded-xl px-3 py-2">Activá el sistema de rachas para configurar los premios y que se vean en la app del cliente.</p>
+                  )}
+                  {config.streaksEnabled && <div className="space-y-4">
                     <div className="p-4 border border-orange-100 bg-orange-50 rounded-xl space-y-3">
                       <p className="text-xs font-semibold text-orange-700 uppercase tracking-widest">Racha de pedidos</p>
                       <div className="grid grid-cols-2 gap-3">
@@ -328,7 +339,28 @@ function Config({ onConfigChange }) {
                         </p>
                       )}
                     </div>
-                  </div>
+                    <div className="p-4 border border-emerald-100 bg-emerald-50 rounded-xl space-y-3">
+                      <p className="text-xs font-semibold text-emerald-700 uppercase tracking-widest">Racha de devolución de bidón ♻️</p>
+                      <p className="text-xs text-emerald-600">Al marcar un pedido como entregado, el repartidor puede indicar si el cliente devolvió el bidón.</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField label="Premio cada N devoluciones" hint="Bidones devueltos consecutivos para recibir el premio. 0 = desactivado">
+                          <input type="number" value={config.streakContainerRewardEvery || 0}
+                            onChange={e => set('streakContainerRewardEvery', parseInt(e.target.value) || 0)}
+                            className={inputCls()} min="0" step="1" placeholder="0" />
+                        </FormField>
+                        <FormField label="Puntos del premio">
+                          <input type="number" value={config.streakContainerRewardPts || 75}
+                            onChange={e => set('streakContainerRewardPts', parseInt(e.target.value) || 0)}
+                            className={inputCls()} min="0" step="10" />
+                        </FormField>
+                      </div>
+                      {(config.streakContainerRewardEvery || 0) > 0 && (
+                        <p className="text-xs text-emerald-700">
+                          Cada <strong>{config.streakContainerRewardEvery}</strong> bidones devueltos seguidos → <strong>{config.streakContainerRewardPts} puntos</strong>.
+                        </p>
+                      )}
+                    </div>
+                  </div>}
                 </div>
               </div>
             )}
