@@ -310,6 +310,7 @@ const DataService = {
       items: orderData.items || [], total: parseFloat(orderData.total) || 0,
       deliveryDate: orderData.deliveryDate || new Date().toISOString().split('T')[0],
       notes: orderData.notes || '',
+      source: orderData.source || 'manual',
     });
     const { data } = await this._sb.from('orders').insert(dbData).select().single();
     return this._js(data);

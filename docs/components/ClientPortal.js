@@ -287,74 +287,36 @@ function PortalHome({ client, config, onTab }) {
       })()}
 
       {/* ── Streak chips ── */}
-      {((client.orderStreak || 0) > 0 || (client.payStreak || 0) > 0 || (client.containerStreak || 0) > 0) && (
+      {config.streaksEnabled && (
         <div className="flex gap-3">
-          {(client.orderStreak || 0) > 0 && (
-            <div className="flex-1 bg-white rounded-2xl p-3.5 border border-orange-100 flex items-center gap-3"
-              style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-              <span className="text-2xl leading-none">🔥</span>
-              <div>
-                <p className="text-lg font-black text-orange-500 leading-none">{client.orderStreak}</p>
-                <p className="text-xs text-slate-400 mt-0.5">pedidos seguidos</p>
-                {(config.streakOrderRewardEvery || 0) > 0 && (() => {
-                  const next = config.streakOrderRewardEvery - (client.orderStreak % config.streakOrderRewardEvery);
-                  const pct = ((client.orderStreak % config.streakOrderRewardEvery) / config.streakOrderRewardEvery) * 100;
-                  return (
+          {[
+            { key: 'orderStreak',     emoji: '🔥', label: 'pedidos seguidos',    color: 'orange',  rewardEvery: config.streakOrderRewardEvery,     rewardPts: config.streakOrderRewardPts },
+            { key: 'containerStreak', emoji: '♻️', label: 'bidones devueltos',   color: 'emerald', rewardEvery: config.streakContainerRewardEvery, rewardPts: config.streakContainerRewardPts },
+            { key: 'payStreak',       emoji: '💳', label: 'pagos seguidos',      color: 'blue',    rewardEvery: config.streakPayRewardEvery,       rewardPts: config.streakPayRewardPts },
+          ].map(({ key, emoji, label, color, rewardEvery, rewardPts }) => {
+            const val = client[key] || 0;
+            const hasReward = (rewardEvery || 0) > 0;
+            const next = hasReward ? rewardEvery - (val % rewardEvery) : 0;
+            const pct = hasReward ? (val % rewardEvery) / rewardEvery * 100 : 0;
+            return (
+              <div key={key} className={`flex-1 bg-white rounded-2xl p-3.5 border border-${color}-100 flex items-center gap-3`}
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+                <span className="text-2xl leading-none">{emoji}</span>
+                <div>
+                  <p className={`text-lg font-black text-${color}-500 leading-none`}>{val}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{label}</p>
+                  {hasReward && (
                     <div className="mt-1.5">
-                      <div className="h-1 bg-orange-100 rounded-full overflow-hidden w-16">
-                        <div className="h-full rounded-full bg-orange-400" style={{ width: `${pct}%` }} />
+                      <div className={`h-1 bg-${color}-100 rounded-full overflow-hidden w-16`}>
+                        <div className={`h-full rounded-full bg-${color}-400`} style={{ width: `${pct}%` }} />
                       </div>
-                      <p className="text-xs text-orange-400 mt-0.5">faltan {next} para {config.streakOrderRewardPts} pts</p>
+                      <p className={`text-xs text-${color}-400 mt-0.5`}>faltan {next} para {rewardPts} pts</p>
                     </div>
-                  );
-                })()}
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-          {(client.containerStreak || 0) > 0 && (
-            <div className="flex-1 bg-white rounded-2xl p-3.5 border border-emerald-100 flex items-center gap-3"
-              style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-              <span className="text-2xl leading-none">♻️</span>
-              <div>
-                <p className="text-lg font-black text-emerald-500 leading-none">{client.containerStreak}</p>
-                <p className="text-xs text-slate-400 mt-0.5">bidones devueltos</p>
-                {(config.streakContainerRewardEvery || 0) > 0 && (() => {
-                  const next = config.streakContainerRewardEvery - (client.containerStreak % config.streakContainerRewardEvery);
-                  const pct = ((client.containerStreak % config.streakContainerRewardEvery) / config.streakContainerRewardEvery) * 100;
-                  return (
-                    <div className="mt-1.5">
-                      <div className="h-1 bg-emerald-100 rounded-full overflow-hidden w-16">
-                        <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className="text-xs text-emerald-400 mt-0.5">faltan {next} para {config.streakContainerRewardPts} pts</p>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
-          {(client.payStreak || 0) > 0 && (
-            <div className="flex-1 bg-white rounded-2xl p-3.5 border border-blue-100 flex items-center gap-3"
-              style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-              <span className="text-2xl leading-none">💳</span>
-              <div>
-                <p className="text-lg font-black text-blue-500 leading-none">{client.payStreak}</p>
-                <p className="text-xs text-slate-400 mt-0.5">pagos seguidos</p>
-                {(config.streakPayRewardEvery || 0) > 0 && (() => {
-                  const next = config.streakPayRewardEvery - (client.payStreak % config.streakPayRewardEvery);
-                  const pct = ((client.payStreak % config.streakPayRewardEvery) / config.streakPayRewardEvery) * 100;
-                  return (
-                    <div className="mt-1.5">
-                      <div className="h-1 bg-blue-100 rounded-full overflow-hidden w-16">
-                        <div className="h-full rounded-full bg-blue-400" style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className="text-xs text-blue-400 mt-0.5">faltan {next} para {config.streakPayRewardPts} pts</p>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
+            );
+          })}
         </div>
       )}
     </div>

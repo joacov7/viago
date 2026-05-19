@@ -555,14 +555,27 @@ function DriverOrderDetail({ order, invoices = [], distance, onBack, onStatus, o
   );
 }
 
+const COBRO_METHODS = [
+  { id: 'efectivo',         label: '💵 Efectivo' },
+  { id: 'transferencia',    label: '🏦 Transfer.' },
+  { id: 'mercadopago',      label: '💳 MP' },
+  { id: 'cuenta_corriente', label: '📋 Cta. Cte.' },
+];
+
 function CobroModal({ order, invoices = [], onClose }) {
   const [method, setMethod] = React.useState('efectivo');
   const [notes, setNotes] = React.useState('');
-  const [cuentaCorriente, setCuentaCorriente] = React.useState(false);
   const [config, setConfig] = React.useState({});
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => { DataService.getConfig().then(setConfig); }, []);
+
+  React.useEffect(() => {
+    if (order) {
+      setMethod(order.source === 'abono' ? 'cuenta_corriente' : 'efectivo');
+      setNotes('');
+    }
+  }, [order && order.id]);
 
   if (!order) return null;
 
@@ -570,7 +583,7 @@ function CobroModal({ order, invoices = [], onClose }) {
     e.preventDefault();
     setSaving(true);
     try {
-      if (cuentaCorriente) {
+      if (method === 'cuenta_corriente') {
         await DataService.adjustClientBalance(order.clientId, order.total, `Entrega sin cobrar - ${DataService.formatDate(DataService.today())}`);
         await DataService.updateOrder(order.id, { status: 'entregado' });
       } else {
@@ -589,33 +602,35 @@ function CobroModal({ order, invoices = [], onClose }) {
     setSaving(false);
   };
 
-  const mpLink = method === 'mercadopago' ? `https://www.mercadopago.com.ar/tools/create` : null;
-
   return (
     <Modal isOpen={!!order} onClose={onClose} title="Registrar cobro" size="sm">
       <form onSubmit={submit} className="space-y-4">
         <div className="p-3 bg-gray-50 rounded-xl">
           <p className="text-sm text-slate-600">{order.client?.name || `#${order.clientId}`}</p>
           <p className="text-xl font-bold text-slate-900">{DataService.formatCurrency(order.total)}</p>
+          {order.source === 'abono' && (
+            <span className="inline-block mt-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Pedido de abono</span>
+          )}
         </div>
-        <label className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200 cursor-pointer">
-          <input type="checkbox" checked={cuentaCorriente} onChange={e => setCuentaCorriente(e.target.checked)} className="w-4 h-4 rounded" />
-          <div>
-            <p className="text-sm font-medium text-amber-800">Cargar a cuenta corriente</p>
-            <p className="text-xs text-amber-600">Se entrega ahora, se cobra después</p>
-          </div>
-        </label>
-
-        {!cuentaCorriente && <FormField label="Forma de pago">
-          <div className="grid grid-cols-3 gap-2">
-            {['efectivo', 'transferencia', 'mercadopago'].map(m => (
-              <button key={m} type="button" onClick={() => setMethod(m)}
-                className={`py-2 px-2 rounded-xl text-xs font-semibold border-2 transition-colors ${method === m ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-slate-600 hover:border-gray-300'}`}>
-                {m === 'efectivo' ? '💵 Efectivo' : m === 'transferencia' ? '🏦 Transfer.' : '💳 MP'}
+        <FormField label="Forma de pago">
+          <div className="grid grid-cols-2 gap-2">
+            {COBRO_METHODS.map(m => (
+              <button key={m.id} type="button" onClick={() => setMethod(m.id)}
+                className={`py-2.5 px-2 rounded-xl text-sm font-semibold border-2 transition-colors ${
+                  method === m.id
+                    ? m.id === 'cuenta_corriente' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 text-slate-600 hover:border-gray-300'
+                }`}>
+                {m.label}
               </button>
             ))}
           </div>
-        </FormField>}
+        </FormField>
+        {method === 'cuenta_corriente' && (
+          <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+            <p className="text-xs text-amber-700">Se entrega ahora, el monto queda en cuenta corriente del cliente para cobrar a fin de mes.</p>
+          </div>
+        )}
         {method === 'mercadopago' && config.mpPublicKey && (
           <a href={`https://link.mercadopago.com.ar/${config.mpPublicKey}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
@@ -627,7 +642,7 @@ function CobroModal({ order, invoices = [], onClose }) {
         </FormField>
         <div className="flex gap-3 pt-2">
           <Btn type="button" onClick={onClose} variant="secondary" className="flex-1 justify-center">Cancelar</Btn>
-          <Btn type="submit" variant="success" className="flex-1 justify-center" icon="check" disabled={saving}>{saving ? 'Guardando...' : 'Confirmar cobro'}</Btn>
+          <Btn type="submit" variant="success" className="flex-1 justify-center" icon="check" disabled={saving}>{saving ? 'Guardando...' : 'Confirmar'}</Btn>
         </div>
       </form>
     </Modal>
