@@ -120,13 +120,7 @@ create table if not exists promotions (
 );
 
 -- ============================================================
--- Deshabilitar RLS (sin Supabase Auth, no se necesita)
+-- Seguridad: ver supabase-rls.sql para habilitar RLS completo
+-- Ejecutar supabase-rls.sql DESPUÉS de crear tu usuario admin
+-- en Supabase Dashboard → Authentication → Users
 -- ============================================================
-alter table config disable row level security;
-alter table zones disable row level security;
-alter table products disable row level security;
-alter table clients disable row level security;
-alter table orders disable row level security;
-alter table invoices disable row level security;
-alter table points_history disable row level security;
-alter table promotions disable row level security;

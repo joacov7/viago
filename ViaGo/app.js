@@ -26,12 +26,28 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
-  const [loggedIn, setLoggedIn] = React.useState(!!sessionStorage.getItem('nativa_admin_ok'));
+  const [loggedIn, setLoggedIn] = React.useState(false);
+  const [authChecking, setAuthChecking] = React.useState(true);
   const [config, setConfig] = React.useState({ companyName: 'NATIVA' });
   const [activeModule, setActiveModule] = React.useState('dashboard');
   const [navParams, setNavParams] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [initialized, setInitialized] = React.useState(false);
+
+  // Bootstrap: check existing Supabase session, then subscribe to auth changes
+  React.useEffect(() => {
+    DataService.getSession().then(session => {
+      if (session) setLoggedIn(true);
+      setAuthChecking(false);
+    }).catch(() => setAuthChecking(false));
+
+    const sub = DataService.onAuthChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) { setLoggedIn(true); }
+      if (event === 'SIGNED_OUT') { setLoggedIn(false); setInitialized(false); DataService._configCache = null; }
+      if (event === 'TOKEN_REFRESHED') { /* session silently refreshed — no action needed */ }
+    });
+    return () => sub.unsubscribe();
+  }, []);
 
   React.useEffect(() => {
     if (!loggedIn) return;
@@ -48,10 +64,9 @@ function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('nativa_admin_ok');
-    setLoggedIn(false);
-    setInitialized(false);
+  const handleLogout = async () => {
+    await DataService.signOut();
+    // onAuthChange listener will set loggedIn = false
   };
 
   const moduleTitle = {
@@ -82,6 +97,13 @@ function App() {
     }
   };
 
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
   if (!loggedIn) return <Auth onLogin={() => setLoggedIn(true)} />;
 
   if (!initialized) {

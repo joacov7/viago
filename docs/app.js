@@ -26,12 +26,28 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
-  const [loggedIn, setLoggedIn] = React.useState(!!sessionStorage.getItem('nativa_admin_ok'));
+  const [loggedIn, setLoggedIn] = React.useState(false);
+  const [authChecking, setAuthChecking] = React.useState(true);
   const [config, setConfig] = React.useState({ companyName: 'NATIVA' });
   const [activeModule, setActiveModule] = React.useState('dashboard');
   const [navParams, setNavParams] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [initialized, setInitialized] = React.useState(false);
+
+  // Bootstrap: check existing Supabase session, then subscribe to auth changes
+  React.useEffect(() => {
+    DataService.getSession().then(session => {
+      if (session) setLoggedIn(true);
+      setAuthChecking(false);
+    }).catch(() => setAuthChecking(false));
+
+    const sub = DataService.onAuthChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) { setLoggedIn(true); }
+      if (event === 'SIGNED_OUT') { setLoggedIn(false); setInitialized(false); DataService._configCache = null; }
+      if (event === 'TOKEN_REFRESHED') { /* session silently refreshed — no action needed */ }
+    });
+    return () => sub.unsubscribe();
+  }, []);
 
   React.useEffect(() => {
     if (!loggedIn) return;
@@ -48,18 +64,16 @@ function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('nativa_admin_ok');
-    setLoggedIn(false);
-    setInitialized(false);
+  const handleLogout = async () => {
+    await DataService.signOut();
+    // onAuthChange listener will set loggedIn = false
   };
 
   const moduleTitle = {
     dashboard: 'Dashboard', clients: 'Clientes', prospecting: 'Captación',
     orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
-    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas',
-    liveTracking: 'En vivo', mapView: 'Mapa', purificadora: 'Purificadora',
+    costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas', liveTracking: 'En vivo', mapView: 'Mapa',
   };
 
   const renderModule = () => {
@@ -67,23 +81,29 @@ function App() {
       case 'dashboard':    return <Dashboard onNavigate={navigate} />;
       case 'clients':      return <Clients onNavigate={navigate} navParams={navParams} />;
       case 'prospecting':  return <Prospecting />;
-      case 'orders':       return <Orders onNavigate={navigate} navParams={navParams} />;
-      case 'delivery':     return <Delivery onNavigate={navigate} />;
-      case 'zones':        return <Zones />;
-      case 'billing':      return <Billing navParams={navParams} />;
-      case 'loyalty':      return <Loyalty />;
-      case 'products':     return <Products />;
-      case 'config':       return <Config onConfigChange={cfg => setConfig(cfg)} />;
-      case 'costs':        return <Costs />;
-      case 'dispensers':   return <Dispensers />;
-      case 'machines':     return <Machines />;
-      case 'liveTracking': return <LiveTracking />;
-      case 'mapView':      return <MapView />;
-      case 'purificadora': return <Purificadora />;
-      default:             return <Dashboard onNavigate={navigate} />;
+      case 'orders':    return <Orders onNavigate={navigate} navParams={navParams} />;
+      case 'delivery':  return <Delivery onNavigate={navigate} />;
+      case 'zones':     return <Zones />;
+      case 'billing':   return <Billing navParams={navParams} />;
+      case 'loyalty':   return <Loyalty />;
+      case 'products':  return <Products />;
+      case 'config':      return <Config onConfigChange={cfg => setConfig(cfg)} />;
+      case 'costs':       return <Costs />;
+      case 'dispensers':  return <Dispensers />;
+      case 'machines':      return <Machines />;
+      case 'liveTracking':  return <LiveTracking />;
+      case 'mapView':       return <MapView />;
+      default:              return <Dashboard onNavigate={navigate} />;
     }
   };
 
+  if (authChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
   if (!loggedIn) return <Auth onLogin={() => setLoggedIn(true)} />;
 
   if (!initialized) {

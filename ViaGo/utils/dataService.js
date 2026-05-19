@@ -32,6 +32,31 @@ const DataService = {
   },
 
   // ─── CONFIG ──────────────────────────────────────────────────────────────
+  // ─── AUTH ─────────────────────────────────────────────────────────────────
+  async signIn(email, password) {
+    const { data, error } = await this._sb.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+    return data.session;
+  },
+  async signUp(email, password) {
+    const { data, error } = await this._sb.auth.signUp({ email, password });
+    if (error) throw new Error(error.message);
+    return data;
+  },
+  async signOut() {
+    this._configCache = null;
+    await this._sb.auth.signOut();
+  },
+  async getSession() {
+    const { data: { session } } = await this._sb.auth.getSession();
+    return session;
+  },
+  onAuthChange(callback) {
+    const { data: { subscription } } = this._sb.auth.onAuthStateChange(callback);
+    return subscription;
+  },
+
+  // ─── CONFIG ──────────────────────────────────────────────────────────────
   _configCache: null,
   async getConfig() {
     if (this._configCache) return this._configCache;
