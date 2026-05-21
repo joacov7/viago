@@ -310,10 +310,10 @@ function SuccessScene({ title, sub, extra }) {
   );
 }
 
-// GShell: sticky header + scroll area + optional footer bar
-function GShell({ title, eyebrow, avatarInitial = '?', onAvatarClick, showAvatar = true, rightAccessory, children, footer }) {
+// GShell: full-screen container with sticky header, scroll area, floating bar slot, internal tab bar
+function GShell({ title, eyebrow, avatarInitial = '?', onAvatarClick, showAvatar = true, rightAccessory, activeTab, onTab, children, floatingBar, floatingBarBottom = 80 }) {
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: G.bg, color: G.text, fontFamily: GFF, display: 'flex', flexDirection: 'column' }}>
       <div style={{ flexShrink: 0, padding: '6px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           {eyebrow && <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>{eyebrow}</div>}
@@ -332,31 +332,33 @@ function GShell({ title, eyebrow, avatarInitial = '?', onAvatarClick, showAvatar
           )}
         </div>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 16px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 100px' }}>
         {children}
       </div>
-      {footer && (
-        <div style={{ flexShrink: 0, padding: '8px 12px', borderTop: `0.5px solid ${G.hairline}`, background: G.bg }}>
-          {footer}
+      {floatingBar && (
+        <div style={{ position: 'absolute', bottom: floatingBarBottom, left: 0, right: 0, padding: '0 12px', zIndex: 10 }}>
+          {floatingBar}
         </div>
       )}
+      <GTabBar tab={activeTab} onTab={onTab}/>
     </div>
   );
 }
 
 // ─── Tab bar ─────────────────────────────────────────────────────────────────
 
-function GTabBar({ tab, onTab, showStore, showReferrals }) {
+function GTabBar({ tab, onTab }) {
   const tabs = [
-    { id: 'home',     label: 'Inicio',   ico: 'home' },
-    { id: 'order',    label: 'Pedir',    ico: 'drop' },
-    { id: 'orders',   label: 'Pedidos',  ico: 'bidon' },
-    ...(showStore ? [{ id: 'store', label: 'Tienda', ico: 'bag' }] : []),
-    { id: 'invoices', label: 'Facturas', ico: 'receipt' },
+    { id: 'home',      label: 'Inicio',   ico: 'home' },
+    { id: 'order',     label: 'Pedir',    ico: 'drop' },
+    { id: 'orders',    label: 'Pedidos',  ico: 'bidon' },
+    { id: 'store',     label: 'Tienda',   ico: 'bag' },
+    { id: 'referrals', label: 'Amigos',   ico: 'gift' },
+    { id: 'invoices',  label: 'Facturas', ico: 'receipt' },
   ];
   return (
     <div style={{
-      flexShrink: 0,
+      position: 'absolute', bottom: 0, left: 0, right: 0,
       background: 'rgba(242,240,235,0.92)',
       backdropFilter: 'blur(24px) saturate(180%)',
       WebkitBackdropFilter: 'blur(24px) saturate(180%)',
@@ -420,7 +422,7 @@ function PortalHome({ client, config, onTab, onAvatarClick }) {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: G.bg, color: G.text, fontFamily: GFF, display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div style={{ flexShrink: 0, padding: '8px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <NativaWordmarkCompact/>
@@ -432,7 +434,7 @@ function PortalHome({ client, config, onTab, onAvatarClick }) {
         }}>{initial}</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 16px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 100px' }}>
         {/* Greeting */}
         <div style={{ padding: '8px 4px 14px' }}>
           <div style={{ fontSize: 13, color: G.muted, fontWeight: 500 }}>Hola, {client.name?.split(' ')[0] || 'cliente'}</div>
@@ -627,6 +629,7 @@ function PortalHome({ client, config, onTab, onAvatarClick }) {
           <div style={{ fontSize: 12, color: G.muted, lineHeight: 1.45, maxWidth: 240 }}>Agua de origen natural, entregada directo a tu casa.</div>
         </div>
       </div>
+      <GTabBar tab="home" onTab={onTab}/>
     </div>
   );
 }
@@ -693,9 +696,13 @@ function PortalOrder({ client, config, onDone, onTab, onAvatarClick }) {
   };
 
   if (success) return (
-    <GShell title="Pedir" eyebrow="Nuevo pedido" avatarInitial={initial} onAvatarClick={onAvatarClick}>
-      <SuccessScene title="Pedido enviado" sub="Te avisamos por WhatsApp cuando salga el camión."/>
-    </GShell>
+    <div style={{ width: '100%', height: '100%', background: G.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center' }}>
+      <div style={{ width: 96, height: 96, borderRadius: '50%', background: G.successSoft, color: G.success, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, animation: 'gPop .4s cubic-bezier(.34,1.56,.64,1)' }}>
+        <VI.check size={42} w={2.4}/>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8 }}>Pedido enviado</div>
+      <div style={{ fontSize: 14, color: G.muted, marginTop: 8, maxWidth: 280, lineHeight: 1.4 }}>Te avisamos por WhatsApp cuando salga el camión.</div>
+    </div>
   );
 
   const confirmBar = (
@@ -720,7 +727,8 @@ function PortalOrder({ client, config, onDone, onTab, onAvatarClick }) {
   );
 
   return (
-    <GShell title="Pedir" eyebrow="Nuevo pedido" avatarInitial={initial} onAvatarClick={onAvatarClick} footer={confirmBar}>
+    <GShell title="Pedir" eyebrow="Nuevo pedido" avatarInitial={initial} onAvatarClick={onAvatarClick}
+      activeTab="order" onTab={onTab} floatingBar={confirmBar}>
       <GCard style={{ padding: 0, overflow: 'hidden' }}>
         {products.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: G.dim, fontSize: 14 }}>Cargando...</div>
@@ -809,7 +817,8 @@ function PortalOrders({ client, config, onTab, onAvatarClick }) {
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
 
   return (
-    <GShell title="Pedidos" eyebrow="Tu historial" avatarInitial={initial} onAvatarClick={onAvatarClick}>
+    <GShell title="Pedidos" eyebrow="Tu historial" avatarInitial={initial} onAvatarClick={onAvatarClick}
+      activeTab="orders" onTab={onTab}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
         {[
           { label: 'Este mes', val: monthOrders.length, sub: 'pedidos' },
@@ -951,14 +960,18 @@ function PortalStore({ client, config, onTab, onAvatarClick }) {
   };
 
   if (success) return (
-    <GShell title="Tienda" eyebrow="Productos y canje" avatarInitial={initial} onAvatarClick={onAvatarClick}>
-      <SuccessScene title="Pedido enviado" sub="Te avisamos cuando salga el camión."
-        extra={pointsUsed > 0 ? (
-          <div style={{ marginTop: 20, padding: '10px 18px', background: G.accentSoft, color: G.accentDeep, borderRadius: 999, fontSize: 13, fontWeight: 600 }}>
-            -{pointsUsed} puntos canjeados
-          </div>
-        ) : null}/>
-    </GShell>
+    <div style={{ width: '100%', height: '100%', background: G.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center' }}>
+      <div style={{ width: 96, height: 96, borderRadius: '50%', background: G.successSoft, color: G.success, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20, animation: 'gPop .4s cubic-bezier(.34,1.56,.64,1)' }}>
+        <VI.check size={42} w={2.4}/>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8 }}>Pedido enviado</div>
+      <div style={{ fontSize: 14, color: G.muted, marginTop: 8, maxWidth: 280, lineHeight: 1.4 }}>Te avisamos cuando salga el camión.</div>
+      {pointsUsed > 0 && (
+        <div style={{ marginTop: 20, padding: '10px 18px', background: G.accentSoft, color: G.accentDeep, borderRadius: 999, fontSize: 13, fontWeight: 600 }}>
+          -{pointsUsed} puntos canjeados
+        </div>
+      )}
+    </div>
   );
 
   if (screen === 'checkout') {
@@ -974,7 +987,7 @@ function PortalStore({ client, config, onTab, onAvatarClick }) {
     return (
       <GShell title="Confirmar" eyebrow="Resumen del pedido" showAvatar={false}
         rightAccessory={<button onClick={() => setScreen('browse')} style={{ width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi, border: 'none', color: G.text, fontSize: 16, cursor: 'pointer' }}>✕</button>}
-        footer={confirmBtn}>
+        activeTab="store" onTab={onTab} floatingBar={confirmBtn} floatingBarBottom={90}>
 
         <GCard style={{ padding: 0, overflow: 'hidden' }}>
           {cartItems.map((p, i) => (
@@ -1052,7 +1065,8 @@ function PortalStore({ client, config, onTab, onAvatarClick }) {
   ) : null;
 
   return (
-    <GShell title="Tienda" eyebrow="Productos y canje" avatarInitial={initial} onAvatarClick={onAvatarClick} footer={cartBtn}>
+    <GShell title="Tienda" eyebrow="Productos y canje" avatarInitial={initial} onAvatarClick={onAvatarClick}
+      activeTab="store" onTab={onTab} floatingBar={cartBtn} floatingBarBottom={90}>
       {clientPts > 0 && (
         <GCard style={{ padding: 14, background: `linear-gradient(135deg,${G.accentDeep} 0%,#0A2433 100%)`, color: '#fff', borderColor: 'transparent' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1129,7 +1143,8 @@ function PortalInvoices({ client, config, onTab, onAvatarClick }) {
   const METHOD_LABEL = { efectivo: 'Efectivo', transferencia: 'Transferencia', mercadopago: 'MercadoPago', cuenta_corriente: 'Cta. corriente' };
 
   return (
-    <GShell title="Facturas" eyebrow="Tu cuenta" avatarInitial={initial} onAvatarClick={onAvatarClick}>
+    <GShell title="Facturas" eyebrow="Tu cuenta" avatarInitial={initial} onAvatarClick={onAvatarClick}
+      activeTab="invoices" onTab={onTab}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <GCard style={{ padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase' }}>Histórico</div>
@@ -1224,7 +1239,8 @@ function PortalReferrals({ client, config, onTab, onAvatarClick }) {
   const handleShare = () => navigator.share ? navigator.share({ title: config.companyName || 'NATIVA', text: shareMsg, url: link }) : handleCopy();
 
   return (
-    <GShell title="Referidos" eyebrow="Programa Glaciar" avatarInitial={initial} onAvatarClick={onAvatarClick}>
+    <GShell title="Referidos" eyebrow="Programa Glaciar" avatarInitial={initial} onAvatarClick={onAvatarClick}
+      activeTab="referrals" onTab={onTab}>
       <div style={{ background: `linear-gradient(170deg,${G.accentDeep} 0%,#0A2433 100%)`, color: '#fff', borderRadius: 22, padding: 20, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -40, right: -40, opacity: 0.15, color: '#fff' }}>
           <VI.drop size={200} w={0} filled/>
@@ -1348,65 +1364,64 @@ function PortalAccount({ client, config, onClose, onTab }) {
   const Sep = () => <div style={{ height: 0.5, background: G.hairline, marginLeft: 56 }}/>;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ flexShrink: 0, padding: '6px 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>{client.name || ''}</div>
-          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.1 }}>Mi cuenta</div>
-        </div>
+    <GShell
+      title="Mi cuenta"
+      eyebrow={client.name || ''}
+      showAvatar={false}
+      rightAccessory={
         <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi, border: 'none', color: G.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, fontFamily: GFF }}>✕</button>
+      }
+      activeTab="home"
+      onTab={onTab}
+    >
+      {/* Profile card */}
+      <GCard style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.text, color: G.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, fontFamily: GFF }}>
+          {initial}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.2 }}>{client.name || '—'}</div>
+          {client.phone && <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>{client.phone}</div>}
+          {client.email && <div style={{ fontSize: 12, color: G.muted }}>{client.email}</div>}
+        </div>
+      </GCard>
+
+      <GSection>Dirección de entrega</GSection>
+      <GCard style={{ padding: 0, overflow: 'hidden' }}>
+        <Row icoName="home" title={client.address || 'Sin dirección'} sub={client.city || ''} right={null}/>
+      </GCard>
+
+      <GSection>NATIVA</GSection>
+      <GCard style={{ padding: 0, overflow: 'hidden' }}>
+        <Row icoName="star" title="Puntos Glaciar" sub={`${pts} pts · ${Math.max(0, ptsForReward - pts)} para tu próximo premio`} right={null}/>
+        {config.referralsEnabled && <><Sep/><Row icoName="gift" title="Referidos" sub={`Código: ${client.referralCode || '—'}`} onClick={() => onTab && onTab('referrals')}/></>}
+      </GCard>
+
+      <GSection>Soporte</GSection>
+      <GCard style={{ padding: 0, overflow: 'hidden' }}>
+        <Row icoName="bell" title="Contactar por WhatsApp" onClick={() => {
+          const phone = config.whatsappNumber || '';
+          if (phone) window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
+        }}/>
+      </GCard>
+
+      <div style={{ marginTop: 18 }}>
+        <button onClick={() => {
+          localStorage.removeItem('nativa_client_token');
+          window.location.reload();
+        }} style={{
+          width: '100%', padding: '14px', background: 'transparent', color: G.danger,
+          border: `0.5px solid ${G.hairline}`, borderRadius: 14, fontSize: 14, fontWeight: 500,
+          fontFamily: GFF, cursor: 'pointer',
+        }}>Cerrar sesión</button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 32px' }}>
-        {/* Profile card */}
-        <GCard style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.text, color: G.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, fontFamily: GFF }}>
-            {initial}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.2 }}>{client.name || '—'}</div>
-            {client.phone && <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>{client.phone}</div>}
-            {client.email && <div style={{ fontSize: 12, color: G.muted }}>{client.email}</div>}
-          </div>
-        </GCard>
-
-        <GSection>Dirección de entrega</GSection>
-        <GCard style={{ padding: 0, overflow: 'hidden' }}>
-          <Row icoName="home" title={client.address || 'Sin dirección'} sub={client.city || ''} right={null}/>
-        </GCard>
-
-        <GSection>NATIVA</GSection>
-        <GCard style={{ padding: 0, overflow: 'hidden' }}>
-          <Row icoName="star" title="Puntos Glaciar" sub={`${pts} pts · ${Math.max(0, ptsForReward - pts)} para tu próximo premio`} right={null}/>
-          {config.referralsEnabled && <><Sep/><Row icoName="gift" title="Referidos" sub={`Código: ${client.referralCode || '—'}`} onClick={() => { onClose(); onTab && onTab('referrals'); }}/></>}
-        </GCard>
-
-        <GSection>Soporte</GSection>
-        <GCard style={{ padding: 0, overflow: 'hidden' }}>
-          <Row icoName="bell" title="Contactar por WhatsApp" onClick={() => {
-            const phone = config.whatsappNumber || '';
-            if (phone) window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
-          }}/>
-        </GCard>
-
-        <div style={{ marginTop: 18 }}>
-          <button onClick={() => {
-            localStorage.removeItem('nativa_client_token');
-            window.location.reload();
-          }} style={{
-            width: '100%', padding: '14px', background: 'transparent', color: G.danger,
-            border: `0.5px solid ${G.hairline}`, borderRadius: 14, fontSize: 14, fontWeight: 500,
-            fontFamily: GFF, cursor: 'pointer',
-          }}>Cerrar sesión</button>
-        </div>
-
-        <div style={{ marginTop: 32, padding: '20px 0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-          <NativaLogoMark size={36} color={G.dim} strokeWidth={1.4}/>
-          <div style={{ fontSize: 9, color: G.dim, fontWeight: 600, letterSpacing: 2.5, textTransform: 'uppercase' }}>VOLVÉ A LO NATURAL</div>
-          <div style={{ fontSize: 10, color: G.dim, marginTop: 2 }}>v2.0 · Buenos Aires</div>
-        </div>
+      <div style={{ marginTop: 32, padding: '20px 0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <NativaLogoMark size={36} color={G.dim} strokeWidth={1.4}/>
+        <div style={{ fontSize: 9, color: G.dim, fontWeight: 600, letterSpacing: 2.5, textTransform: 'uppercase' }}>VOLVÉ A LO NATURAL</div>
+        <div style={{ fontSize: 10, color: G.dim, marginTop: 2 }}>v3.0 · Buenos Aires</div>
       </div>
-    </div>
+    </GShell>
   );
 }
 
@@ -1414,26 +1429,21 @@ function PortalAccount({ client, config, onClose, onTab }) {
 
 function ClientPortalApp({ client, config }) {
   const [tab, setTab] = React.useState('home');
-  const [showAccount, setShowAccount] = React.useState(false);
-
-  const showStore = !!config.storeEnabled;
-  const showReferrals = !!config.referralsEnabled;
+  const [prevTab, setPrevTab] = React.useState('home');
 
   const handleTab = (t) => {
-    if (t === 'account') { setShowAccount(true); return; }
-    setShowAccount(false);
+    if (t !== 'account') setPrevTab(t);
     setTab(t);
   };
 
-  const openAccount = () => setShowAccount(true);
+  const openAccount = () => handleTab('account');
 
   return (
     <div style={{
       width: '100%', height: '100vh',
       background: G.bg, color: G.text, fontFamily: GFF,
       maxWidth: 480, margin: '0 auto',
-      display: 'flex', flexDirection: 'column',
-      overflow: 'hidden',
+      position: 'relative', overflow: 'hidden',
     }}>
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
@@ -1446,26 +1456,15 @@ function ClientPortalApp({ client, config }) {
         @keyframes gSpin { to { transform: rotate(360deg); } }
       `}</style>
 
-      {/* Screens */}
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', animation: 'gFade .22s ease' }} key={showAccount ? 'account' : tab}>
-          {showAccount ? (
-            <PortalAccount client={client} config={config} onClose={() => setShowAccount(false)} onTab={handleTab}/>
-          ) : (<>
-            {tab === 'home'     && <PortalHome      client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
-            {tab === 'order'    && <PortalOrder     client={client} config={config} onDone={() => handleTab('orders')} onTab={handleTab} onAvatarClick={openAccount}/>}
-            {tab === 'orders'   && <PortalOrders    client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
-            {tab === 'store'    && showStore     && <PortalStore     client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
-            {tab === 'invoices' && <PortalInvoices  client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
-            {tab === 'referrals'&& showReferrals && <PortalReferrals client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
-          </>)}
-        </div>
+      <div key={tab} style={{ position: 'absolute', inset: 0, animation: 'gFade .22s ease' }}>
+        {tab === 'home'      && <PortalHome      client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
+        {tab === 'order'     && <PortalOrder     client={client} config={config} onDone={() => handleTab('orders')} onTab={handleTab} onAvatarClick={openAccount}/>}
+        {tab === 'orders'    && <PortalOrders    client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
+        {tab === 'store'     && <PortalStore     client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
+        {tab === 'invoices'  && <PortalInvoices  client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
+        {tab === 'referrals' && <PortalReferrals client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
+        {tab === 'account'   && <PortalAccount   client={client} config={config} onClose={() => handleTab(prevTab)} onTab={handleTab}/>}
       </div>
-
-      {/* Tab bar — hidden while account is open */}
-      {!showAccount && (
-        <GTabBar tab={tab} onTab={handleTab} showStore={showStore} showReferrals={showReferrals}/>
-      )}
     </div>
   );
 }
