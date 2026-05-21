@@ -1424,7 +1424,7 @@ function PortalAccount({ client, config, onClose, onTab }) {
       <div style={{ marginTop: 32, padding: '20px 0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
         <NativaLogoMark size={36} color={G.dim} strokeWidth={1.4}/>
         <div style={{ fontSize: 9, color: G.dim, fontWeight: 600, letterSpacing: 2.5, textTransform: 'uppercase' }}>VOLVÉ A LO NATURAL</div>
-        <div style={{ fontSize: 10, color: G.dim, marginTop: 2 }}>v3.0 · Buenos Aires</div>
+        <div style={{ fontSize: 10, color: G.dim, marginTop: 2 }}>v3.0 · Gualeguay, Entre Ríos</div>
       </div>
     </GShell>
   );
@@ -1575,7 +1575,7 @@ function ClientPortalPage() {
         </>)}
       </div>
 
-      <div style={{ padding: '16px 32px 32px', textAlign: 'center', fontSize: 10, color: G.dim, letterSpacing: 1.5, textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>NATIVA · Buenos Aires · 2026</div>
+      <div style={{ padding: '16px 32px 32px', textAlign: 'center', fontSize: 10, color: G.dim, letterSpacing: 1.5, textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>NATIVA · Gualeguay, Entre Ríos · 2026</div>
     </div>
   );
 }
