@@ -1457,6 +1457,7 @@ function ReferralSignup({ refCode }) {
       await DataService.createClient({
         name: name.trim(), phone: phone.trim(),
         referredBy: referrer.id, type: 'hogar',
+        notes: `Registro por portal · referido por ${referrer.name}`,
       });
       setPhase('done');
     } catch (err) {

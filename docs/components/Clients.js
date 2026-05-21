@@ -121,6 +121,9 @@ function Clients({ onNavigate, navParams }) {
                       </td>
                       <td className="px-4 py-3">
                         <button onClick={() => openDetail(c)} className="text-sm font-medium text-slate-900 hover:text-blue-600 transition-colors text-left">{c.name}</button>
+                        {c.referredBy && !c.accessToken && (
+                          <span className="inline-block mt-0.5 text-xs font-semibold bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">Referido</span>
+                        )}
                         {c.address && <p className="text-xs text-slate-400 truncate max-w-[180px]">{c.address}</p>}
                       </td>
                       <td className="px-4 py-3">
@@ -173,9 +176,12 @@ function Clients({ onNavigate, navParams }) {
                 <div key={c.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs font-mono font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{c.code}</span>
                         <StatusBadge status={c.type} />
+                        {c.referredBy && !c.accessToken && (
+                          <span className="text-xs font-semibold bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">Referido</span>
+                        )}
                       </div>
                       <p className="font-semibold text-slate-900">{c.name}</p>
                       {c.address && <p className="text-xs text-slate-400 mt-0.5">{c.address}</p>}
