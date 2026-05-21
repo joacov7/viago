@@ -19,6 +19,7 @@ function Sidebar({ activeModule, onNavigate, isOpen, onClose }) {
     { id: 'dispensers',   icon: 'droplets',     label: 'Comodatos' },
     { id: 'machines',     icon: 'settings',     label: 'Máquinas' },
     { id: 'purificadora', icon: 'droplets',     label: 'Purificadora 💧' },
+    { id: 'backup',        icon: 'download',     label: 'Backup' },
     { id: 'config',       icon: 'settings',     label: 'Configuración' },
   ];
 

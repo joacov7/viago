@@ -74,7 +74,7 @@ function App() {
     orders: 'Pedidos', delivery: 'Reparto', zones: 'Zonas', billing: 'Facturación',
     loyalty: 'Fidelización', products: 'Productos', config: 'Configuración',
     costs: 'Costos', dispensers: 'Comodatos', machines: 'Máquinas', liveTracking: 'En vivo', mapView: 'Mapa',
-    purificadora: 'Purificadora',
+    purificadora: 'Purificadora', backup: 'Backup',
   };
 
   const renderModule = () => {
@@ -95,6 +95,7 @@ function App() {
       case 'liveTracking':  return <LiveTracking />;
       case 'mapView':       return <MapView />;
       case 'purificadora':  return <Purificadora />;
+      case 'backup':        return <Backup />;
       default:              return <Dashboard onNavigate={navigate} />;
     }
   };
