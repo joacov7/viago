@@ -1222,8 +1222,8 @@ function PortalReferrals({ client, config, onTab, onAvatarClick }) {
   }, [client.id]);
 
   const code = client.referralCode || '';
-  const link = client.accessToken
-    ? `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}client.html?token=${client.accessToken}`
+  const link = code
+    ? `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}client.html?ref=${code}`
     : '';
   const prizeEvery = config.referralPrizeEvery || 5;
   const referrerReward = config.referralReferrerReward || config.referralBonus || 500;
@@ -1430,6 +1430,145 @@ function PortalAccount({ client, config, onClose, onTab }) {
   );
 }
 
+// ─── Registro por referido ────────────────────────────────────────────────────
+
+function ReferralSignup({ refCode }) {
+  const [referrer, setReferrer] = React.useState(null);
+  const [config, setConfig] = React.useState(null);
+  const [name, setName] = React.useState('');
+  const [phone, setPhone] = React.useState('');
+  const [phase, setPhase] = React.useState('loading'); // loading | form | saving | done | invalid | error
+  const [errMsg, setErrMsg] = React.useState('');
+
+  React.useEffect(() => {
+    Promise.all([
+      DataService.getClientByReferral(refCode),
+      DataService.getConfig(),
+    ]).then(([ref, cfg]) => {
+      if (!ref) { setPhase('invalid'); return; }
+      setReferrer(ref); setConfig(cfg); setPhase('form');
+    }).catch(() => setPhase('invalid'));
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !phone.trim()) return;
+    setPhase('saving');
+    try {
+      await DataService.createClient({
+        name: name.trim(), phone: phone.trim(),
+        referredBy: referrer.id, type: 'hogar',
+      });
+      setPhase('done');
+    } catch (err) {
+      setErrMsg(err.message);
+      setPhase('error');
+    }
+  };
+
+  const company = config?.companyName || 'NATIVA';
+  const referrerFirst = referrer?.name?.split(' ')[0] || 'un amigo';
+  const canSubmit = name.trim() && phone.trim() && phase !== 'saving';
+
+  return (
+    <div style={{
+      width: '100%', height: '100vh', maxWidth: 480, margin: '0 auto',
+      background: G.bg, color: G.text, fontFamily: GFF,
+      display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative',
+    }}>
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; }
+        body { background: ${G.bg}; }
+        @keyframes gSpin { to { transform: rotate(360deg); } }
+        @keyframes gPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        input:focus { border-color: ${G.text} !important; }
+      `}</style>
+
+      <svg viewBox="0 0 400 240" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%', height: 240, color: G.text, opacity: 0.05, pointerEvents: 'none' }}>
+        <path d="M0 120 Q 100 80 200 120 T 400 120" fill="none" stroke="currentColor" strokeWidth="1"/>
+        <path d="M0 160 Q 100 120 200 160 T 400 160" fill="none" stroke="currentColor" strokeWidth="1"/>
+        <path d="M0 200 Q 100 160 200 200 T 400 200" fill="none" stroke="currentColor" strokeWidth="1"/>
+      </svg>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', position: 'relative', zIndex: 1 }}>
+
+        {phase === 'loading' && (<>
+          <NativaLogoLockup size={1.1} subline="VOLVÉ A LO NATURAL"/>
+          <div style={{ marginTop: 48, width: 24, height: 24, borderRadius: '50%', border: `1.5px solid ${G.surfaceHi}`, borderTopColor: G.text, animation: 'gSpin 1s linear infinite' }}/>
+        </>)}
+
+        {(phase === 'form' || phase === 'saving') && (<>
+          <NativaWordmarkCompact/>
+          <div style={{ width: '100%', maxWidth: 340, marginTop: 32 }}>
+            <div style={{ textAlign: 'center', marginBottom: 28 }}>
+              <div style={{ fontSize: 23, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.15 }}>
+                {referrerFirst} te invitó a NATIVA
+              </div>
+              <div style={{ fontSize: 14, color: G.muted, marginTop: 8, lineHeight: 1.5 }}>
+                Dejá tus datos y te contactamos pronto con tu acceso.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre completo</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre"
+                  style={{ width: '100%', padding: '13px 14px', border: `0.5px solid ${G.hairline}`, borderRadius: 12, background: G.surface, color: G.text, fontFamily: GFF, fontSize: 15, outline: 'none', transition: 'border-color .15s' }}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Teléfono</label>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+54 9 …"
+                  style={{ width: '100%', padding: '13px 14px', border: `0.5px solid ${G.hairline}`, borderRadius: 12, background: G.surface, color: G.text, fontFamily: GFF, fontSize: 15, outline: 'none', transition: 'border-color .15s' }}/>
+              </div>
+              <button onClick={handleSubmit} disabled={!canSubmit} style={{
+                marginTop: 6, padding: '14px', width: '100%',
+                background: canSubmit ? G.accent : G.surfaceHi,
+                color: canSubmit ? '#fff' : G.dim,
+                border: 'none', borderRadius: 12,
+                fontSize: 15, fontWeight: 600, letterSpacing: -0.2, fontFamily: GFF,
+                cursor: canSubmit ? 'pointer' : 'default',
+              }}>
+                {phase === 'saving' ? 'Enviando…' : 'Registrarme'}
+              </button>
+            </div>
+          </div>
+        </>)}
+
+        {phase === 'done' && (<>
+          <div style={{ width: 96, height: 96, borderRadius: '50%', background: G.successSoft, color: G.success, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, animation: 'gPop .4s cubic-bezier(.34,1.56,.64,1)' }}>
+            <VI.check size={42} w={2.4}/>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8, textAlign: 'center' }}>¡Listo!</div>
+          <div style={{ fontSize: 14, color: G.muted, marginTop: 10, textAlign: 'center', lineHeight: 1.5, maxWidth: 280 }}>
+            {company} ya tiene tus datos y te va a contactar pronto con tu acceso al portal.
+          </div>
+        </>)}
+
+        {(phase === 'invalid' || phase === 'error') && (<>
+          <NativaLogoLockup size={1} subline="VOLVÉ A LO NATURAL"/>
+          <div style={{ marginTop: 40, width: '100%', maxWidth: 320, background: G.surface, border: `0.5px solid ${G.hairline}`, borderRadius: 18, padding: 24, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: G.dangerSoft, color: G.danger, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.2 }}>
+              {phase === 'error' ? 'Error al registrarse' : 'Link inválido'}
+            </div>
+            <div style={{ fontSize: 13, color: G.muted, marginTop: 8, lineHeight: 1.5 }}>
+              {phase === 'error' ? errMsg : 'Este link de referido no es válido. Pedíle uno nuevo a tu amigo.'}
+            </div>
+          </div>
+        </>)}
+
+      </div>
+
+      <div style={{ padding: '16px 32px 32px', textAlign: 'center', fontSize: 10, color: G.dim, letterSpacing: 1.5, textTransform: 'uppercase', position: 'relative', zIndex: 1 }}>
+        {company} · Gualeguay, Entre Ríos · 2026
+      </div>
+    </div>
+  );
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 function ClientPortalApp({ client, config }) {
@@ -1480,12 +1619,16 @@ function ClientPortalPage() {
   const [state, setState] = React.useState('loading');
   const [client, setClient] = React.useState(null);
   const [config, setConfig] = React.useState(null);
-  const [error, setError] = React.useState('');
+  const [refCode, setRefCode] = React.useState('');
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
     const token = params.get('token') || localStorage.getItem('nativa_client_token');
-    if (!token) { setState('no-token'); return; }
+    if (!token) {
+      if (ref) { setRefCode(ref); setState('referral-signup'); return; }
+      setState('no-token'); return;
+    }
     localStorage.setItem('nativa_client_token', token);
     Promise.all([DataService.getClientByToken(token), DataService.getConfig()])
       .then(([cl, cfg]) => {
@@ -1496,6 +1639,7 @@ function ClientPortalPage() {
   }, []);
 
   if (state === 'ready') return <ClientPortalApp client={client} config={config}/>;
+  if (state === 'referral-signup') return <ReferralSignup refCode={refCode}/>;
 
   // Splash screens
   return (
