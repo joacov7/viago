@@ -1,0 +1,36 @@
+name: Sync ViaGo → docs
+
+on:
+  push:
+    branches:
+      - claude/distribution-app-design-mlaJo
+    paths:
+      - 'ViaGo/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync ViaGo/ to docs/
+        run: |
+          rsync -av --delete \
+            --exclude='*.md' \
+            ViaGo/ docs/
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/
+          git diff --staged --quiet && echo "Nothing to sync." || \
+            git commit -m "chore: sync docs/ from ViaGo/ [skip ci]"
+
+      - name: Push
+        run: git push

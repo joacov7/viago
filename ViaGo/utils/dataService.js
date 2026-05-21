@@ -444,35 +444,16 @@ const DataService = {
 
   // ─── ANALYTICS ───────────────────────────────────────────────────────────
   async getDashboardStats() {
-    const today = new Date().toISOString().split('T')[0];
-    const monthStart = today.slice(0, 7);
-    const [orders, clients, invoices] = await Promise.all([
-      this.getOrders(), this.getClients(), this.getInvoices(),
-    ]);
-    const todayOrders = orders.filter(o => o.deliveryDate === today);
-    const monthOrders = orders.filter(o => (o.deliveryDate || '').startsWith(monthStart));
-    const todayRevenue = invoices.filter(i => (i.createdAt || '').startsWith(today) && i.paymentStatus === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
-    const monthRevenue = invoices.filter(i => (i.createdAt || '').startsWith(monthStart) && i.paymentStatus === 'pagado').reduce((s, i) => s + (i.total || 0), 0);
-    const pendingPayments = invoices.filter(i => i.paymentStatus === 'pendiente').reduce((s, i) => s + (i.total || 0), 0);
-    const weekData = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (6 - i));
-      const dateStr = d.toISOString().split('T')[0];
-      const dayRevenue = invoices.filter(inv => (inv.createdAt || '').startsWith(dateStr) && inv.paymentStatus === 'pagado').reduce((s, inv) => s + (inv.total || 0), 0);
-      return { date: dateStr, day: d.toLocaleDateString('es-AR', { weekday: 'short' }), orders: orders.filter(o => o.deliveryDate === dateStr && o.status === 'entregado').length, revenue: dayRevenue };
-    });
-    const ordersByClient = {};
-    orders.forEach(o => { ordersByClient[o.clientId] = (ordersByClient[o.clientId] || 0) + 1; });
-    const clientsWithOrders = clients.filter(c => ordersByClient[c.id] >= 1).length;
-    const clientsWithRepeat = clients.filter(c => ordersByClient[c.id] >= 2).length;
-    const repurchaseRate = clientsWithOrders > 0 ? Math.round(clientsWithRepeat / clientsWithOrders * 100) : 0;
-    return {
-      totalClients: clients.length,
-      newClientsThisMonth: clients.filter(c => (c.createdAt || '').startsWith(monthStart)).length,
-      todayOrdersCount: todayOrders.length,
-      todayPendingCount: todayOrders.filter(o => o.status === 'pendiente').length,
-      todayDeliveredCount: todayOrders.filter(o => o.status === 'entregado').length,
-      todayRevenue, monthRevenue, monthOrdersCount: monthOrders.length, pendingPayments, weekData, repurchaseRate,
-    };
+    const { data, error } = await this._sb.rpc('get_dashboard_stats');
+    if (error) throw new Error(error.message);
+    // Add Spanish day labels (SQL returns ISO date strings)
+    if (data?.weekData) {
+      data.weekData = data.weekData.map(d => ({
+        ...d,
+        day: new Date(d.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short' }),
+      }));
+    }
+    return data;
   },
 
   // ─── COSTS ───────────────────────────────────────────────────────────────
