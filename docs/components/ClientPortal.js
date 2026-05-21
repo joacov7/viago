@@ -1,1202 +1,1448 @@
-// NATIVA - Client Portal: token-based access (no login required)
-// Access URL: client.html?token=XXXXXXXXXX
+// NATIVA Viago — Portal del cliente · Sistema Glaciar
+// Diseño: viago/design_handoff_viago_glaciar
+// Lógica: Supabase + DataService + token-based auth (sin cambios)
 
-function Spinner() {
-  return <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />;
-}
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
-function fmt(n) {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0);
-}
-function fmtDate(s) {
-  if (!s) return '-';
-  return new Date(s + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-function fmtDateTime(s) {
-  if (!s) return '-';
-  return new Date(s).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
+const VI = {
+  drop: ({ size = 24, w = 1.8, filled = false }) => filled ? (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.5c-3 4.2-6.3 8-6.3 11.5a6.3 6.3 0 0 0 12.6 0c0-3.5-3.3-7.3-6.3-11.5z"/>
+    </svg>
+  ) : (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.5c-3 4.2-6.3 8-6.3 11.5a6.3 6.3 0 0 0 12.6 0c0-3.5-3.3-7.3-6.3-11.5z"/>
+    </svg>
+  ),
+  bottle: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 3h4M10 3v3.5a3 3 0 0 1-.6 1.8L8 10v9.5A1.5 1.5 0 0 0 9.5 21h5a1.5 1.5 0 0 0 1.5-1.5V10l-1.4-1.7A3 3 0 0 1 14 6.5V3"/><path d="M8 14h8"/>
+    </svg>
+  ),
+  bidon: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="6" y="6" width="12" height="15" rx="2"/><path d="M9 3h6v3H9z"/><path d="M6 13h12"/>
+    </svg>
+  ),
+  truck: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+      <circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>
+    </svg>
+  ),
+  receipt: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 3v18l3-2 3 2 3-2 3 2 3-2V3z"/><path d="M9 8h6M9 12h6M9 16h4"/>
+    </svg>
+  ),
+  bag: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3l-2 4v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7l-2-4z"/><path d="M4 7h16M9 11a3 3 0 0 0 6 0"/>
+    </svg>
+  ),
+  gift: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/>
+      <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8M16.5 8a2.5 2.5 0 0 0 0-5C13 3 12 8 12 8"/>
+    </svg>
+  ),
+  home: ({ size = 24, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>
+    </svg>
+  ),
+  bell: ({ size = 20, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+    </svg>
+  ),
+  arrowRight: ({ size = 16, w = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 5l7 7-7 7"/>
+    </svg>
+  ),
+  arrowUpRight: ({ size = 14, w = 2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 17L17 7M7 7h10v10"/>
+    </svg>
+  ),
+  check: ({ size = 16, w = 2.2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5"/>
+    </svg>
+  ),
+  plus: ({ size = 16, w = 2.2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+  ),
+  minus: ({ size = 16, w = 2.2 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14"/>
+    </svg>
+  ),
+  recycle: ({ size = 20, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 19H4.8a1.6 1.6 0 0 1-1.4-2.4l1.5-2.6"/><path d="M11 19h8.7a1.6 1.6 0 0 0 1.4-2.4l-1.9-3.3"/>
+      <path d="M16.5 9.5l2.4-1.4a1.6 1.6 0 0 0 .6-2.2l-1.5-2.6a1.6 1.6 0 0 0-2.2-.5l-2.4 1.4"/>
+      <path d="M10 4l-2.8 4.8M7.2 8.8L4.4 13"/><path d="M16.5 9.5l-2.8-4.8"/>
+    </svg>
+  ),
+  card: ({ size = 20, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h3"/>
+    </svg>
+  ),
+  star: ({ size = 18, w = 1.8, filled = false }) => filled ? (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9L2 9.3l6.9-1z"/>
+    </svg>
+  ) : (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9L2 9.3l6.9-1z"/>
+    </svg>
+  ),
+  share: ({ size = 18, w = 1.8 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>
+    </svg>
+  ),
+};
 
-// ─── No token screen ─────────────────────────────────────────────────────
+const WhatsAppSVG = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.86 9.86 0 0 0 12.04 2zm0 18.15c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.26 8.26 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.23 8.23z"/>
+  </svg>
+);
 
-function NoAccess() {
+// ─── Tokens ───────────────────────────────────────────────────────────────────
+
+const G = {
+  bg:          '#FFFFFF',
+  surface:     '#FFFFFF',
+  surfaceHi:   '#F4F6F8',
+  surfaceLo:   '#FAFBFC',
+  text:        '#0A0F14',
+  muted:       '#6B7280',
+  dim:         '#A0A6AE',
+  hairline:    'rgba(10,15,20,0.08)',
+  accent:      '#0091B8',
+  accentDeep:  '#005670',
+  accentSoft:  '#E6F4F8',
+  whatsapp:    '#25D366',
+  success:     '#1A8C3E',
+  successSoft: 'rgba(26,140,62,0.10)',
+  warning:     '#C77800',
+  warningSoft: 'rgba(199,120,0,0.10)',
+  danger:      '#D70015',
+  dangerSoft:  'rgba(215,0,21,0.08)',
+};
+
+const GFF = '-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Inter,system-ui,sans-serif';
+
+const fmt = (n) => DataService.formatCurrency ? DataService.formatCurrency(n) : ('$' + (n || 0).toLocaleString('es-AR'));
+
+// ─── Primitives ───────────────────────────────────────────────────────────────
+
+function GCard({ children, style, onClick }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #3b82f6)' }}>
-            <span className="text-3xl">💧</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">NATIVA</h1>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
-          <div className="text-4xl mb-3">🔗</div>
-          <h2 className="font-bold text-slate-900 mb-2">Link de acceso requerido</h2>
-          <p className="text-sm text-slate-500">Pedíle a NATIVA que te envíe tu link personal de acceso por WhatsApp.</p>
-        </div>
-      </div>
+    <div onClick={onClick} style={{
+      background: G.surface, borderRadius: 16,
+      border: `0.5px solid ${G.hairline}`, padding: 14,
+      cursor: onClick ? 'pointer' : 'default', ...style,
+    }}>{children}</div>
+  );
+}
+
+function GSection({ children, right }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '20px 4px 10px' }}>
+      <span style={{ fontSize: 17, fontWeight: 700, letterSpacing: -0.3 }}>{children}</span>
+      {right}
     </div>
   );
 }
 
-function ClientNotFound() {
+function GPill({ label, kind = 'neutral' }) {
+  const map = {
+    neutral: { bg: G.surfaceHi,    fg: G.muted },
+    success: { bg: G.successSoft,  fg: G.success },
+    warning: { bg: G.warningSoft,  fg: G.warning },
+    danger:  { bg: G.dangerSoft,   fg: G.danger },
+    accent:  { bg: G.accentSoft,   fg: G.accentDeep },
+  };
+  const s = map[kind] || map.neutral;
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-sm text-center">
-        <div className="text-4xl mb-3">❌</div>
-        <h2 className="font-bold text-slate-900 mb-2">Link inválido o expirado</h2>
-        <p className="text-sm text-slate-500">Pedíle a NATIVA que te envíe un nuevo link de acceso.</p>
-      </div>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 9px', borderRadius: 999,
+      background: s.bg, color: s.fg,
+      fontSize: 11, fontWeight: 600, letterSpacing: 0.2, whiteSpace: 'nowrap',
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.fg, flexShrink: 0 }}/>
+      {label}
+    </span>
+  );
+}
+
+function Stepper({ value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      <button onClick={() => onChange(value - 1)} disabled={value === 0} style={{
+        width: 32, height: 32, borderRadius: 9,
+        background: G.surfaceHi, border: 'none',
+        color: value === 0 ? G.dim : G.text,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: value === 0 ? 'default' : 'pointer',
+      }}><VI.minus size={14} w={2.4}/></button>
+      <span style={{ width: 22, textAlign: 'center', fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: value > 0 ? G.text : G.dim }}>{value}</span>
+      <button onClick={() => onChange(value + 1)} style={{
+        width: 32, height: 32, borderRadius: 9,
+        background: G.accent, color: '#fff', border: 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+      }}><VI.plus size={14} w={2.4}/></button>
     </div>
   );
 }
 
-// ─── Nav SVG icons ────────────────────────────────────────────────────────────
-
-function NavIconHome({ active, color }) {
-  return active
-    ? (
-      <svg viewBox="0 0 24 24" width="24" height="24" fill={color}>
-        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-      </svg>
-    ) : (
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-    );
-}
-function NavIconDrop({ active, color }) {
+function SuccessScene({ title, sub, extra }) {
   return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill={active ? color : 'none'}
-      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-    </svg>
-  );
-}
-function NavIconBox({ active, color }) {
-  return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-      <line x1="12" y1="22.08" x2="12" y2="12"/>
-    </svg>
-  );
-}
-function NavIconDoc({ active, color }) {
-  return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-    </svg>
-  );
-}
-function NavIconGift({ active, color }) {
-  return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 12 20 22 4 22 4 12"/>
-      <rect x="2" y="7" width="20" height="5"/>
-      <line x1="12" y1="22" x2="12" y2="7"/>
-      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
-      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
-    </svg>
-  );
-}
-function NavIconShop({ active, color }) {
-  return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none"
-      stroke={active ? color : '#94a3b8'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <path d="M16 10a4 4 0 0 1-8 0"/>
-    </svg>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      background: G.bg, color: G.text, fontFamily: GFF,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: 32, textAlign: 'center',
+    }}>
+      <style>{`@keyframes gPop{from{transform:scale(0.6);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
+      <div style={{
+        width: 96, height: 96, borderRadius: '50%',
+        background: G.successSoft, color: G.success,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+        animation: 'gPop .4s cubic-bezier(.34,1.56,.64,1)',
+      }}><VI.check size={42} w={2.4}/></div>
+      <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8 }}>{title}</div>
+      <div style={{ fontSize: 14, color: G.muted, marginTop: 8, maxWidth: 280, lineHeight: 1.4 }}>{sub}</div>
+      {extra}
+    </div>
   );
 }
 
-// ─── Client Portal App ───────────────────────────────────────────────────────────────
+// ─── Tab bar ─────────────────────────────────────────────────────────────────
 
-function ClientPortalApp({ client, config }) {
-  const [tab, setTab] = React.useState('home');
-  const primary = config.primaryColor || '#2563EB';
-
+function GTabBar({ tab, onTab, showStore, showReferrals }) {
   const tabs = [
-    { id: 'home',     label: 'Inicio',   Icon: NavIconHome },
-    { id: 'order',    label: 'Pedir',    Icon: NavIconDrop },
-    { id: 'orders',   label: 'Pedidos',  Icon: NavIconBox },
-    { id: 'invoices', label: 'Facturas', Icon: NavIconDoc },
-    ...(config.storeEnabled    ? [{ id: 'store',    label: 'Tienda',   Icon: NavIconShop }] : []),
-    ...(config.referralsEnabled ? [{ id: 'referrals', label: 'Referidos', Icon: NavIconGift }] : []),
+    { id: 'home',     label: 'Inicio',   ico: 'home' },
+    { id: 'order',    label: 'Pedir',    ico: 'drop' },
+    { id: 'orders',   label: 'Pedidos',  ico: 'bidon' },
+    ...(showStore ? [{ id: 'store', label: 'Tienda', ico: 'bag' }] : []),
+    { id: 'invoices', label: 'Facturas', ico: 'receipt' },
   ];
-
   return (
-    <div className="min-h-screen pb-20"
-      style={{ background: 'linear-gradient(155deg,#dbeafe 0%,#eff6ff 25%,#f8fafc 55%,#ffffff 80%)' }}>
-
-      {/* ── Header ── */}
-      <header className="px-5 pt-5 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
-            style={{ background: 'linear-gradient(135deg,#1d4ed8,#3b82f6)' }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
-              <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-            </svg>
-          </div>
-          <span className="font-black text-slate-900 text-xl" style={{ letterSpacing: '0.06em' }}>
-            {(config.companyName || 'NATIVA').toUpperCase()}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#334155" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-            </svg>
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2 border-white" style={{ background: primary }} />
-          </div>
-        </div>
-      </header>
-
-      <div className="px-5 max-w-lg mx-auto">
-        {tab === 'home'      && <PortalHome      client={client} config={config} onTab={setTab} />}
-        {tab === 'order'     && <PortalOrder     client={client} onDone={() => setTab('orders')} />}
-        {tab === 'orders'    && <PortalOrders    client={client} />}
-        {tab === 'invoices'  && <PortalInvoices  client={client} />}
-        {tab === 'store'     && <PortalStore     client={client} config={config} onTab={setTab} />}
-        {tab === 'referrals' && <PortalReferrals client={client} config={config} />}
-      </div>
-
-      {/* ── Bottom Nav ── */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-10"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom,0px)' }}>
-        {tabs.map(t => {
-          const active = tab === t.id;
-          return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className="flex-1 flex flex-col items-center gap-0.5 pt-3 pb-2.5 relative transition-colors">
-              {active && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ background: primary }} />
-              )}
-              <t.Icon active={active} color={primary} />
-              <span className="text-xs font-medium" style={{ color: active ? primary : '#94a3b8' }}>
-                {t.label}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
-    </div>
-  );
-}
-
-// ─── Home ─────────────────────────────────────────────────────────────────────
-
-function PortalHome({ client, config, onTab }) {
-  const [products, setProducts] = React.useState([]);
-  const primary = config.primaryColor || '#2563EB';
-
-  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
-
-  return (
-    <div className="pt-3 pb-36 space-y-5">
-
-      {/* ── Hero title ── */}
-      <div>
-        <h1 className="text-4xl font-black text-slate-900 leading-tight tracking-tight">
-          {config.tagline || 'Agua Pura de Vertiente, Directo a tu Hogar'}
-        </h1>
-      </div>
-
-      {/* ── Products carousel ── */}
-      <div className="flex gap-3 overflow-x-auto -mx-5 px-5 pb-1"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        {products.length === 0
-          ? [1, 2, 3].map(i => (
-              <div key={i} className="w-[120px] flex-shrink-0 bg-white rounded-2xl p-3 border border-gray-100"
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
-                <div className="w-full h-28 bg-gray-100 rounded-xl mb-2 animate-pulse" />
-                <div className="h-3 bg-gray-100 rounded mb-1.5 animate-pulse" />
-                <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
-              </div>
-            ))
-          : products.map(p => (
-              <button key={p.id} onClick={() => onTab('order')}
-                className="w-[120px] flex-shrink-0 bg-white rounded-2xl p-3 text-left border border-gray-100 active:scale-95 transition-transform"
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.07)' }}>
-                <div className="w-full h-28 rounded-xl mb-2 flex items-center justify-center overflow-hidden bg-slate-50">
-                  {p.imageUrl
-                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-1"
-                        onError={e => { e.target.style.display = 'none'; }} />
-                    : <svg viewBox="0 0 24 24" width="44" height="44" fill={primary} opacity="0.25">
-                        <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-                      </svg>
-                  }
-                </div>
-                <p className="text-xs font-semibold text-slate-800 leading-tight mb-0.5 line-clamp-2">{p.name}</p>
-                <p className="text-sm font-bold text-slate-900">{fmt(p.price)}</p>
-              </button>
-            ))
-        }
-      </div>
-
-      {/* ── CTA pill button ── */}
-      <div className="flex justify-center pt-2">
-        <button onClick={() => onTab('order')}
-          className="flex items-center gap-2 px-10 py-4 rounded-full text-white font-bold text-base active:scale-95 transition-transform"
-          style={{
-            background: primary,
-            boxShadow: `0 6px 24px ${primary}55`,
+    <div style={{
+      position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+      width: '100%', maxWidth: 480,
+      background: 'rgba(255,255,255,0.88)',
+      backdropFilter: 'blur(24px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+      borderTop: `0.5px solid ${G.hairline}`,
+      display: 'flex', padding: '8px 0 24px',
+      zIndex: 100,
+    }}>
+      {tabs.map(t => {
+        const active = tab === t.id;
+        return (
+          <button key={t.id} onClick={() => onTab(t.id)} style={{
+            flex: 1, background: 'none', border: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            color: active ? G.text : G.dim,
+            padding: '6px 0', cursor: 'pointer', fontFamily: GFF,
           }}>
-          PEDIR AHORA
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="white">
-            <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* ── Points card (compacta) ── */}
-      {(client.points > 0 || config.pointsForReward > 0) && (() => {
-        const pct = config.pointsForReward > 0
-          ? Math.min(100, Math.round((client.points || 0) / config.pointsForReward * 100))
-          : 0;
-        const remaining = Math.max(0, (config.pointsForReward || 100) - (client.points || 0));
-        return (
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-3"
-            style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl leading-none">⭐</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline justify-between mb-1.5">
-                <p className="text-sm font-semibold text-slate-700">Mis puntos</p>
-                <p className="font-bold text-amber-500 text-base leading-none">{client.points || 0}</p>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />
-              </div>
-              <p className="text-xs text-slate-400 mt-1">{remaining} pts para tu próximo premio</p>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Streak chips ── */}
-      {config.streaksEnabled && (
-        <div className="flex gap-3">
-          {[
-            { key: 'orderStreak',     emoji: '🔥', label: 'pedidos seguidos',    color: 'orange',  rewardEvery: config.streakOrderRewardEvery,     rewardPts: config.streakOrderRewardPts },
-            { key: 'containerStreak', emoji: '♻️', label: 'bidones devueltos',   color: 'emerald', rewardEvery: config.streakContainerRewardEvery, rewardPts: config.streakContainerRewardPts },
-            { key: 'payStreak',       emoji: '💳', label: 'pagos seguidos',      color: 'blue',    rewardEvery: config.streakPayRewardEvery,       rewardPts: config.streakPayRewardPts },
-          ].map(({ key, emoji, label, color, rewardEvery, rewardPts }) => {
-            const val = client[key] || 0;
-            const hasReward = (rewardEvery || 0) > 0;
-            const next = hasReward ? rewardEvery - (val % rewardEvery) : 0;
-            const pct = hasReward ? (val % rewardEvery) / rewardEvery * 100 : 0;
-            return (
-              <div key={key} className={`flex-1 bg-white rounded-2xl p-3.5 border border-${color}-100 flex items-center gap-3`}
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-                <span className="text-2xl leading-none">{emoji}</span>
-                <div>
-                  <p className={`text-lg font-black text-${color}-500 leading-none`}>{val}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{label}</p>
-                  {hasReward && (
-                    <div className="mt-1.5">
-                      <div className={`h-1 bg-${color}-100 rounded-full overflow-hidden w-16`}>
-                        <div className={`h-full rounded-full bg-${color}-400`} style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className={`text-xs text-${color}-400 mt-0.5`}>faltan {next} para {rewardPts} pts</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Order ──────────────────────────────────────────────────────────────────────
-
-function PortalOrder({ client, onDone }) {
-  const [products, setProducts] = React.useState([]);
-  const [qtys, setQtys] = React.useState({});
-  const [notes, setNotes] = React.useState('');
-  const [date, setDate] = React.useState(DataService.today());
-  const [loading, setLoading] = React.useState(false);
-  const [success, setSuccess] = React.useState(false);
-
-  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
-
-  const setQty = (id, q) => setQtys(prev => ({ ...prev, [id]: Math.max(0, q) }));
-
-  const orderItems = products.filter(p => (qtys[p.id] || 0) > 0).map(p => ({
-    productId: p.id, productName: p.name,
-    quantity: qtys[p.id], price: p.price, subtotal: p.price * qtys[p.id],
-  }));
-  const total = orderItems.reduce((s, i) => s + i.subtotal, 0);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (orderItems.length === 0) { alert('Agregá al menos un producto'); return; }
-    setLoading(true);
-    await DataService.createOrder({ clientId: client.id, items: orderItems, total, deliveryDate: date, notes });
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => { setSuccess(false); setQtys({}); setNotes(''); onDone(); }, 2500);
-  };
-
-  if (success) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
-          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 8px 24px rgba(34,197,94,.35)' }}>
-          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pedido enviado!</h2>
-        <p className="text-slate-400 text-sm">Te avisamos cuando esté en camino.</p>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="pt-3 pb-36 space-y-5">
-      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Nuevo pedido</h1>
-
-      {/* Products list */}
-      {products.length === 0 ? (
-        <div className="flex flex-col items-center py-12 text-slate-400">
-          <Spinner />
-          <p className="mt-4 text-sm">Cargando productos...</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden"
-          style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-          {products.map((p, i) => (
-            <div key={p.id}
-              className={`flex items-center gap-3 p-4 ${i < products.length - 1 ? 'border-b border-slate-50' : ''}`}>
-              {/* Thumbnail */}
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-50">
-                {p.imageUrl
-                  ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-0.5"
-                      onError={e => { e.target.style.display = 'none'; }} />
-                  : <svg viewBox="0 0 24 24" width="22" height="22" fill="#93c5fd">
-                      <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-                    </svg>
-                }
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</p>
-                <p className="text-xs font-bold text-blue-600 mt-0.5">{fmt(p.price)}</p>
-              </div>
-              {/* Qty stepper */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button type="button" onClick={() => setQty(p.id, (qtys[p.id] || 0) - 1)}
-                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">
-                  −
-                </button>
-                <span className="w-7 text-center font-bold text-slate-900 text-sm tabular-nums">
-                  {qtys[p.id] || 0}
-                </span>
-                <button type="button" onClick={() => setQty(p.id, (qtys[p.id] || 0) + 1)}
-                  className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center active:scale-90 transition-transform"
-                  style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)' }}>
-                  +
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Date + Notes */}
-      <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4"
-        style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
-            Fecha de entrega
-          </label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
-            Notas (opcional)
-          </label>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows="2"
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-            placeholder="Horario, instrucciones especiales..." />
-        </div>
-      </div>
-
-      {/* Total */}
-      {total > 0 && (
-        <div className="bg-white rounded-2xl p-4 flex items-center justify-between border border-blue-100"
-          style={{ boxShadow: '0 4px 16px rgba(37,99,235,.08)' }}>
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total estimado</p>
-            <p className="text-2xl font-black text-slate-900 mt-0.5">{fmt(total)}</p>
-          </div>
-          <div className="text-right text-xs text-slate-400 leading-relaxed">
-            {orderItems.map(i => (
-              <p key={i.productId}>{i.quantity}× {i.productName}</p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Submit */}
-      <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
-        <div className="max-w-lg mx-auto pointer-events-auto">
-          <button type="submit" disabled={loading || orderItems.length === 0}
-            className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg,#2563eb,#3b82f6)', boxShadow: '0 6px 24px rgba(37,99,235,.4)' }}>
-            {loading
-              ? <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Enviando…</>
-              : <>Confirmar pedido{total > 0 ? ` · ${fmt(total)}` : ''}</>
-            }
+            {React.createElement(VI[t.ico], { size: 22, w: active ? 2.2 : 1.8 })}
+            <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: 0.1 }}>{t.label}</span>
           </button>
-        </div>
-      </div>
-    </form>
-  );
-}
-
-// ─── Orders ───────────────────────────────────────────────────────────────────
-
-function PortalOrders({ client }) {
-  const [orders, setOrders] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    DataService.getClientOrders(client.id).then(o => { setOrders(o); setLoading(false); });
-  }, [client.id]);
-
-  const STATUS = {
-    pendiente:  { label: 'Pendiente',   dot: '#f59e0b', bg: '#fffbeb', text: '#92400e' },
-    en_camino:  { label: 'En camino',   dot: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
-    entregado:  { label: 'Entregado',   dot: '#22c55e', bg: '#f0fdf4', text: '#166534' },
-    cancelado:  { label: 'Cancelado',   dot: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
-  };
-
-  if (loading) return <div className="py-20"><Spinner /></div>;
-
-  return (
-    <div className="pt-3 pb-8 space-y-5">
-      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis pedidos</h1>
-
-      {orders.length === 0 ? (
-        <div className="flex flex-col items-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-              <line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-          </div>
-          <p className="font-semibold text-slate-700 mb-1">Sin pedidos aún</p>
-          <p className="text-sm text-slate-400">Tus pedidos aparecerán acá cuando los hagas.</p>
-        </div>
-      ) : orders.map(o => {
-        const s = STATUS[o.status] || { label: o.status, dot: '#94a3b8', bg: '#f8fafc', text: '#475569' };
-        return (
-          <div key={o.id} className="bg-white rounded-3xl border border-gray-100 p-5"
-            style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <p className="font-black text-slate-900 text-base">Pedido #{o.id}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{fmtDate(o.deliveryDate)}</p>
-              </div>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0"
-                style={{ background: s.bg, color: s.text }}>
-                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: s.dot }} />
-                {s.label}
-                {o.status === 'en_camino' && ' 🚚'}
-              </span>
-            </div>
-            {(o.items || []).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {o.items.map((i, idx) => (
-                  <span key={idx} className="px-2.5 py-1 bg-slate-50 rounded-full text-xs font-medium text-slate-600 border border-slate-100">
-                    {i.quantity}× {i.productName}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-              <p className="text-xs text-slate-400">Total</p>
-              <p className="font-black text-slate-900 text-lg">{fmt(o.total)}</p>
-            </div>
-          </div>
         );
       })}
     </div>
   );
 }
 
-// ─── Invoices ──────────────────────────────────────────────────────────────
+// ─── Home ─────────────────────────────────────────────────────────────────────
+
+function PortalHome({ client, config, onTab, onRefresh }) {
+  const [products, setProducts] = React.useState([]);
+  const [orders, setOrders] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    Promise.all([
+      DataService.getProducts(),
+      DataService.getClientOrders(client.id),
+    ]).then(([prods, ords]) => {
+      setProducts(prods.slice(0, 4));
+      setOrders(ords);
+      setLoading(false);
+    });
+  }, [client.id]);
+
+  const nextOrder = orders.find(o => o.status === 'pendiente' || o.status === 'en_camino');
+  const recentActivity = orders.slice(0, 3);
+  const pts = client.points || 0;
+  const ptsForReward = config.pointsForReward || 100;
+  const pctPts = ptsForReward > 0 ? Math.min(100, Math.round(pts / ptsForReward * 100)) : 0;
+  const segCount = 10;
+  const segsOn = Math.round(pctPts / (100 / segCount));
+  const initial = (client.name || '?')[0].toUpperCase();
+
+  const prodsForCarousel = products.length ? products : [];
+
+  const STATUS_MAP = {
+    pendiente:  { label: 'Pendiente', kind: 'warning' },
+    en_camino:  { label: 'En camino', kind: 'accent' },
+    entregado:  { label: 'Entregado', kind: 'success' },
+    cancelado:  { label: 'Cancelado', kind: 'danger' },
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 100px', fontFamily: GFF }}>
+
+      {/* Header */}
+      <div style={{ padding: '8px 4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ color: G.accent }}><VI.drop size={26} w={1.6} filled/></div>
+          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.4, color: G.text }}>{config.companyName || 'NATIVA'}</div>
+        </div>
+        <div style={{
+          width: 36, height: 36, borderRadius: '50%',
+          background: G.text, color: G.bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, fontWeight: 700,
+        }}>{initial}</div>
+      </div>
+
+      {/* Greeting */}
+      <div style={{ padding: '4px 4px 14px' }}>
+        <div style={{ fontSize: 13, color: G.muted, fontWeight: 500 }}>Hola, {client.name?.split(' ')[0] || 'cliente'}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 2 }}>
+          {config.tagline || 'Tu agua, en orden.'}
+        </div>
+      </div>
+
+      {/* Hero card — next delivery or CTA */}
+      <div style={{
+        background: `linear-gradient(170deg, ${G.accentDeep} 0%, #0A2433 100%)`,
+        color: '#fff', borderRadius: 22, padding: 20, position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: -30, right: -30, opacity: 0.18, color: '#fff' }}>
+          <VI.drop size={180} w={0} filled/>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', opacity: 0.7 }}>
+            {nextOrder ? 'Próxima entrega' : 'Tu pedido'}
+          </div>
+          {nextOrder ? (
+            <>
+              <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.8, marginTop: 6 }}>
+                {nextOrder.deliveryDate ? DataService.formatDate(nextOrder.deliveryDate) : 'Pendiente'}
+              </div>
+              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2 }}>
+                {nextOrder.items?.length ? `${nextOrder.items.reduce((s,i)=>s+(i.quantity||1),0)} unidades` : 'Sin ítems'} · {fmt(nextOrder.total)}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 6, lineHeight: 1.15 }}>
+                Pedí cuando<br/>quieras
+              </div>
+              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 4 }}>Agua de vertiente a tu puerta.</div>
+            </>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+            <button onClick={() => onTab('order')} style={{
+              flex: 1, padding: '12px 14px',
+              background: '#fff', color: G.text, border: 'none', borderRadius: 12,
+              fontSize: 14, fontWeight: 600, letterSpacing: -0.2, fontFamily: GFF, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <VI.drop size={14} w={2} filled/> Pedir ahora
+            </button>
+            {nextOrder && (
+              <button onClick={() => onTab('orders')} style={{
+                padding: '12px 14px',
+                background: 'rgba(255,255,255,0.14)', color: '#fff',
+                border: '0.5px solid rgba(255,255,255,0.18)', borderRadius: 12,
+                fontSize: 14, fontWeight: 500, fontFamily: GFF, cursor: 'pointer',
+              }}>Ver pedido</button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Tile grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+        <GCard style={{ padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: G.muted }}>
+            <VI.card size={14} w={2}/>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Saldo</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>
+            {fmt(client.balance || 0)}
+          </div>
+          <div style={{ fontSize: 11, color: G.dim, marginTop: 2 }}>{(client.balance || 0) <= 0 ? 'al día' : 'pendiente'}</div>
+        </GCard>
+        <GCard style={{ padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: G.muted }}>
+            <VI.bidon size={14} w={2}/>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Pedidos</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>
+            {orders.filter(o => o.status === 'entregado').length}
+          </div>
+          <div style={{ fontSize: 11, color: G.dim, marginTop: 2 }}>entregados en total</div>
+        </GCard>
+      </div>
+
+      {/* Loyalty card */}
+      {(pts > 0 || ptsForReward > 0) && (
+        <GCard style={{ padding: 16, marginTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: G.muted, marginBottom: 10 }}>
+            <VI.star size={14} w={2}/>
+            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>Puntos Glaciar</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 32, fontWeight: 700, letterSpacing: -1, fontVariantNumeric: 'tabular-nums' }}>{pts}</span>
+            <span style={{ fontSize: 13, color: G.muted, fontWeight: 500 }}>/ {ptsForReward}</span>
+          </div>
+          <div style={{ fontSize: 12, color: G.muted, marginBottom: 12 }}>
+            {Math.max(0, ptsForReward - pts)} pts para tu próximo premio
+          </div>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {Array.from({ length: segCount }).map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < segsOn ? G.accent : G.surfaceHi }}/>
+            ))}
+          </div>
+        </GCard>
+      )}
+
+      {/* Streak tiles */}
+      {config.streaksEnabled && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 8 }}>
+          {[
+            { label: 'Pedidos', val: client.orderStreak || 0, ico: 'bidon', every: config.streakOrderRewardEvery || 0, pts: config.streakOrderRewardPts || 50 },
+            { label: 'Bidones', val: client.containerStreak || 0, ico: 'recycle', every: config.streakContainerRewardEvery || 0, pts: config.streakContainerRewardPts || 75 },
+            { label: 'Pagos', val: client.payStreak || 0, ico: 'card', every: config.streakPayRewardEvery || 0, pts: config.streakPayRewardPts || 100 },
+          ].map(s => (
+            <GCard key={s.label} style={{ padding: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: G.muted, marginBottom: 6 }}>
+                {React.createElement(VI[s.ico], { size: 12, w: 2 })}
+                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}>{s.label}</span>
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums', color: s.val > 0 ? G.accent : G.dim }}>
+                {s.val}
+              </div>
+              {s.every > 0 && s.val > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    {Array.from({ length: Math.min(s.every, 5) }).map((_, i) => (
+                      <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < (s.val % s.every) ? G.accent : G.surfaceHi }}/>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: G.dim, marginTop: 3 }}>{s.every - (s.val % s.every)} para +{s.pts}pts</div>
+                </div>
+              )}
+            </GCard>
+          ))}
+        </div>
+      )}
+
+      {/* Products carousel */}
+      {prodsForCarousel.length > 0 && (
+        <>
+          <GSection right={
+            config.storeEnabled
+              ? <span onClick={() => onTab('store')} style={{ fontSize: 13, color: G.accent, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  Catálogo <VI.arrowUpRight size={12} w={2.2}/>
+                </span>
+              : null
+          }>Productos</GSection>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+            {prodsForCarousel.map((p, i) => (
+              <button key={p.id} onClick={() => onTab('order')} style={{
+                flexShrink: 0, width: 144,
+                background: i === 0 ? G.accent : G.surface,
+                color: i === 0 ? '#fff' : G.text,
+                border: i === 0 ? 'none' : `0.5px solid ${G.hairline}`,
+                borderRadius: 16, padding: 14,
+                display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                minHeight: 156, cursor: 'pointer', fontFamily: GFF, textAlign: 'left',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: i === 0 ? 'rgba(255,255,255,0.14)' : G.surfaceHi,
+                  color: i === 0 ? '#fff' : G.accent,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+                }}><VI.bidon size={18} w={2}/></div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: -0.2, lineHeight: 1.2 }}>{p.name}</div>
+                  <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>{p.unit || ''}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: -0.3, marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.price)}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Referrals CTA */}
+      {config.referralsEnabled && (
+        <>
+          <GSection>Programa de referidos</GSection>
+          <GCard style={{ padding: 16 }} onClick={() => onTab('referrals')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: G.accentSoft, color: G.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <VI.gift size={20} w={1.8}/>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: -0.2 }}>Invitá y ganan los dos</div>
+                <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>Compartí tu código y sumá crédito</div>
+              </div>
+              <VI.arrowRight size={16} w={2}/>
+            </div>
+          </GCard>
+        </>
+      )}
+
+      {/* Recent activity */}
+      {recentActivity.length > 0 && (
+        <>
+          <GSection right={
+            <span onClick={() => onTab('orders')} style={{ fontSize: 13, color: G.accent, fontWeight: 500, cursor: 'pointer' }}>Ver todo</span>
+          }>Actividad</GSection>
+          <GCard style={{ padding: 0, overflow: 'hidden' }}>
+            {recentActivity.map((o, i, arr) => {
+              const s = STATUS_MAP[o.status] || STATUS_MAP.pendiente;
+              const icoName = o.status === 'entregado' ? 'truck' : o.status === 'cancelado' ? 'receipt' : 'bidon';
+              return (
+                <div key={o.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                  borderBottom: i < arr.length - 1 ? `0.5px solid ${G.hairline}` : 'none',
+                }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 9,
+                    background: o.status === 'entregado' ? G.accentSoft : G.surfaceHi,
+                    color: o.status === 'entregado' ? G.accent : G.text,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>{React.createElement(VI[icoName], { size: 16, w: 2 })}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, letterSpacing: -0.1 }}>
+                      {o.items?.length ? `${o.items.reduce((s,x)=>s+(x.quantity||1),0)} unidades` : 'Pedido'} · {fmt(o.total)}
+                    </div>
+                    <div style={{ fontSize: 11, color: G.muted, marginTop: 1 }}>
+                      {o.deliveryDate ? DataService.formatDate(o.deliveryDate) : ''}
+                    </div>
+                  </div>
+                  <GPill label={s.label} kind={s.kind}/>
+                </div>
+              );
+            })}
+          </GCard>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Pedir ────────────────────────────────────────────────────────────────────
+
+function PortalOrder({ client, config, onDone }) {
+  const [products, setProducts] = React.useState([]);
+  const [qtys, setQtys] = React.useState({});
+  const [dates, setDates] = React.useState([]);
+  const [selDate, setSelDate] = React.useState('');
+  const [notes, setNotes] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    DataService.getProducts().then(prods => {
+      setProducts(prods);
+      const init = {};
+      prods.forEach(p => { init[p.id] = 0; });
+      setQtys(init);
+    });
+    // Generate next 7 days
+    const today = new Date();
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const monthNames = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const ds = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const iso = d.toISOString().split('T')[0];
+      const label = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`;
+      ds.push({ iso, label });
+    }
+    setDates(ds);
+    setSelDate(ds[0]?.iso || '');
+  }, []);
+
+  const setQty = (id, q) => setQtys(prev => ({ ...prev, [id]: Math.max(0, q) }));
+  const items = products.filter(p => (qtys[p.id] || 0) > 0).map(p => ({
+    productId: p.id, productName: p.name, quantity: qtys[p.id],
+    price: p.price, subtotal: p.price * qtys[p.id],
+  }));
+  const total = items.reduce((s, i) => s + i.subtotal, 0);
+
+  const handleSubmit = async () => {
+    if (!items.length) return;
+    setSaving(true);
+    try {
+      await DataService.createOrder({
+        clientId: client.id, deliveryDate: selDate, items, total,
+        status: 'pendiente', notes, source: 'portal',
+      });
+      setSuccess(true);
+      setTimeout(() => { setSuccess(false); onDone && onDone(); }, 2400);
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(false);
+  };
+
+  if (success) return <SuccessScene title="Pedido enviado" sub={`Te avisamos por WhatsApp cuando salga el camión.`}/>;
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 140px', fontFamily: GFF }}>
+
+      {/* Header */}
+      <div style={{ padding: '6px 4px 16px' }}>
+        <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>Nuevo pedido</div>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6 }}>Pedir</div>
+      </div>
+
+      {/* Products */}
+      <GCard style={{ padding: 0, overflow: 'hidden' }}>
+        {products.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: G.dim, fontSize: 14 }}>Cargando productos...</div>
+        ) : products.map((p, i, arr) => {
+          const q = qtys[p.id] || 0;
+          return (
+            <div key={p.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '14px',
+              borderBottom: i < arr.length - 1 ? `0.5px solid ${G.hairline}` : 'none',
+            }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: q > 0 ? G.accentSoft : G.surfaceHi,
+                color: q > 0 ? G.accent : G.text,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                transition: 'all .2s',
+              }}><VI.bidon size={22} w={1.9}/></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: -0.2 }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: G.muted, marginTop: 1 }}>{p.unit || ''}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: G.accentDeep, marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.price)}</div>
+              </div>
+              <Stepper value={q} onChange={(v) => setQty(p.id, v)}/>
+            </div>
+          );
+        })}
+      </GCard>
+
+      {/* Delivery date */}
+      <GSection>Entrega</GSection>
+      <GCard style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '12px 14px', borderBottom: `0.5px solid ${G.hairline}` }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Fecha</div>
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
+            {dates.map(d => (
+              <button key={d.iso} onClick={() => setSelDate(d.iso)} style={{
+                flexShrink: 0, padding: '8px 14px', borderRadius: 999,
+                background: selDate === d.iso ? G.accent : G.surfaceHi,
+                color: selDate === d.iso ? '#fff' : G.text,
+                border: 'none', fontSize: 13, fontWeight: 500, fontFamily: GFF, cursor: 'pointer',
+              }}>{d.label}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: '12px 14px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 4 }}>Dirección</div>
+          <div style={{ fontSize: 13, color: G.text, marginTop: 6 }}>{client.address || 'Sin dirección registrada'}</div>
+          {client.city && <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>{client.city}</div>}
+        </div>
+      </GCard>
+
+      {/* Notes */}
+      <GSection>Notas (opcional)</GSection>
+      <GCard style={{ padding: 0 }}>
+        <textarea
+          value={notes} onChange={e => setNotes(e.target.value)}
+          placeholder="Tocá timbre dos veces, dejar en portería..."
+          rows={3}
+          style={{
+            width: '100%', border: 'none', outline: 'none',
+            background: 'transparent', color: G.text,
+            padding: '12px 14px', resize: 'none',
+            fontFamily: GFF, fontSize: 14, boxSizing: 'border-box',
+          }}/>
+      </GCard>
+
+      {/* Floating total */}
+      <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, padding: '0 12px', zIndex: 10 }}>
+        <div style={{
+          background: G.text, color: G.bg, borderRadius: 18, padding: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.6, letterSpacing: 0.4, textTransform: 'uppercase' }}>Total</span>
+            <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</span>
+          </div>
+          <button onClick={handleSubmit} disabled={items.length === 0 || saving} style={{
+            width: '100%', padding: '13px',
+            background: items.length === 0 || saving ? 'rgba(255,255,255,0.12)' : '#fff',
+            color: items.length === 0 || saving ? 'rgba(255,255,255,0.4)' : G.text,
+            border: 'none', borderRadius: 12,
+            fontSize: 15, fontWeight: 600, letterSpacing: -0.2, fontFamily: GFF,
+            cursor: items.length === 0 || saving ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}>
+            <VI.check size={16} w={2.4}/>
+            {saving ? 'Enviando...' : 'Confirmar pedido'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Pedidos ──────────────────────────────────────────────────────────────────
+
+function PortalOrders({ client }) {
+  const [orders, setOrders] = React.useState([]);
+  const [filter, setFilter] = React.useState('all');
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    DataService.getClientOrders(client.id).then(ords => {
+      setOrders(ords);
+      setLoading(false);
+    });
+  }, [client.id]);
+
+  const STATUS = {
+    pendiente:  { label: 'Pendiente',  kind: 'warning' },
+    en_camino:  { label: 'En camino',  kind: 'accent' },
+    entregado:  { label: 'Entregado',  kind: 'success' },
+    cancelado:  { label: 'Cancelado',  kind: 'danger' },
+  };
+
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const monthOrders = orders.filter(o => (o.deliveryDate || o.createdAt || '').startsWith(thisMonth));
+  const monthSpend = monthOrders.filter(o => o.status === 'entregado').reduce((s, o) => s + (o.total || 0), 0);
+  const bidonesDevueltos = 0; // no column yet in schema
+
+  const FILTERS = [
+    { id: 'all',       label: 'Todos',      count: orders.length },
+    { id: 'en_camino', label: 'En camino',  count: orders.filter(o => o.status === 'en_camino').length },
+    { id: 'entregado', label: 'Entregados', count: orders.filter(o => o.status === 'entregado').length },
+    { id: 'cancelado', label: 'Cancelados', count: orders.filter(o => o.status === 'cancelado').length },
+  ];
+
+  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 100px', fontFamily: GFF }}>
+      <div style={{ padding: '6px 4px 16px' }}>
+        <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>Tu historial</div>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6 }}>Pedidos</div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+        {[
+          { label: 'Este mes', val: monthOrders.length, sub: 'pedidos', numStyle: {} },
+          { label: 'Gasto', val: fmt(monthSpend), sub: 'últimos 30 días', numStyle: {} },
+          { label: 'Total', val: orders.filter(o=>o.status==='entregado').length, sub: 'entregados', numStyle: { color: G.success } },
+        ].map(s => (
+          <GCard key={s.label} style={{ padding: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase' }}>{s.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: -0.6, marginTop: 6, fontVariantNumeric: 'tabular-nums', ...s.numStyle }}>{s.val}</div>
+            <div style={{ fontSize: 11, color: G.dim, marginTop: 2 }}>{s.sub}</div>
+          </GCard>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', margin: '16px 0 4px', paddingBottom: 2, scrollbarWidth: 'none' }}>
+        {FILTERS.filter(f => f.count > 0 || f.id === 'all').map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)} style={{
+            flexShrink: 0, padding: '8px 13px', borderRadius: 999,
+            background: filter === f.id ? G.accent : G.surfaceHi,
+            color: filter === f.id ? '#fff' : G.text,
+            border: 'none', fontSize: 13, fontWeight: 500, fontFamily: GFF, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            {f.label}
+            <span style={{ fontSize: 11, fontWeight: 600, opacity: filter === f.id ? 0.7 : 0.6 }}>{f.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Order list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: G.dim }}>Cargando...</div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: '60px 16px', textAlign: 'center', color: G.muted }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: G.surfaceHi, color: G.dim, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <VI.bidon size={24} w={1.7}/>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: G.text }}>Sin pedidos</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>Tus pedidos aparecerán acá.</div>
+          </div>
+        ) : filtered.map(o => {
+          const s = STATUS[o.status] || STATUS.pendiente;
+          const itemCount = o.items?.reduce((sum, i) => sum + (i.quantity || 1), 0) || 0;
+          const itemLabel = o.items?.map(i => `${i.quantity || 1}× ${i.productName || 'Producto'}`).join(' · ') || '';
+          return (
+            <GCard key={o.id} style={{ padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: -0.2 }}>#{o.id}</span>
+                    <span style={{ fontSize: 12, color: G.muted, fontVariantNumeric: 'tabular-nums' }}>
+                      {o.deliveryDate ? DataService.formatDate(o.deliveryDate) : ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 13, color: G.muted, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {itemLabel || `${itemCount} unidades`}
+                  </div>
+                </div>
+                <GPill label={s.label} kind={s.kind}/>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                paddingTop: 10, marginTop: 4, borderTop: `0.5px solid ${G.hairline}`,
+              }}>
+                <span style={{ fontSize: 12, color: G.muted }}>
+                  {o.notes && o.notes !== 'Generado automáticamente' ? o.notes : ''}
+                </span>
+                <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, fontVariantNumeric: 'tabular-nums' }}>{fmt(o.total)}</span>
+              </div>
+              {o.status === 'en_camino' && (
+                <div style={{
+                  marginTop: 12, padding: '10px 12px',
+                  background: G.accentSoft, borderRadius: 10,
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}>
+                  <VI.truck size={18} w={2}/>
+                  <div style={{ flex: 1, fontSize: 12, color: G.accentDeep, fontWeight: 500 }}>Tu pedido está en camino</div>
+                </div>
+              )}
+            </GCard>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tienda ───────────────────────────────────────────────────────────────────
+
+function PortalStore({ client, config, onTab }) {
+  const [products, setProducts] = React.useState([]);
+  const [cat, setCat] = React.useState('all');
+  const [cart, setCart] = React.useState({});
+  const [screen, setScreen] = React.useState('browse');
+  const [payMode, setPayMode] = React.useState('cash');
+  const [pointsUsed, setPointsUsed] = React.useState(0);
+  const [success, setSuccess] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+
+  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
+
+  const clientPts = client.points || 0;
+  const rate = parseFloat(config.pointsConversionRate) || 1;
+  const CATS = [
+    { id: 'all', label: 'Todo' },
+    { id: 'bidon', label: 'Bidones' },
+    { id: 'botella', label: 'Botellas' },
+    { id: 'otro', label: 'Otros' },
+  ];
+  const filtered = cat === 'all' ? products : products.filter(p => p.type === cat);
+  const setQty = (id, q) => setCart(prev => ({ ...prev, [id]: Math.max(0, q) }));
+  const cartItems = products.filter(p => (cart[p.id] || 0) > 0).map(p => ({ ...p, qty: cart[p.id] }));
+  const totalCash = cartItems.reduce((s, p) => s + p.price * p.qty, 0);
+  const maxPts = Math.min(clientPts, Math.floor(totalCash / rate));
+  const discount = Math.min(pointsUsed * rate, totalCash);
+  const finalTotal = Math.max(0, totalCash - discount);
+  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
+
+  React.useEffect(() => {
+    if (payMode === 'cash') setPointsUsed(0);
+    if (payMode === 'points') setPointsUsed(Math.min(clientPts, Math.floor(totalCash / rate)));
+    if (payMode === 'mixed') setPointsUsed(prev => Math.min(prev, maxPts));
+  }, [payMode, totalCash]);
+
+  const handleConfirm = async () => {
+    setSaving(true);
+    try {
+      const items = cartItems.map(p => ({
+        productId: p.id, productName: p.name, quantity: p.qty, price: p.price, subtotal: p.price * p.qty,
+      }));
+      await DataService.createOrder({
+        clientId: client.id, items, total: finalTotal,
+        status: 'pendiente', notes: `Tienda · ${payMode}`, source: 'portal',
+      });
+      if (pointsUsed > 0) {
+        await DataService.redeemPoints(client.id, pointsUsed, `Canje en tienda · ${fmt(discount)}`);
+      }
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false); setCart({}); setScreen('browse'); setPointsUsed(0); setPayMode('cash');
+        onTab && onTab('orders');
+      }, 2400);
+    } catch (err) { alert('Error: ' + err.message); }
+    setSaving(false);
+  };
+
+  if (success) return (
+    <SuccessScene title="Pedido enviado" sub="Te avisamos cuando salga el camión."
+      extra={pointsUsed > 0 ? (
+        <div style={{ marginTop: 20, padding: '10px 18px', background: G.accentSoft, color: G.accentDeep, borderRadius: 999, fontSize: 13, fontWeight: 600 }}>
+          -{pointsUsed} puntos canjeados
+        </div>
+      ) : null}/>
+  );
+
+  if (screen === 'checkout') return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 140px', fontFamily: GFF }}>
+      <div style={{ padding: '6px 4px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>Resumen del pedido</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6 }}>Confirmar</div>
+        </div>
+        <button onClick={() => setScreen('browse')} style={{
+          width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi,
+          border: 'none', color: G.text, fontSize: 16, cursor: 'pointer',
+        }}>✕</button>
+      </div>
+
+      <GCard style={{ padding: 0, overflow: 'hidden' }}>
+        {cartItems.map((p, i) => (
+          <div key={p.id} style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+            borderBottom: i < cartItems.length - 1 ? `0.5px solid ${G.hairline}` : 'none',
+          }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: G.surfaceHi, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <VI.bidon size={18} w={1.9}/>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: -0.2 }}>{p.name}</div>
+              <div style={{ fontSize: 12, color: G.muted }}>{p.qty}× · {fmt(p.price)}</div>
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.price * p.qty)}</span>
+          </div>
+        ))}
+      </GCard>
+
+      <GSection>Forma de pago</GSection>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {[
+          { id: 'cash', label: 'Dinero', disabled: false },
+          { id: 'mixed', label: 'Mixto', disabled: clientPts === 0 },
+          { id: 'points', label: 'Puntos', disabled: totalCash > clientPts * rate },
+        ].map(m => (
+          <button key={m.id} disabled={m.disabled} onClick={() => setPayMode(m.id)} style={{
+            flex: 1, padding: '12px 0',
+            background: payMode === m.id ? G.accent : G.surfaceHi,
+            color: payMode === m.id ? '#fff' : G.text,
+            border: 'none', borderRadius: 12,
+            fontSize: 14, fontWeight: 500, fontFamily: GFF, cursor: m.disabled ? 'default' : 'pointer',
+            opacity: m.disabled ? 0.4 : 1,
+          }}>{m.label}</button>
+        ))}
+      </div>
+
+      {payMode === 'mixed' && maxPts > 0 && (
+        <GCard style={{ marginTop: 8, padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, color: G.muted }}>Puntos a usar</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: G.accent, fontVariantNumeric: 'tabular-nums' }}>{pointsUsed} pts · {fmt(pointsUsed * rate)}</span>
+          </div>
+          <input type="range" min="0" max={maxPts} value={pointsUsed}
+            onChange={e => setPointsUsed(parseInt(e.target.value))}
+            style={{ width: '100%', marginTop: 10, accentColor: G.accent }}/>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+            <span style={{ fontSize: 11, color: G.dim }}>0</span>
+            <span style={{ fontSize: 11, color: G.dim, fontVariantNumeric: 'tabular-nums' }}>{maxPts} pts máx</span>
+          </div>
+        </GCard>
+      )}
+
+      <GCard style={{ marginTop: 8, padding: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: G.muted }}>
+          <span>Subtotal</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCash)}</span>
+        </div>
+        {pointsUsed > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: G.accent, marginTop: 6, fontWeight: 500 }}>
+            <span>- {pointsUsed} puntos</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>-{fmt(discount)}</span>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 12, paddingTop: 12, borderTop: `0.5px solid ${G.hairline}` }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Total</span>
+          <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.6, fontVariantNumeric: 'tabular-nums' }}>{fmt(finalTotal)}</span>
+        </div>
+      </GCard>
+
+      <div style={{ position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, padding: '0 12px', zIndex: 10 }}>
+        <button onClick={handleConfirm} disabled={saving} style={{
+          width: '100%', padding: '15px',
+          background: G.accent, color: '#fff', border: 'none',
+          borderRadius: 14, fontSize: 15, fontWeight: 600, letterSpacing: -0.2,
+          fontFamily: GFF, cursor: saving ? 'default' : 'pointer',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          <VI.check size={16} w={2.4}/>{saving ? 'Procesando...' : 'Confirmar'}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 140px', fontFamily: GFF }}>
+      <div style={{ padding: '6px 4px 16px' }}>
+        <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>Productos y canje</div>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6 }}>Tienda</div>
+      </div>
+
+      {/* Points banner */}
+      {clientPts > 0 && (
+        <GCard style={{ padding: 14, background: `linear-gradient(135deg,${G.accentDeep} 0%,#0A2433 100%)`, color: '#fff', borderColor: 'transparent' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <VI.star size={18} w={2}/>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 500 }}>Tus puntos</div>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
+                {clientPts} <span style={{ fontSize: 12, opacity: 0.6, fontWeight: 500 }}>= {fmt(clientPts * rate)}</span>
+              </div>
+            </div>
+          </div>
+        </GCard>
+      )}
+
+      {/* Category chips */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginTop: 12, paddingBottom: 2, scrollbarWidth: 'none' }}>
+        {CATS.map(c => (
+          <button key={c.id} onClick={() => setCat(c.id)} style={{
+            flexShrink: 0, padding: '8px 14px', borderRadius: 999,
+            background: cat === c.id ? G.accent : G.surfaceHi,
+            color: cat === c.id ? '#fff' : G.text,
+            border: 'none', fontSize: 13, fontWeight: 500, fontFamily: GFF, cursor: 'pointer',
+          }}>{c.label}</button>
+        ))}
+      </div>
+
+      {/* Products grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+        {filtered.map(p => {
+          const q = cart[p.id] || 0;
+          return (
+            <GCard key={p.id} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ width: '100%', aspectRatio: '1', maxHeight: 80, borderRadius: 10, background: G.surfaceHi, display: 'flex', alignItems: 'center', justifyContent: 'center', color: G.accent }}>
+                <VI.bidon size={32} w={1.6}/>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: -0.2, lineHeight: 1.2 }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: G.muted, marginTop: 2 }}>{p.unit || ''}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: -0.3, fontVariantNumeric: 'tabular-nums' }}>{fmt(p.price)}</div>
+                  <div style={{ fontSize: 10, color: G.accent, fontWeight: 600, marginTop: 1 }}>{p.price} pts</div>
+                </div>
+                {q === 0 ? (
+                  <button onClick={() => setQty(p.id, 1)} style={{ width: 30, height: 30, borderRadius: 9, background: G.accent, color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <VI.plus size={14} w={2.4}/>
+                  </button>
+                ) : (
+                  <Stepper value={q} onChange={(v) => setQty(p.id, v)}/>
+                )}
+              </div>
+            </GCard>
+          );
+        })}
+      </div>
+
+      {/* Floating cart */}
+      {cartCount > 0 && (
+        <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 480, padding: '0 12px', zIndex: 10 }}>
+          <button onClick={() => setScreen('checkout')} style={{
+            width: '100%', padding: '13px 18px',
+            background: G.accent, color: '#fff', border: 'none',
+            borderRadius: 14, fontSize: 14, fontWeight: 600, fontFamily: GFF, cursor: 'pointer',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>{cartCount}</span>
+            <span style={{ flex: 1, textAlign: 'left' }}>Ver carrito</span>
+            <span style={{ fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalCash)}</span>
+            <VI.arrowRight size={14} w={2.4}/>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Facturas ─────────────────────────────────────────────────────────────────
 
 function PortalInvoices({ client }) {
   const [invoices, setInvoices] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    DataService.getClientInvoices(client.id).then(i => { setInvoices(i); setLoading(false); });
+    DataService.getClientInvoices(client.id).then(invs => {
+      setInvoices(invs);
+      setLoading(false);
+    });
   }, [client.id]);
 
-  if (loading) return <div className="py-20"><Spinner /></div>;
+  const totalAmt = invoices.reduce((s, i) => s + (i.total || 0), 0);
+  const pendingAmt = invoices.filter(i => i.paymentStatus !== 'pagado').reduce((s, i) => s + (i.total || 0), 0);
 
-  const total = invoices.reduce((s, i) => s + (i.total || 0), 0);
-  const pending = invoices.filter(i => i.paymentStatus !== 'pagado').reduce((s, i) => s + (i.total || 0), 0);
+  const METHOD_LABEL = { efectivo: 'Efectivo', transferencia: 'Transferencia', mercadopago: 'MercadoPago', cuenta_corriente: 'Cta. corriente' };
 
   return (
-    <div className="pt-3 pb-8 space-y-5">
-      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Mis facturas</h1>
-
-      {/* Summary cards */}
-      {invoices.length > 0 && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Histórico</p>
-            <p className="text-xl font-black text-slate-900">{fmt(total)}</p>
-          </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100" style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Pendiente</p>
-            <p className={`text-xl font-black ${pending > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>{fmt(pending)}</p>
-          </div>
-        </div>
-      )}
-
-      {invoices.length === 0 ? (
-        <div className="flex flex-col items-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#94a3b8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-            </svg>
-          </div>
-          <p className="font-semibold text-slate-700 mb-1">Sin facturas aún</p>
-          <p className="text-sm text-slate-400">Tus facturas aparecerán acá.</p>
-        </div>
-      ) : invoices.map(inv => (
-        <div key={inv.id} className="bg-white rounded-3xl border border-gray-100 p-5"
-          style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <p className="font-black text-slate-900">{inv.number}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{fmtDateTime(inv.createdAt)}</p>
-              {inv.paymentMethod && (
-                <p className="text-xs text-slate-500 mt-0.5 capitalize">{inv.paymentMethod}</p>
-              )}
-            </div>
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
-              inv.paymentStatus === 'pagado'
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-700'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${inv.paymentStatus === 'pagado' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
-              {inv.paymentStatus === 'pagado' ? 'Pagado' : 'Pendiente'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-            <p className="text-xs text-slate-400">Total</p>
-            <p className="font-black text-slate-900 text-xl">{fmt(inv.total)}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Store ───────────────────────────────────────────────────────────────────────
-
-function PortalStore({ client, config, onTab }) {
-  const [products, setProducts] = React.useState([]);
-  const [cat, setCat] = React.useState('all');
-  const [payMode, setPayMode] = React.useState('cash');
-  const [cart, setCart] = React.useState({});
-  const [screen, setScreen] = React.useState('browse');
-  const [pointsUsed, setPointsUsed] = React.useState(0);
-  const [loading, setLoading] = React.useState(false);
-  const primary = config.primaryColor || '#2563EB';
-
-  const rate = parseFloat(config.pointsConversionRate) || 1;
-  const clientPoints = client.points || 0;
-
-  React.useEffect(() => { DataService.getProducts().then(setProducts); }, []);
-
-  const CAT_MAP = { bidon: 'agua', botella: 'agua', limpieza: 'limpieza', accesorio: 'accesorio' };
-  const CATS = [
-    { id: 'all',      label: 'Todos' },
-    { id: 'agua',     label: '💧 Agua' },
-    { id: 'limpieza', label: '🧴 Limpieza' },
-    { id: 'accesorio',label: '🔧 Accesorios' },
-  ];
-
-  const ptPrice = (p) => Math.ceil(p.price / rate);
-  const filtered = cat === 'all' ? products : products.filter(p => CAT_MAP[p.type] === cat);
-
-  const setQty = (id, q) => setCart(prev => ({ ...prev, [id]: Math.max(0, q) }));
-
-  const cartItems = products
-    .filter(p => (cart[p.id] || 0) > 0)
-    .map(p => ({ ...p, qty: cart[p.id], subtotal: p.price * cart[p.id], ptSubtotal: ptPrice(p) * cart[p.id] }));
-
-  const totalCash  = cartItems.reduce((s, i) => s + i.subtotal, 0);
-  const totalPts   = cartItems.reduce((s, i) => s + i.ptSubtotal, 0);
-  const maxPts     = Math.min(clientPoints, Math.floor(totalCash / rate));
-  const discount   = Math.min(pointsUsed * rate, totalCash);
-  const finalTotal = Math.max(0, totalCash - discount);
-
-  React.useEffect(() => {
-    if (payMode !== 'mixed') setPointsUsed(0);
-    else setPointsUsed(prev => Math.min(prev, Math.min(clientPoints, Math.floor(totalCash / rate))));
-  }, [payMode, cart]);
-
-  const handleConfirm = async () => {
-    setLoading(true);
-    const items = cartItems.map(i => ({
-      productId: i.id, productName: i.name,
-      quantity: i.qty, price: i.price, subtotal: i.subtotal,
-    }));
-
-    let ptsToRedeem = 0;
-    let orderTotal = totalCash;
-
-    if (payMode === 'points') {
-      orderTotal = 0;
-      ptsToRedeem = totalPts;
-    } else if (payMode === 'mixed') {
-      orderTotal = finalTotal;
-      ptsToRedeem = pointsUsed;
-    }
-
-    await DataService.createOrder({
-      clientId: client.id, items, total: orderTotal,
-      deliveryDate: DataService.today(),
-      notes: ptsToRedeem > 0 ? `Puntos canjeados: ${ptsToRedeem}` : '',
-    });
-
-    if (ptsToRedeem > 0) {
-      await DataService.redeemPoints(client.id, ptsToRedeem, 'Canje en tienda');
-      client.points = Math.max(0, clientPoints - ptsToRedeem);
-    }
-
-    setLoading(false);
-    setScreen('success');
-    setTimeout(() => { setCart({}); setPointsUsed(0); setPayMode('cash'); setScreen('browse'); onTab('orders'); }, 3000);
-  };
-
-  // ── Success screen
-  if (screen === 'success') {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center pt-10">
-        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-5"
-          style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 8px 24px rgba(34,197,94,.35)' }}>
-          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">¡Pedido enviado!</h2>
-        <p className="text-slate-400 text-sm">Te avisamos cuando esté en camino.</p>
-        {client.points != null && (
-          <div className="mt-5 bg-amber-50 border border-amber-200 rounded-2xl px-6 py-3">
-            <p className="text-amber-700 font-bold text-lg">🪙 {client.points} pts</p>
-            <p className="text-amber-500 text-xs">saldo actual</p>
-          </div>
-        )}
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 100px', fontFamily: GFF }}>
+      <div style={{ padding: '6px 4px 16px' }}>
+        <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>Tu cuenta</div>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6 }}>Facturas</div>
       </div>
-    );
-  }
 
-  // ── Checkout screen
-  if (screen === 'checkout') {
-    return (
-      <div className="pt-3 pb-36 space-y-4">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setScreen('browse')}
-            className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center active:scale-90 transition-transform">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-          <h1 className="text-2xl font-black text-slate-900">Confirmar pedido</h1>
-        </div>
-
-        {/* Items */}
-        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-          {cartItems.map((item, i) => (
-            <div key={item.id} className={`flex items-center gap-3 px-4 py-3 ${i < cartItems.length - 1 ? 'border-b border-slate-50' : ''}`}>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
-                <p className="text-xs text-slate-400">{item.qty}× {fmt(item.price)}</p>
-              </div>
-              <p className="font-bold text-slate-900 text-sm flex-shrink-0">{fmt(item.subtotal)}</p>
-            </div>
-          ))}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t border-slate-100">
-            <p className="text-sm font-semibold text-slate-600">Subtotal</p>
-            <p className="font-black text-slate-900">{fmt(totalCash)}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <GCard style={{ padding: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase' }}>Histórico</div>
+          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 8, fontVariantNumeric: 'tabular-nums' }}>{fmt(totalAmt)}</div>
+          <div style={{ fontSize: 11, color: G.dim, marginTop: 4 }}>{invoices.length} facturas</div>
+        </GCard>
+        <GCard style={{ padding: 16, background: pendingAmt > 0 ? G.warningSoft : G.successSoft, borderColor: pendingAmt > 0 ? 'rgba(199,120,0,0.18)' : 'rgba(26,140,62,0.18)' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: pendingAmt > 0 ? G.warning : G.success, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            {pendingAmt > 0 ? 'Pendiente' : 'Al día'}
           </div>
-        </div>
-
-        {/* Pay mode */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-4 space-y-3" style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Forma de pago</p>
-          <div className="flex gap-2">
-            {[
-              { id: 'cash',   label: '💵 Solo dinero' },
-              { id: 'points', label: '🪙 Solo puntos', disabled: totalPts > clientPoints },
-              { id: 'mixed',  label: '⚡ Mixto',       disabled: clientPoints === 0 },
-            ].map(m => (
-              <button key={m.id} onClick={() => !m.disabled && setPayMode(m.id)} disabled={!!m.disabled}
-                className="flex-1 py-2.5 rounded-2xl text-xs font-bold border transition-all disabled:opacity-40"
-                style={payMode === m.id
-                  ? { background: primary, color: 'white', borderColor: primary }
-                  : { background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
-                {m.label}
-              </button>
-            ))}
+          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 8, color: pendingAmt > 0 ? G.warning : G.success, fontVariantNumeric: 'tabular-nums' }}>
+            {pendingAmt > 0 ? fmt(pendingAmt) : '$0'}
           </div>
-
-          {/* Points balance */}
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Tus puntos</span>
-            <span className="font-bold text-amber-500">🪙 {clientPoints} pts = {fmt(clientPoints * rate)}</span>
-          </div>
-
-          {/* Points-only warning */}
-          {payMode === 'points' && totalPts > clientPoints && (
-            <p className="text-xs text-red-500">No tenés suficientes puntos ({totalPts} necesarios, tenés {clientPoints}).</p>
-          )}
-
-          {/* Mixed slider */}
-          {payMode === 'mixed' && maxPts > 0 && (
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">Puntos a usar</span>
-                <span className="font-bold text-amber-500">🪙 {pointsUsed} pts = {fmt(pointsUsed * rate)}</span>
-              </div>
-              <input type="range" min="0" max={maxPts} value={pointsUsed}
-                onChange={e => setPointsUsed(parseInt(e.target.value))}
-                className="w-full accent-amber-400" />
-              <div className="flex justify-between text-xs text-slate-400">
-                <span>0</span><span>{maxPts} pts máx</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Total */}
-        <div className="bg-white rounded-2xl p-4 border border-blue-100" style={{ boxShadow: '0 4px 16px rgba(37,99,235,.08)' }}>
-          {payMode === 'mixed' && pointsUsed > 0 && (
-            <div className="flex items-center justify-between text-sm text-amber-600 mb-2 pb-2 border-b border-slate-100">
-              <span>Descuento puntos</span>
-              <span className="font-bold">− {fmt(discount)}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Total a pagar</p>
-            <p className="text-2xl font-black text-slate-900">
-              {payMode === 'points' ? '🪙 ' + totalPts + ' pts' : fmt(payMode === 'mixed' ? finalTotal : totalCash)}
-            </p>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
-          <div className="max-w-lg mx-auto pointer-events-auto">
-            <button onClick={handleConfirm}
-              disabled={loading || (payMode === 'points' && totalPts > clientPoints)}
-              className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-2 transition-all disabled:opacity-40"
-              style={{ background: `linear-gradient(135deg,${primary},${primary}cc)`, boxShadow: `0 6px 24px ${primary}55` }}>
-              {loading
-                ? <><span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Procesando…</>
-                : 'Confirmar pedido'}
+          {pendingAmt > 0 ? (
+            <button style={{ marginTop: 8, padding: '5px 10px', background: G.warning, color: '#fff', border: 'none', borderRadius: 999, fontSize: 11, fontWeight: 600, fontFamily: GFF, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              Pagar ahora <VI.arrowRight size={11} w={2.4}/>
             </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Browse screen
-  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
-
-  return (
-    <div className="pt-3 pb-36 space-y-4">
-      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Tienda & Canje</h1>
-
-      {/* Points banner */}
-      {clientPoints > 0 && (
-        <div className="rounded-2xl p-3 flex items-center gap-3"
-          style={{ background: 'linear-gradient(135deg,#451a03,#78350f)', border: '1px solid #92400e' }}>
-          <span className="text-2xl leading-none flex-shrink-0">🪙</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm">{clientPoints} puntos disponibles</p>
-            <p className="text-xs" style={{ color: '#fcd34d' }}>= {fmt(clientPoints * rate)} de descuento</p>
-          </div>
-        </div>
-      )}
-
-      {/* Category chips */}
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        {CATS.map(c => (
-          <button key={c.id} onClick={() => setCat(c.id)}
-            className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all"
-            style={cat === c.id
-              ? { background: primary, color: 'white' }
-              : { background: '#f1f5f9', color: '#475569' }}>
-            {c.label}
-          </button>
-        ))}
+          ) : (
+            <div style={{ fontSize: 11, color: G.success, marginTop: 4, fontWeight: 500 }}>Todas pagadas</div>
+          )}
+        </GCard>
       </div>
 
-      {/* Products */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-slate-400">
-          <span className="text-4xl mb-3">📦</span>
-          <p className="text-sm">Sin productos en esta categoría.</p>
+      <GSection>Facturas</GSection>
+
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: G.dim }}>Cargando...</div>
+      ) : invoices.length === 0 ? (
+        <div style={{ padding: '60px 16px', textAlign: 'center', color: G.muted }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: G.surfaceHi, color: G.dim, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <VI.receipt size={24} w={1.7}/>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: G.text }}>Sin facturas</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Tus facturas aparecerán acá.</div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(p => {
-            const qty = cart[p.id] || 0;
-            return (
-              <div key={p.id} className="bg-white rounded-3xl border border-gray-100 p-4 flex items-center gap-3"
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden bg-slate-50">
-                  {p.imageUrl
-                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain p-1"
-                        onError={e => { e.target.style.display = 'none'; }} />
-                    : <svg viewBox="0 0 24 24" width="28" height="28" fill="#93c5fd">
-                        <path d="M12 2C8.43 2 6 6.32 6 9.5c0 3.86 2.69 7 6 7s6-3.14 6-7C18 6.32 15.57 2 12 2z"/>
-                      </svg>
-                  }
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {invoices.map(inv => (
+            <GCard key={inv.id} style={{ padding: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: G.surfaceHi, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <VI.receipt size={20} w={1.8}/>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 text-sm leading-tight">{p.name}</p>
-                  <p className="text-sm font-bold mt-0.5" style={{ color: primary }}>{fmt(p.price)}</p>
-                  <p className="text-xs text-amber-500 font-medium">🪙 {ptPrice(p)} pts</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: -0.2 }}>#{inv.id}</span>
+                    <span style={{ fontSize: 12, color: G.muted }}>
+                      {inv.createdAt ? DataService.formatDate(inv.createdAt.split('T')[0]) : ''}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>
+                    {METHOD_LABEL[inv.paymentMethod] || inv.paymentMethod || '—'}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => setQty(p.id, qty - 1)}
-                    className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold text-lg flex items-center justify-center active:scale-90 transition-transform">
-                    −
-                  </button>
-                  <span className="w-6 text-center font-bold text-slate-900 text-sm tabular-nums">{qty}</span>
-                  <button onClick={() => setQty(p.id, qty + 1)}
-                    className="w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center active:scale-90 transition-transform"
-                    style={{ background: `linear-gradient(135deg,${primary},${primary}cc)` }}>
-                    +
-                  </button>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, fontVariantNumeric: 'tabular-nums' }}>{fmt(inv.total)}</div>
+                  <div style={{ marginTop: 4 }}>
+                    <GPill
+                      label={inv.paymentStatus === 'pagado' ? 'Pagada' : 'Pendiente'}
+                      kind={inv.paymentStatus === 'pagado' ? 'success' : 'warning'}
+                    />
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Floating cart bar */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 px-5 z-20 pointer-events-none">
-          <div className="max-w-lg mx-auto pointer-events-auto">
-            <button onClick={() => setScreen('checkout')}
-              className="w-full h-14 rounded-full text-white font-bold text-base flex items-center justify-center gap-3 transition-all"
-              style={{ background: `linear-gradient(135deg,${primary},${primary}cc)`, boxShadow: `0 6px 24px ${primary}55` }}>
-              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-sm font-black">{cartCount}</span>
-              Ver carrito · {fmt(totalCash)}
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          </div>
+            </GCard>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ─── Referrals ───────────────────────────────────────────────────────────────────
+// ─── Referidos ────────────────────────────────────────────────────────────────
 
-function PortalReferrals({ client, config }) {
-  const [referralCount, setReferralCount] = React.useState(client.referralCount || 0);
+function PortalReferrals({ client, config, onTab }) {
+  const [copied, setCopied] = React.useState(false);
+  const [referrals, setReferrals] = React.useState([]);
+
   React.useEffect(() => {
-    DataService.getClients().then(all => {
-      setReferralCount(all.filter(c => c.referredBy === client.id).length);
-    }).catch(() => {});
+    DataService.getClients().then(cls => {
+      setReferrals(cls.filter(c => c.referredBy === client.id));
+    });
   }, [client.id]);
 
-  const prizeEvery = config.referralPrizeEvery || 0;
-  const nextPrize  = prizeEvery > 0 ? prizeEvery - (referralCount % prizeEvery) : null;
-  const prizePct   = prizeEvery > 0 ? ((referralCount % prizeEvery) / prizeEvery * 100) : 0;
+  const code = client.referralCode || '';
+  const link = DataService.clientPortalUrl ? DataService.clientPortalUrl(client.accessToken) : '';
+  const prizeEvery = config.referralPrizeEvery || 5;
+  const referrerReward = config.referralReferrerReward || config.referralBonus || 500;
+  const referredDiscount = config.referralReferredDiscount || 10;
+  const shareMsg = (config.referralShareMessage || 'Hola! Usá mi código {codigo} y conseguís {desc}% off. {link}')
+    .replace('{codigo}', code).replace('{desc}', referredDiscount).replace('{link}', link)
+    .replace('{empresa}', config.companyName || 'NATIVA');
 
-  const referralLink = `${window.location.href.split('?')[0]}?ref=${client.referralCode || client.code || ''}`;
-  const template = config.referralShareMessage ||
-    'Hola! Te recomiendo el agua de {empresa}\nMe tienen re bien surtido. Entrá acá y dejá tus datos: {link}\n¡Los dos ganamos!';
-  const resolved = template
-    .replace(/{empresa}/g, config.companyName || 'NATIVA')
-    .replace(/{telefono}/g, config.phone || config.whatsappNumber || '')
-    .replace(/{codigo}/g, client.referralCode || client.code || '')
-    .replace(/{nombre}/g, client.name || '')
-    .replace(/{link}/g, referralLink);
-  const defaultMsg = resolved.includes(referralLink) ? resolved : `${resolved}\n${referralLink}`;
+  const handleCopy = () => {
+    navigator.clipboard?.writeText(code || link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
 
-  const [msg, setMsg] = React.useState(defaultMsg);
-  const [copied, setCopied] = React.useState(false);
-  const [copiedMsg, setCopiedMsg] = React.useState(false);
+  const handleWhatsApp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareMsg)}`, '_blank');
+  };
 
-  const handleWA = () => window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-  const handleCopyMsg = () => { navigator.clipboard.writeText(msg); setCopiedMsg(true); setTimeout(() => setCopiedMsg(false), 2000); };
-  const handleCopyCode = () => { navigator.clipboard.writeText(client.referralCode || client.code || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-
-  return (
-    <div className="pt-3 pb-8 space-y-5">
-      <h1 className="text-3xl font-black text-slate-900 tracking-tight">Referidos</h1>
-
-      {/* Hero */}
-      <div className="rounded-3xl p-5 text-white relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 8px 24px rgba(34,197,94,.3)' }}>
-        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/10" />
-        <div className="absolute -right-2 bottom-2 w-14 h-14 rounded-full bg-white/10" />
-        <div className="relative z-10">
-          <p className="text-green-100 text-sm font-medium mb-1">Programa de referidos</p>
-          <h2 className="text-2xl font-black mb-2">Referí y ganás</h2>
-          <p className="text-green-100 text-sm leading-relaxed">
-            {config.referralMessage || 'Referí a un amigo y ambos ganan crédito en su cuenta.'}
-          </p>
-        </div>
-      </div>
-
-      {/* Rewards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-          <p className="text-2xl font-black text-emerald-600">${config.referralReferrerReward || 500}</p>
-          <p className="text-xs text-slate-400 mt-1 font-medium">crédito para vos</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 text-center"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-          <p className="text-2xl font-black text-blue-600">{config.referralReferredDiscount || 10}%</p>
-          <p className="text-xs text-slate-400 mt-1 font-medium">descuento para tu amigo</p>
-        </div>
-      </div>
-
-      {/* Prize milestone progress */}
-      {prizeEvery > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Premio por referidos 🎁</p>
-            <p className="text-xs font-bold text-violet-600">{referralCount % prizeEvery}/{prizeEvery}</p>
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-            <div className="h-full rounded-full bg-gradient-to-r from-violet-400 to-violet-600 transition-all"
-              style={{ width: `${prizePct}%` }} />
-          </div>
-          <p className="text-xs text-slate-500">
-            {nextPrize === prizeEvery
-              ? `Referí ${prizeEvery} amigos y ganás ${config.referralPrizePts || 200} puntos extra`
-              : `Te faltan ${nextPrize} referido${nextPrize !== 1 ? 's' : ''} para tu próximo premio de ${config.referralPrizePts || 200} puntos`}
-          </p>
-        </div>
-      )}
-
-      {/* Code */}
-      {(client.referralCode || client.code) && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4"
-          style={{ boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Tu código</p>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xl font-black text-slate-900 flex-1 tracking-wider">
-              {client.referralCode || client.code}
-            </span>
-            <button onClick={handleCopyCode}
-              className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
-              style={copied
-                ? { background: '#f0fdf4', color: '#16a34a' }
-                : { background: '#f8fafc', color: '#475569' }}>
-              {copied ? '✓ Copiado' : 'Copiar'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Share */}
-      <div className="bg-white rounded-3xl border border-gray-100 p-5 space-y-4"
-        style={{ boxShadow: '0 4px 20px rgba(0,0,0,.06)' }}>
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Mensaje para compartir</p>
-        <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={5}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none leading-relaxed" />
-        <div className="flex gap-2">
-          <button onClick={handleWA}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl text-white font-bold text-sm"
-            style={{ background: 'linear-gradient(135deg,#22c55e,#16a34a)', boxShadow: '0 4px 16px rgba(34,197,94,.35)' }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-              <path d="M11.973 2C6.465 2 2 6.465 2 11.973c0 1.89.525 3.658 1.438 5.168L2 22l4.978-1.408A9.96 9.96 0 0 0 11.973 22C17.481 22 22 17.535 22 12.027 22 6.519 17.481 2 11.973 2z" opacity=".3"/>
-            </svg>
-            Compartir por WhatsApp
-          </button>
-          <button onClick={handleCopyMsg}
-            className="px-4 py-3.5 rounded-2xl text-sm font-bold border transition-all"
-            style={copiedMsg
-              ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
-              : { background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
-            {copiedMsg ? '✓' : 'Copiar'}
-          </button>
-        </div>
-        <p className="text-xs text-slate-400">Podés editar el mensaje antes de enviarlo.</p>
-      </div>
-    </div>
-  );
-}
-// ─── Referral Landing (amigo que recibió el link) ────────────────────────────────────────
-
-function ReferralLanding({ refCode, config }) {
-  const [referrer, setReferrer] = React.useState(null);
-  const [form, setForm] = React.useState({ name: '', phone: '', address: '' });
-  const [state, setState] = React.useState('form'); // form | sending | done
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  React.useEffect(() => {
-    DataService.getClientByReferral(refCode).then(c => setReferrer(c));
-  }, [refCode]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name.trim()) return;
-    setState('sending');
-    try {
-      await DataService.createLead({
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-        address: form.address.trim(),
-        source: 'referido',
-        notes: referrer ? `Referido por: ${referrer.name} (ID:${referrer.id})` : `Código referido: ${refCode}`,
-      });
-      setState('done');
-    } catch (err) {
-      alert('Error: ' + err.message);
-      setState('form');
-    }
+  const handleShare = () => {
+    if (navigator.share) navigator.share({ title: config.companyName || 'NATIVA', text: shareMsg, url: link });
+    else handleCopy();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: 'linear-gradient(135deg, #16a34a, #22c55e)' }}>
-            <span className="text-3xl">💧</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">{config.companyName || 'NATIVA'}</h1>
-          {referrer && (
-            <p className="text-sm text-slate-500 mt-1">
-              <span className="font-semibold text-green-700">{referrer.name}</span> te recomienda nuestro servicio 🎁
-            </p>
-          )}
-        </div>
-
-        {state === 'done' ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-            <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">¡Gracias!</h2>
-            <p className="text-sm text-slate-500">
-              Recibimos tus datos. Te contactamos a la brevedad para coordinar tu primer pedido.
-            </p>
-            {referrer && (
-              <p className="text-xs text-green-600 mt-3 font-medium">
-                Vas a recibir {config.referralReferredDiscount || 10}% de descuento en tu primera factura.
-              </p>
-            )}
-            {config.whatsappNumber && (
-              <a href={`https://wa.me/${(config.whatsappNumber).replace(/\D/g,'')}?text=${encodeURIComponent(`Hola! Soy ${form.name}, acabo de dejar mis datos en el formulario${referrer ? ` (me recomendó ${referrer.name})` : ''}. ¡Quedo a disposición!`)}`}
-                target="_blank" rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-                <span>💬</span> Escribirle al negocio
-              </a>
-            )}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="font-bold text-slate-900 mb-1">Solicitá tu servicio</h2>
-            <p className="text-xs text-slate-400 mb-4">
-              Completá tus datos y te llamamos para coordinar.
-              {config.referralReferredDiscount > 0 && ` Recibís ${config.referralReferredDiscount}% de descuento en tu primera factura.`}
-            </p>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <input value={form.name} onChange={e => set('name', e.target.value)} required
-                placeholder="Nombre completo *"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} type="tel"
-                placeholder="Teléfono"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <input value={form.address} onChange={e => set('address', e.target.value)}
-                placeholder="Dirección de entrega"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-              <button type="submit" disabled={state === 'sending' || !form.name.trim()}
-                className="w-full py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-colors">
-                {state === 'sending' ? 'Enviando...' : 'Quiero el servicio'}
-              </button>
-            </form>
-          </div>
-        )}
+    <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 100px', fontFamily: GFF }}>
+      <div style={{ padding: '6px 4px 16px' }}>
+        <div style={{ fontSize: 12, color: G.muted, fontWeight: 500, marginBottom: 2 }}>Programa Glaciar</div>
+        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.6 }}>Referidos</div>
       </div>
+
+      {/* Hero */}
+      <div style={{ background: `linear-gradient(170deg,${G.accentDeep} 0%,#0A2433 100%)`, color: '#fff', borderRadius: 22, padding: 20, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -40, right: -40, opacity: 0.15, color: '#fff' }}>
+          <VI.drop size={200} w={0} filled/>
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, textTransform: 'uppercase', opacity: 0.7 }}>Invitá y ganan los dos</div>
+          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 8, lineHeight: 1.1 }}>
+            Tu agua,<br/>también para tus amigos.
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 8, lineHeight: 1.45, maxWidth: 260 }}>
+            Compartí tu código. Ellos arrancan con {referredDiscount}% off, vos sumás {fmt(referrerReward)} de crédito.
+          </div>
+        </div>
+      </div>
+
+      {/* Rewards row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+        <GCard style={{ padding: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase' }}>Para vos</div>
+          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 6, color: G.success, fontVariantNumeric: 'tabular-nums' }}>{fmt(referrerReward)}</div>
+          <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>crédito por referido</div>
+        </GCard>
+        <GCard style={{ padding: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase' }}>Para tu amigo</div>
+          <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 6, color: G.accent, fontVariantNumeric: 'tabular-nums' }}>{referredDiscount}%</div>
+          <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>off en el primer pedido</div>
+        </GCard>
+      </div>
+
+      {/* Code card */}
+      {code && (
+        <GCard style={{ marginTop: 8, padding: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Tu código</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: G.surfaceHi, borderRadius: 12, border: `1px dashed ${G.hairline}` }}>
+            <div style={{ flex: 1, fontSize: 18, fontWeight: 700, letterSpacing: 0.5, fontFamily: 'ui-monospace,"SF Mono",Menlo,monospace' }}>{code}</div>
+            <button onClick={handleCopy} style={{
+              padding: '8px 14px', background: copied ? G.success : G.accent, color: '#fff',
+              border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 500, fontFamily: GFF,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all .2s',
+            }}>
+              {copied ? <><VI.check size={12} w={2.4}/> Copiado</> : 'Copiar'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+            <button onClick={handleWhatsApp} style={{
+              flex: 1, padding: '11px 0', background: G.whatsapp, color: '#fff',
+              border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500,
+              fontFamily: GFF, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}>
+              <WhatsAppSVG/> WhatsApp
+            </button>
+            <button onClick={handleShare} style={{
+              padding: '11px 14px', background: G.surfaceHi, color: G.text,
+              border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 500,
+              fontFamily: GFF, cursor: 'pointer',
+            }}>Más opciones</button>
+          </div>
+        </GCard>
+      )}
+
+      {/* Prize progress */}
+      {prizeEvery > 0 && (
+        <GCard style={{ marginTop: 8, padding: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase' }}>Premio del mes</div>
+              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.3, marginTop: 4 }}>Premio a los {prizeEvery} referidos</div>
+              <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>
+                Llevás <strong style={{ color: G.text }}>{referrals.length}</strong> · te faltan <strong style={{ color: G.text }}>{Math.max(0, prizeEvery - referrals.length)}</strong>
+              </div>
+            </div>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: G.accentSoft, color: G.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <VI.gift size={20} w={1.8}/>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 5, marginTop: 14 }}>
+            {Array.from({ length: prizeEvery }).map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 6, borderRadius: 3, background: i < referrals.length ? G.accent : G.surfaceHi }}/>
+            ))}
+          </div>
+        </GCard>
+      )}
+
+      {/* Referred list */}
+      {referrals.length > 0 && (
+        <>
+          <GSection right={<span style={{ fontSize: 13, color: G.muted }}>{referrals.length} activos</span>}>Tus referidos</GSection>
+          <GCard style={{ padding: 0, overflow: 'hidden' }}>
+            {referrals.map((r, i) => (
+              <div key={r.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                borderBottom: i < referrals.length - 1 ? `0.5px solid ${G.hairline}` : 'none',
+              }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi, color: G.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>
+                  {(r.name || '?')[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, letterSpacing: -0.1 }}>{r.name}</div>
+                  <div style={{ fontSize: 12, color: G.muted, marginTop: 1 }}>{r.city || ''}</div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: G.success, fontVariantNumeric: 'tabular-nums' }}>+{fmt(referrerReward)}</span>
+              </div>
+            ))}
+          </GCard>
+        </>
+      )}
     </div>
   );
 }
 
-// ─── Root ─────────────────────────────────────────────────────────────────────────────
-function ClientPortalRoot() {
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+function ClientPortalApp({ client, config }) {
+  const [tab, setTab] = React.useState('home');
+
+  const showStore = !!config.storeEnabled;
+  const showReferrals = !!config.referralsEnabled;
+
+  const handleTab = (t) => {
+    window.scrollTo(0, 0);
+    setTab(t);
+  };
+
+  return (
+    <div style={{
+      width: '100%', minHeight: '100%',
+      background: G.bg, color: G.text, fontFamily: GFF,
+      maxWidth: 480, margin: '0 auto', position: 'relative',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        body { background: ${G.bg}; }
+        ::-webkit-scrollbar { display: none; }
+        input[type=range] { accent-color: ${G.accent}; }
+        textarea { font-family: ${GFF}; }
+        button { font-family: ${GFF}; }
+        @keyframes gFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'gFade .26s ease' }} key={tab}>
+        {tab === 'home'      && <PortalHome      client={client} config={config} onTab={handleTab}/>}
+        {tab === 'order'     && <PortalOrder     client={client} config={config} onDone={() => handleTab('orders')}/>}
+        {tab === 'orders'    && <PortalOrders    client={client} config={config} onTab={handleTab}/>}
+        {tab === 'store'     && showStore && <PortalStore client={client} config={config} onTab={handleTab}/>}
+        {tab === 'invoices'  && <PortalInvoices  client={client} config={config} onTab={handleTab}/>}
+        {tab === 'referrals' && showReferrals && <PortalReferrals client={client} config={config} onTab={handleTab}/>}
+      </div>
+
+      <GTabBar tab={tab} onTab={handleTab} showStore={showStore} showReferrals={showReferrals}/>
+    </div>
+  );
+}
+
+// ─── Root (token auth) ────────────────────────────────────────────────────────
+
+function ClientPortalPage() {
   const [state, setState] = React.useState('loading');
   const [client, setClient] = React.useState(null);
-  const [config, setConfig] = React.useState({});
-  const [refCode, setRefCode] = React.useState('');
+  const [config, setConfig] = React.useState(null);
+  const [error, setError] = React.useState('');
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref');
-
-    // Token: URL tiene prioridad, sino lee localStorage (para PWA instalada)
     const token = params.get('token') || localStorage.getItem('nativa_client_token');
-
-    if (!token && ref) {
-      setRefCode(ref);
-      DataService.getConfig().then(cfg => { setConfig(cfg); setState('referral'); });
-      return;
-    }
-    if (!token) { setState('no-token'); return; }
-
-    Promise.all([
-      DataService.getClientByToken(token),
-      DataService.getConfig(),
-    ]).then(([c, cfg]) => {
-      setConfig(cfg);
-      if (!c) { setState('not-found'); return; }
-      setClient(c);
-      setState('ready');
-    }).catch(() => setState('not-found'));
+    if (!token) { setState('error'); setError('Acceso inválido. Usá el link personalizado que te enviamos.'); return; }
+    localStorage.setItem('nativa_client_token', token);
+    Promise.all([DataService.getClientByToken(token), DataService.getConfig()])
+      .then(([cl, cfg]) => {
+        if (!cl) { setState('error'); setError('El link no es válido o expiró.'); return; }
+        setClient(cl); setConfig(cfg); setState('ready');
+      })
+      .catch(err => { setState('error'); setError('Error de conexión. Intentá de nuevo.'); });
   }, []);
 
-  if (state === 'loading')  return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
-  if (state === 'referral') return <ReferralLanding refCode={refCode} config={config} />;
-  if (state === 'no-token') return <NoAccess />;
-  if (state === 'not-found') return <ClientNotFound />;
-  return <ClientPortalApp client={client} config={config} />;
+  if (state === 'loading') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: GFF, background: G.bg, color: G.text, gap: 16 }}>
+        <div style={{ color: G.accent }}><VI.drop size={40} w={1.6} filled/></div>
+        <div style={{ fontSize: 14, color: G.muted, fontWeight: 500 }}>Cargando tu portal...</div>
+      </div>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: GFF, background: G.bg, color: G.text, padding: 32, textAlign: 'center', gap: 16 }}>
+        <div style={{ width: 56, height: 56, borderRadius: 14, background: G.surfaceHi, color: G.dim, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <VI.drop size={24} w={2}/>
+        </div>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: -0.4 }}>Sin acceso</div>
+          <div style={{ fontSize: 14, color: G.muted, marginTop: 8, maxWidth: 280, lineHeight: 1.5 }}>{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return <ClientPortalApp client={client} config={config}/>;
 }
 
-const rootEl = document.getElementById('root');
-const root = ReactDOM.createRoot(rootEl);
-root.render(<ClientPortalRoot />);
+// ─── Mount ────────────────────────────────────────────────────────────────────
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  React.createElement(ClientPortalPage)
+);

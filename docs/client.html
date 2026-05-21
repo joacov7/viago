@@ -2,45 +2,31 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>NATIVA — Portal del cliente</title>
-  <meta name="theme-color" content="#2563EB">
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0091B8">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="NATIVA">
-  <link rel="manifest" href="./manifest-client.json">
 
   <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
   <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: #f8fafc; -webkit-font-smoothing: antialiased; }
+    html, body { height: 100%; margin: 0; padding: 0; background: #fff; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
     #root { height: 100%; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .animate-spin { animation: spin 1s linear infinite; }
+    ::-webkit-scrollbar { display: none; }
+    * { -webkit-tap-highlight-color: transparent; }
+    @keyframes gPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes gFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   </style>
-
-  <script>
-    // Persist token so PWA works after installation (without URL param)
-    const urlToken = new URLSearchParams(window.location.search).get('token');
-    if (urlToken) localStorage.setItem('nativa_client_token', urlToken);
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw-client.js').catch(() => {});
-    }
-  </script>
 
   <div id="root"></div>
 
-  <script type="text/babel" src="utils/supabaseClient.js"></script>
-  <script type="text/babel" src="utils/dataService.js"></script>
-  <script type="text/babel" src="utils/icons.js"></script>
-  <script type="text/babel" src="components/ClientPortal.js"></script>
+  <script type="text/babel" src="utils/supabaseClient.js?v=4"></script>
+  <script type="text/babel" src="utils/dataService.js?v=4"></script>
+  <script type="text/babel" src="components/ClientPortal.js?v=4"></script>
 </head>
 <body></body>
 </html>
