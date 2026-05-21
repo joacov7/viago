@@ -154,13 +154,13 @@ function Config({ onConfigChange }) {
                 <h3 className="font-semibold text-slate-900 text-base pb-3 border-b border-gray-100">Sistema de puntos y referidos</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField label="Puntos por entrega" hint="Puntos que gana el cliente por cada pedido entregado">
-                    <input type="number" value={config.pointsPerOrder || 10} onChange={e => set('pointsPerOrder', parseInt(e.target.value))} className={inputCls()} min="0" />
+                    <input type="number" value={config.pointsPerOrder ?? 10} onChange={e => set('pointsPerOrder', e.target.value === '' ? null : parseInt(e.target.value))} className={inputCls()} min="0" />
                   </FormField>
                   <FormField label="Puntos para premio" hint="Cantidad de puntos necesarios para obtener un premio">
-                    <input type="number" value={config.pointsForReward || 100} onChange={e => set('pointsForReward', parseInt(e.target.value))} className={inputCls()} min="1" />
+                    <input type="number" value={config.pointsForReward ?? 100} onChange={e => set('pointsForReward', e.target.value === '' ? null : parseInt(e.target.value))} className={inputCls()} min="1" />
                   </FormField>
                   <FormField label="Puntos por referido" hint="Puntos que recibe quien trajo al nuevo cliente">
-                    <input type="number" value={config.referralBonus || 50} onChange={e => set('referralBonus', parseInt(e.target.value))} className={inputCls()} min="0" />
+                    <input type="number" value={config.referralBonus ?? 50} onChange={e => set('referralBonus', e.target.value === '' ? null : parseInt(e.target.value))} className={inputCls()} min="0" />
                   </FormField>
                   <FormField label="Producto gratuito (premio)" hint="ID del producto que se entrega como premio">
                     <select value={config.freeProductId || ''} onChange={e => set('freeProductId', parseInt(e.target.value))} className={inputCls()}>
@@ -198,13 +198,13 @@ function Config({ onConfigChange }) {
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField label="Premio al referidor ($)" hint="Crédito en cuenta corriente que recibe quien trajo el cliente">
-                          <input type="number" value={config.referralReferrerReward || 500}
-                            onChange={e => set('referralReferrerReward', parseFloat(e.target.value))}
+                          <input type="number" value={config.referralReferrerReward ?? 500}
+                            onChange={e => set('referralReferrerReward', e.target.value === '' ? null : parseFloat(e.target.value))}
                             className={inputCls()} min="0" step="50" />
                         </FormField>
                         <FormField label="Descuento al referido (%)" hint="% del total de su primera factura que se acredita en su cuenta">
-                          <input type="number" value={config.referralReferredDiscount || 10}
-                            onChange={e => set('referralReferredDiscount', parseFloat(e.target.value))}
+                          <input type="number" value={config.referralReferredDiscount ?? 10}
+                            onChange={e => set('referralReferredDiscount', e.target.value === '' ? null : parseFloat(e.target.value))}
                             className={inputCls()} min="0" max="100" />
                         </FormField>
                       </div>
@@ -224,13 +224,13 @@ function Config({ onConfigChange }) {
                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Premio por cantidad de referidos</p>
                         <div className="grid grid-cols-2 gap-3">
                           <FormField label="Premio cada N referidos" hint="Cantidad de referidos para recibir el premio. 0 = desactivado">
-                            <input type="number" value={config.referralPrizeEvery || 0}
-                              onChange={e => set('referralPrizeEvery', parseInt(e.target.value) || 0)}
+                            <input type="number" value={config.referralPrizeEvery ?? 0}
+                              onChange={e => set('referralPrizeEvery', e.target.value === '' ? null : parseInt(e.target.value))}
                               className={inputCls()} min="0" step="1" placeholder="0" />
                           </FormField>
                           <FormField label="Puntos del premio" hint="Puntos extra que recibe el referidor al alcanzar el hito">
-                            <input type="number" value={config.referralPrizePts || 200}
-                              onChange={e => set('referralPrizePts', parseInt(e.target.value) || 0)}
+                            <input type="number" value={config.referralPrizePts ?? 200}
+                              onChange={e => set('referralPrizePts', e.target.value === '' ? null : parseInt(e.target.value))}
                               className={inputCls()} min="0" step="50" />
                           </FormField>
                         </div>
@@ -242,8 +242,8 @@ function Config({ onConfigChange }) {
                       </div>
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200 text-sm text-green-800">
                         <strong>Ejemplo:</strong> Juan refiere a María. María paga su primera factura de $3.000.
-                        María recibe <strong>${((config.referralReferredDiscount || 10) / 100 * 3000).toFixed(0)} de crédito</strong>.
-                        Juan recibe <strong>${config.referralReferrerReward || 500} de crédito</strong> en su cuenta corriente.
+                        María recibe <strong>${(((config.referralReferredDiscount ?? 10) / 100) * 3000).toFixed(0)} de crédito</strong>.
+                        Juan recibe <strong>${config.referralReferrerReward ?? 500} de crédito</strong> en su cuenta corriente.
                       </div>
                     </div>
                   )}
