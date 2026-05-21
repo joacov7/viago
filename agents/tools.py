@@ -222,13 +222,14 @@ class GenerateWAOfferTool(BaseTool):
         data = json.loads(input_data)
         clients = data.get("clients", [])
         message = data.get("message", "")
+        import urllib.parse
         links = []
         for c in clients:
             phone = (c.get("phone") or "").replace("+", "").replace(" ", "").replace("-", "")
             if not phone:
                 continue
             personalized = message.replace("{nombre}", c["name"].split()[0])
-            url = f"https://wa.me/{phone}?text={personalized}"
+            url = f"https://wa.me/{phone}?text={urllib.parse.quote(personalized)}"
             links.append({"cliente": c["name"], "link": url})
         return json.dumps({"cantidad": len(links), "mensajes": links}, ensure_ascii=False)
 

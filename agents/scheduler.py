@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -137,7 +137,7 @@ def check_conversions():
 def check_pending_campaigns():
     """Run every minute: fire any campaigns whose scheduled_at has passed."""
     db = _db()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     due = db.table("campaigns").select("id").eq("status", "pending").lte("scheduled_at", now).execute().data
     for row in due:
         logger.info("Firing campaign %s", row["id"])

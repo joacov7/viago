@@ -619,9 +619,10 @@ function PayCollectModal({ order, onClose, onConfirm }) {
   };
 
   const methods = [
-    { id: 'efectivo', label: 'Efectivo', emoji: '💵' },
-    { id: 'transferencia', label: 'Transfer.', emoji: '🏦' },
-    { id: 'mercadopago', label: 'MP', emoji: '💳' },
+    { id: 'efectivo',         label: 'Efectivo',  emoji: '💵' },
+    { id: 'transferencia',    label: 'Transfer.',  emoji: '🏦' },
+    { id: 'mercadopago',      label: 'MP',         emoji: '💳' },
+    { id: 'cuenta_corriente', label: 'Cta. Cte.',  emoji: '📋' },
   ];
 
   return (
@@ -694,7 +695,7 @@ function PayCollectModal({ order, onClose, onConfirm }) {
         </div>
 
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Forma de pago</p>
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {methods.map(m => (
             <button key={m.id} onClick={() => setMethod(m.id)}
               className="py-4 rounded-2xl flex flex-col items-center gap-1.5 transition-all active:scale-95 font-bold"

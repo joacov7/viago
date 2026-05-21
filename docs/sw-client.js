@@ -1,11 +1,10 @@
-const CACHE = 'nativa-client-v1';
+const CACHE = 'nativa-client-v4';
 const STATIC = [
   './client.html',
   './manifest-client.json',
-  './utils/supabaseClient.js',
-  './utils/dataService.js',
-  './utils/icons.js',
-  './components/ClientPortal.js',
+  './utils/supabaseClient.js?v=4',
+  './utils/dataService.js?v=4',
+  './components/ClientPortal.js?v=4',
 ];
 
 self.addEventListener('install', e => {

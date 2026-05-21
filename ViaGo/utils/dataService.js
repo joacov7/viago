@@ -139,14 +139,13 @@ const DataService = {
 
   // ─── CLIENTS ─────────────────────────────────────────────────────────────
   async _genClientCode() {
-    const { data } = await this._sb.from('clients').select('code').order('id', { ascending: false }).limit(1);
-    const maxNum = data && data[0] ? parseInt((data[0].code || '').replace('NAT-', '') || '0') : 0;
-    return `NAT-${String(maxNum + 1).padStart(3, '0')}`;
+    const { data } = await this._sb.rpc('next_client_code');
+    return data || `NAT-${Date.now()}`;
   },
   _genReferralCode(code) { return code.replace('NAT-', '') + '-REF'; },
 
   async getClients(includeInactive = false) {
-    let q = this._sb.from('clients').select('*').order('name');
+    let q = this._sb.from('clients').select('*').order('name').limit(5000);
     if (!includeInactive) q = q.eq('active', true);
     const { data } = await q;
     return this._jsMany(data);
@@ -211,24 +210,22 @@ const DataService = {
     await this._sb.from('clients').update({ active: false }).eq('id', id);
   },
   async getInactiveClients(days = 21) {
-    const [clients, { data: orders }] = await Promise.all([
+    const cutoff = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+    const [clients, { data: recentOrders }] = await Promise.all([
       this.getClients(),
-      this._sb.from('orders').select('client_id, created_at').order('created_at', { ascending: false }),
+      this._sb.from('orders').select('client_id').gte('delivery_date', cutoff),
     ]);
-    const cutoff = new Date(Date.now() - days * 86400000);
-    return clients.map(c => {
-      const last = (orders || []).find(o => o.client_id === c.id);
-      const lastDate = last ? new Date(last.created_at) : null;
-      return { ...c, lastOrderDate: lastDate?.toISOString() || null, daysSince: lastDate ? Math.floor((Date.now() - lastDate) / 86400000) : null };
-    }).filter(c => !c.lastOrderDate || new Date(c.lastOrderDate) < cutoff);
+    const activeIds = new Set((recentOrders || []).map(o => o.client_id));
+    return clients
+      .filter(c => !activeIds.has(c.id))
+      .map(c => ({ ...c, lastOrderDate: null, daysSince: null }));
   },
   async adjustClientBalance(clientId, amount, description) {
-    const client = await this.getClient(clientId);
-    const newBalance = parseFloat(((client.balance || 0) + amount).toFixed(2));
-    const { error } = await this._sb.from('clients').update({ balance: newBalance }).eq('id', clientId);
+    const { data, error } = await this._sb.rpc('adjust_balance', {
+      p_client_id: parseInt(clientId), p_amount: amount, p_description: description,
+    });
     if (error) throw new Error(error.message);
-    await this._sb.from('balance_movements').insert({ client_id: clientId, amount, description });
-    return newBalance;
+    return data;
   },
   async getClientBalanceMovements(clientId) {
     const { data } = await this._sb.from('balance_movements').select('*').eq('client_id', clientId).order('created_at', { ascending: false }).limit(20);
@@ -284,7 +281,7 @@ const DataService = {
 
   // ─── ORDERS ──────────────────────────────────────────────────────────────
   async getOrders() {
-    const { data } = await this._sb.from('orders').select('*').order('created_at', { ascending: false });
+    const { data } = await this._sb.from('orders').select('*').order('created_at', { ascending: false }).limit(5000);
     return this._jsMany(data);
   },
   async getOrder(id) {
@@ -360,12 +357,11 @@ const DataService = {
 
   // ─── INVOICES ────────────────────────────────────────────────────────────
   async _genInvoiceNumber() {
-    const { data } = await this._sb.from('invoices').select('number').order('id', { ascending: false }).limit(1);
-    const maxNum = data && data[0] ? parseInt((data[0].number || '').replace('FAC-', '') || '0') : 0;
-    return `FAC-${String(maxNum + 1).padStart(4, '0')}`;
+    const { data } = await this._sb.rpc('next_invoice_number');
+    return data || `FAC-${Date.now()}`;
   },
   async getInvoices() {
-    const { data } = await this._sb.from('invoices').select('*').order('created_at', { ascending: false });
+    const { data } = await this._sb.from('invoices').select('*').order('created_at', { ascending: false }).limit(5000);
     return this._jsMany(data);
   },
   async getInvoice(id) {
@@ -416,25 +412,17 @@ const DataService = {
     return this._jsMany(data);
   },
   async addPoints(clientId, points, action, description) {
-    const { data: client } = await this._sb.from('clients').select('points').eq('id', clientId).single();
-    if (client) {
-      const newPoints = (client.points || 0) + points;
-      await this._sb.from('clients').update({ points: newPoints }).eq('id', clientId);
-      await this._sb.from('points_history').insert({
-        client_id: parseInt(clientId), points, action, description,
-      });
-    }
+    const { error } = await this._sb.rpc('add_points', {
+      p_client_id: parseInt(clientId), p_points: points, p_action: action, p_description: description,
+    });
+    if (error) throw new Error(error.message);
   },
   async redeemPoints(clientId, points, description) {
-    const { data: client } = await this._sb.from('clients').select('points').eq('id', clientId).single();
-    if (client && client.points >= points) {
-      await this._sb.from('clients').update({ points: client.points - points }).eq('id', clientId);
-      await this._sb.from('points_history').insert({
-        client_id: parseInt(clientId), points: -points, action: 'redeemed', description,
-      });
-      return true;
-    }
-    return false;
+    const { data, error } = await this._sb.rpc('redeem_points', {
+      p_client_id: parseInt(clientId), p_points: points, p_description: description,
+    });
+    if (error) throw new Error(error.message);
+    return data === true;
   },
 
   // ─── PROMOTIONS ──────────────────────────────────────────────────────────

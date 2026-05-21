@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
@@ -17,8 +18,15 @@ logger = logging.getLogger(__name__)
 OWNER_ID = int(os.getenv("TELEGRAM_OWNER_ID", "0"))
 executor = ThreadPoolExecutor(max_workers=2)
 
-# Stores pending approved actions: chat_id -> {request, plan}
-pending_actions: dict = {}
+PENDING_TTL = 600  # seconds before a pending action expires
+pending_actions: dict = {}  # chat_id -> {request, plan, ts}
+
+
+def _cleanup_expired_actions():
+    now = time.time()
+    expired = [k for k, v in pending_actions.items() if now - v.get("ts", 0) > PENDING_TTL]
+    for k in expired:
+        del pending_actions[k]
 
 
 def _run_crew(text: str) -> str:
@@ -81,11 +89,14 @@ async def _handle(update: Update, text: str):
     thinking = await update.message.reply_text("⏳ Consultando con el equipo...")
     loop = asyncio.get_event_loop()
     try:
-        result = await loop.run_in_executor(executor, _run_crew, text)
+        result = await asyncio.wait_for(
+            loop.run_in_executor(executor, _run_crew, text), timeout=90
+        )
         await thinking.delete()
 
         if _requires_action(result):
-            pending_actions[chat_id] = {"request": text, "plan": result}
+            _cleanup_expired_actions()
+            pending_actions[chat_id] = {"request": text, "plan": result, "ts": time.time()}
             keyboard = InlineKeyboardMarkup([[
                 InlineKeyboardButton("✅ Sí, ejecutar", callback_data="confirm"),
                 InlineKeyboardButton("❌ No", callback_data="reject"),
@@ -94,6 +105,9 @@ async def _handle(update: Update, text: str):
         else:
             await update.message.reply_text(result, parse_mode="Markdown")
 
+    except asyncio.TimeoutError:
+        logger.error("Crew timeout after 90s")
+        await thinking.edit_text("⏱ El equipo tardó demasiado. Intentá de nuevo en unos minutos.")
     except Exception as e:
         logger.exception("Crew error")
         await thinking.edit_text(f"❌ Error: {e}")
