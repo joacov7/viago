@@ -1222,12 +1222,17 @@ function PortalReferrals({ client, config, onTab, onAvatarClick }) {
   }, [client.id]);
 
   const code = client.referralCode || '';
-  const link = DataService.clientPortalUrl ? DataService.clientPortalUrl(client.accessToken) : '';
+  const link = client.accessToken
+    ? `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}client.html?token=${client.accessToken}`
+    : '';
   const prizeEvery = config.referralPrizeEvery || 5;
   const referrerReward = config.referralReferrerReward || config.referralBonus || 500;
   const referredDiscount = config.referralReferredDiscount || 10;
   const shareMsg = (config.referralShareMessage || 'Hola! Usá mi código {codigo} y conseguís {desc}% off. {link}')
-    .replace('{codigo}', code).replace('{desc}', referredDiscount).replace('{link}', link)
+    .replace('{nombre}', client.name?.split(' ')[0] || client.name || '')
+    .replace('{codigo}', code)
+    .replace('{desc}', referredDiscount)
+    .replace('{link}', link)
     .replace('{empresa}', config.companyName || 'NATIVA');
 
   const handleCopy = () => {
