@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NATIVA — Repartidor</title>
+  <meta name="theme-color" content="#0f2142">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; background: #0f2142; }
+    #root { height: 100%; }
+    * { -webkit-tap-highlight-color: transparent; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
+    * { transition-property: color, background-color, border-color, opacity, transform;
+        transition-timing-function: cubic-bezier(0.4,0,0.2,1); transition-duration: 150ms; }
+  </style>
+
+  <div id="root"></div>
+
+  <script type="text/babel" src="utils/supabaseClient.js?v=3"></script>
+  <script type="text/babel" src="utils/dataService.js?v=3"></script>
+  <script type="text/babel" src="utils/icons.js?v=3"></script>
+  <script type="text/babel" src="utils/whatsappService.js?v=3"></script>
+  <script type="text/babel" src="utils/geoService.js?v=3"></script>
+  <script type="text/babel" src="components/Sidebar.js?v=3"></script>
+  <script type="text/babel" src="components/Delivery.js?v=3"></script>
+
+  <script type="text/babel">
+
+    function PinScreen({ onSubmit }) {
+      const [pin, setPin] = React.useState('');
+      const [checking, setChecking] = React.useState(false);
+      const [error, setError] = React.useState(false);
+
+      const append = async (d) => {
+        if (checking || pin.length >= 4) return;
+        const next = pin + String(d);
+        setPin(next);
+        setError(false);
+        if (next.length === 4) {
+          setChecking(true);
+          const ok = await onSubmit(next);
+          if (!ok) setError(true);
+          setChecking(false);
+          setPin('');
+        }
+      };
+
+      const del = () => { if (!checking) { setPin(p => p.slice(0, -1)); setError(false); } };
+
+      const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, '⌫'];
+
+      return (
+        <div style={{
+          background: '#0f2142', minHeight: '100vh', display: 'flex',
+          flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', padding: 24,
+        }}>
+          <div style={{ textAlign: 'center', color: '#fff', marginBottom: 40 }}>
+            <div style={{ fontSize: 52, marginBottom: 10 }}>📦</div>
+            <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: -0.5 }}>NATIVA</div>
+            <div style={{ color: '#93b4dd', fontSize: 14, marginTop: 4 }}>App del repartidor</div>
+          </div>
+
+          <div style={{
+            background: 'rgba(255,255,255,0.08)', borderRadius: 24,
+            padding: '32px 28px', width: '100%', maxWidth: 300,
+          }}>
+            <div style={{
+              color: error ? '#f87171' : '#93b4dd',
+              fontSize: 11, fontWeight: 600, textAlign: 'center',
+              marginBottom: 22, letterSpacing: 2, textTransform: 'uppercase',
+            }}>
+              {error ? 'PIN incorrecto' : checking ? 'Verificando…' : 'Ingresá tu PIN'}
+            </div>
+
+            {/* Dots */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 14, marginBottom: 32 }}>
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} style={{
+                  width: 14, height: 14, borderRadius: '50%',
+                  background: error
+                    ? 'rgba(248,113,113,0.55)'
+                    : pin.length > i ? '#38bdf8' : 'rgba(255,255,255,0.2)',
+                }}/>
+              ))}
+            </div>
+
+            {/* Numpad */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {keys.map((d, i) => {
+                if (d === null) return <div key={i}/>;
+                return (
+                  <button key={i}
+                    onClick={() => d === '⌫' ? del() : append(d)}
+                    style={{
+                      background: 'rgba(255,255,255,0.10)', border: 'none', color: '#fff',
+                      fontSize: d === '⌫' ? 20 : 24, fontWeight: 600,
+                      padding: '18px 0', borderRadius: 14, cursor: 'pointer',
+                      WebkitUserSelect: 'none', userSelect: 'none',
+                    }}
+                    onPointerDown={e => e.currentTarget.style.background = 'rgba(255,255,255,0.22)'}
+                    onPointerUp={e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'}
+                    onPointerLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.10)'}
+                  >{d}</button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function DriverApp() {
+      const [phase, setPhase] = React.useState('pin'); // pin | loading | ready
+      const [cfg, setCfg] = React.useState(null);
+      const [orders, setOrders] = React.useState([]);
+      const [invoices, setInvoices] = React.useState([]);
+      const [date] = React.useState(DataService.today());
+      const [showCobro, setShowCobro] = React.useState(null);
+
+      const loadData = async () => {
+        const [allOrders, allClients, allZones, allInvoices] = await Promise.all([
+          DataService.getOrdersByDate(date),
+          DataService.getClients(true),
+          DataService.getZones(),
+          DataService.getInvoices(),
+        ]);
+        const enriched = allOrders.map(o => {
+          const client = allClients.find(c => c.id === o.clientId) || {};
+          const zone = allZones.find(z => z.id === client.zoneId) || {};
+          return { ...o, client, zone };
+        });
+        setOrders(enriched);
+        setInvoices(allInvoices);
+      };
+
+      const handlePin = async (entered) => {
+        const config = await DataService.getConfig();
+        if (entered !== String(config.driverPin || '0000')) return false;
+        setCfg(config);
+        setPhase('loading');
+        await loadData();
+        setPhase('ready');
+        return true;
+      };
+
+      const handleStatus = async (id, status) => {
+        await DataService.updateOrder(id, { status });
+        await loadData();
+      };
+
+      if (phase === 'pin') return <PinScreen onSubmit={handlePin}/>;
+
+      if (phase === 'loading') return (
+        <div style={{
+          background: '#0f2142', minHeight: '100vh',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: '50%',
+            border: '2.5px solid rgba(255,255,255,0.15)',
+            borderTopColor: '#38bdf8',
+            animation: 'spin 0.8s linear infinite',
+          }}/>
+        </div>
+      );
+
+      const pending = orders.filter(o => o.status === 'pendiente').length;
+      const delivered = orders.filter(o => o.status === 'entregado').length;
+
+      return (
+        <>
+          <DriverMode
+            date={date}
+            orders={orders}
+            invoices={invoices}
+            onBack={() => setPhase('pin')}
+            onStatus={handleStatus}
+            onCobro={setShowCobro}
+            pending={pending}
+            delivered={delivered}
+          />
+          <CobroModal
+            order={showCobro}
+            invoices={invoices}
+            onClose={() => { setShowCobro(null); loadData(); }}
+          />
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(DriverApp));
+  </script>
+</head>
+<body></body>
+</html>
