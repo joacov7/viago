@@ -1348,7 +1348,40 @@ function PortalReferrals({ client, config, onTab, onAvatarClick }) {
 
 // ─── Mi cuenta ────────────────────────────────────────────────────────────────
 
-function PortalAccount({ client, config, onClose, onTab }) {
+function PortalAccount({ client, config, onClose, onTab, onClientUpdate }) {
+  const [editing, setEditing] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+  const [form, setForm] = React.useState({ name: '', phone: '', address: '' });
+
+  const startEdit = () => {
+    setForm({ name: client.name || '', phone: client.phone || '', address: client.address || '' });
+    setSaveError('');
+    setEditing(true);
+  };
+
+  const cancelEdit = () => { setEditing(false); setSaveError(''); };
+
+  const saveEdit = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true); setSaveError('');
+    try {
+      const updated = await DataService.updateClient(client.id, {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+      });
+      onClientUpdate && onClientUpdate({ ...client, ...updated });
+      setEditing(false);
+    } catch (e) {
+      setSaveError(e.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fldStyle = { width: '100%', padding: '11px 13px', border: `0.5px solid ${G.hairline}`, borderRadius: 10, background: G.bg, color: G.text, fontFamily: GFF, fontSize: 15, outline: 'none' };
+
   const initial = (client.name || '?')[0].toUpperCase();
   const pts = client.points || 0;
   const ptsForReward = config.pointsForReward || 100;
@@ -1374,58 +1407,97 @@ function PortalAccount({ client, config, onClose, onTab }) {
       eyebrow={client.name || ''}
       showAvatar={false}
       rightAccessory={
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi, border: 'none', color: G.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, fontFamily: GFF }}>✕</button>
+        editing
+          ? <button onClick={cancelEdit} style={{ width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi, border: 'none', color: G.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, fontFamily: GFF }}>✕</button>
+          : <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', background: G.surfaceHi, border: 'none', color: G.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, fontFamily: GFF }}>✕</button>
       }
       activeTab="home"
       onTab={onTab}
     >
-      {/* Profile card */}
-      <GCard style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.text, color: G.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, fontFamily: GFF }}>
-          {initial}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.2 }}>{client.name || '—'}</div>
-          {client.phone && <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>{client.phone}</div>}
-          {client.email && <div style={{ fontSize: 12, color: G.muted }}>{client.email}</div>}
-        </div>
-      </GCard>
+      {editing ? (
+        <>
+          {/* Edit form */}
+          <GCard style={{ padding: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Nombre completo</label>
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={fldStyle} placeholder="Tu nombre"/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Teléfono</label>
+                <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} style={fldStyle} placeholder="+54 9 …"/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Dirección</label>
+                <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} style={fldStyle} placeholder="Calle y número"/>
+              </div>
+              {saveError && <div style={{ fontSize: 13, color: G.danger }}>{saveError}</div>}
+              <button onClick={saveEdit} disabled={saving || !form.name.trim()} style={{
+                marginTop: 4, padding: '13px', width: '100%',
+                background: (saving || !form.name.trim()) ? G.surfaceHi : G.text,
+                color: (saving || !form.name.trim()) ? G.dim : G.bg,
+                border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 600,
+                fontFamily: GFF, cursor: saving || !form.name.trim() ? 'default' : 'pointer',
+              }}>
+                {saving ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </div>
+          </GCard>
+        </>
+      ) : (
+        <>
+          {/* Profile card */}
+          <GCard style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: G.text, color: G.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 600, fontFamily: GFF }}>
+              {initial}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: -0.2 }}>{client.name || '—'}</div>
+              {client.phone && <div style={{ fontSize: 12, color: G.muted, marginTop: 2 }}>{client.phone}</div>}
+              {client.email && <div style={{ fontSize: 12, color: G.muted }}>{client.email}</div>}
+            </div>
+            <button onClick={startEdit} style={{ padding: '7px 14px', background: G.surfaceHi, border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 500, color: G.text, fontFamily: GFF, cursor: 'pointer' }}>
+              Editar
+            </button>
+          </GCard>
 
-      <GSection>Dirección de entrega</GSection>
-      <GCard style={{ padding: 0, overflow: 'hidden' }}>
-        <Row icoName="home" title={client.address || 'Sin dirección'} sub={client.city || ''} right={null}/>
-      </GCard>
+          <GSection>Dirección de entrega</GSection>
+          <GCard style={{ padding: 0, overflow: 'hidden' }}>
+            <Row icoName="home" title={client.address || 'Sin dirección'} sub={client.city || ''} right={null}/>
+          </GCard>
 
-      <GSection>NATIVA</GSection>
-      <GCard style={{ padding: 0, overflow: 'hidden' }}>
-        <Row icoName="star" title="Puntos Glaciar" sub={`${pts} pts · ${Math.max(0, ptsForReward - pts)} para tu próximo premio`} right={null}/>
-        {config.referralsEnabled && <><Sep/><Row icoName="gift" title="Referidos" sub={`Código: ${client.referralCode || '—'}`} onClick={() => onTab && onTab('referrals')}/></>}
-      </GCard>
+          <GSection>NATIVA</GSection>
+          <GCard style={{ padding: 0, overflow: 'hidden' }}>
+            <Row icoName="star" title="Puntos Glaciar" sub={`${pts} pts · ${Math.max(0, ptsForReward - pts)} para tu próximo premio`} right={null}/>
+            {config.referralsEnabled && <><Sep/><Row icoName="gift" title="Referidos" sub={`Código: ${client.referralCode || '—'}`} onClick={() => onTab && onTab('referrals')}/></>}
+          </GCard>
 
-      <GSection>Soporte</GSection>
-      <GCard style={{ padding: 0, overflow: 'hidden' }}>
-        <Row icoName="bell" title="Contactar por WhatsApp" onClick={() => {
-          const phone = config.whatsappNumber || '';
-          if (phone) window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
-        }}/>
-      </GCard>
+          <GSection>Soporte</GSection>
+          <GCard style={{ padding: 0, overflow: 'hidden' }}>
+            <Row icoName="bell" title="Contactar por WhatsApp" onClick={() => {
+              const phone = config.whatsappNumber || '';
+              if (phone) window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
+            }}/>
+          </GCard>
 
-      <div style={{ marginTop: 18 }}>
-        <button onClick={() => {
-          localStorage.removeItem('nativa_client_token');
-          window.location.reload();
-        }} style={{
-          width: '100%', padding: '14px', background: 'transparent', color: G.danger,
-          border: `0.5px solid ${G.hairline}`, borderRadius: 14, fontSize: 14, fontWeight: 500,
-          fontFamily: GFF, cursor: 'pointer',
-        }}>Cerrar sesión</button>
-      </div>
+          <div style={{ marginTop: 18 }}>
+            <button onClick={() => {
+              localStorage.removeItem('nativa_client_token');
+              window.location.reload();
+            }} style={{
+              width: '100%', padding: '14px', background: 'transparent', color: G.danger,
+              border: `0.5px solid ${G.hairline}`, borderRadius: 14, fontSize: 14, fontWeight: 500,
+              fontFamily: GFF, cursor: 'pointer',
+            }}>Cerrar sesión</button>
+          </div>
 
-      <div style={{ marginTop: 32, padding: '20px 0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-        <NativaLogoMark size={36} color={G.dim} strokeWidth={1.4}/>
-        <div style={{ fontSize: 9, color: G.dim, fontWeight: 600, letterSpacing: 2.5, textTransform: 'uppercase' }}>VOLVÉ A LO NATURAL</div>
-        <div style={{ fontSize: 10, color: G.dim, marginTop: 2 }}>v3.0 · Gualeguay, Entre Ríos</div>
-      </div>
+          <div style={{ marginTop: 32, padding: '20px 0 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <NativaLogoMark size={36} color={G.dim} strokeWidth={1.4}/>
+            <div style={{ fontSize: 9, color: G.dim, fontWeight: 600, letterSpacing: 2.5, textTransform: 'uppercase' }}>VOLVÉ A LO NATURAL</div>
+            <div style={{ fontSize: 10, color: G.dim, marginTop: 2 }}>v3.0 · Gualeguay, Entre Ríos</div>
+          </div>
+        </>
+      )}
     </GShell>
   );
 }
@@ -1579,7 +1651,8 @@ function ReferralSignup({ refCode }) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-function ClientPortalApp({ client, config }) {
+function ClientPortalApp({ client: initialClient, config }) {
+  const [client, setClient] = React.useState(initialClient);
   const [tab, setTab] = React.useState('home');
   const [prevTab, setPrevTab] = React.useState('home');
 
@@ -1615,7 +1688,7 @@ function ClientPortalApp({ client, config }) {
         {tab === 'store'     && <PortalStore     client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
         {tab === 'invoices'  && <PortalInvoices  client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
         {tab === 'referrals' && <PortalReferrals client={client} config={config} onTab={handleTab} onAvatarClick={openAccount}/>}
-        {tab === 'account'   && <PortalAccount   client={client} config={config} onClose={() => handleTab(prevTab)} onTab={handleTab}/>}
+        {tab === 'account'   && <PortalAccount   client={client} config={config} onClose={() => handleTab(prevTab)} onTab={handleTab} onClientUpdate={setClient}/>}
       </div>
     </div>
   );
