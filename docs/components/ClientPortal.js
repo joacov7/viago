@@ -1437,6 +1437,7 @@ function ReferralSignup({ refCode }) {
   const [config, setConfig] = React.useState(null);
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('');
+  const [address, setAddress] = React.useState('');
   const [phase, setPhase] = React.useState('loading'); // loading | form | saving | done | invalid | error
   const [errMsg, setErrMsg] = React.useState('');
 
@@ -1456,6 +1457,7 @@ function ReferralSignup({ refCode }) {
     try {
       await DataService.createClient({
         name: name.trim(), phone: phone.trim(),
+        address: address.trim() || undefined,
         referredBy: referrer.id, type: 'hogar',
         notes: `Registro por portal · referido por ${referrer.name}`,
       });
@@ -1468,7 +1470,7 @@ function ReferralSignup({ refCode }) {
 
   const company = config?.companyName || 'NATIVA';
   const referrerFirst = referrer?.name?.split(' ')[0] || 'un amigo';
-  const canSubmit = name.trim() && phone.trim() && phase !== 'saving';
+  const canSubmit = name.trim() && phone.trim() && address.trim() && phase !== 'saving';
 
   return (
     <div style={{
@@ -1518,6 +1520,11 @@ function ReferralSignup({ refCode }) {
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Teléfono</label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+54 9 …"
+                  style={{ width: '100%', padding: '13px 14px', border: `0.5px solid ${G.hairline}`, borderRadius: 12, background: G.surface, color: G.text, fontFamily: GFF, fontSize: 15, outline: 'none', transition: 'border-color .15s' }}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: G.muted, letterSpacing: 0.5, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Dirección</label>
+                <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Calle y número"
                   style={{ width: '100%', padding: '13px 14px', border: `0.5px solid ${G.hairline}`, borderRadius: 12, background: G.surface, color: G.text, fontFamily: GFF, fontSize: 15, outline: 'none', transition: 'border-color .15s' }}/>
               </div>
               <button onClick={handleSubmit} disabled={!canSubmit} style={{
