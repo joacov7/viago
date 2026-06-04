@@ -287,6 +287,27 @@ const DataService = {
   async deleteLead(id) {
     await this._sb.from('leads').delete().eq('id', id);
   },
+  async getCompetitors() {
+    const { data } = await this._sb.from('competitors').select('*').order('name', { ascending: true });
+    return this._jsMany(data);
+  },
+  async createCompetitor(data) {
+    const { data: row, error } = await this._sb.from('competitors').insert(this._db({
+      name: data.name, zone: data.zone || '', strength: data.strength || 'intermedio',
+      rating: data.rating || null, reviewsCount: data.reviewsCount || null,
+      weaknesses: data.weaknesses || '', notes: data.notes || '',
+    })).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(row);
+  },
+  async updateCompetitor(id, data) {
+    const { data: row, error } = await this._sb.from('competitors').update(this._db(data)).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(row);
+  },
+  async deleteCompetitor(id) {
+    await this._sb.from('competitors').delete().eq('id', id);
+  },
 
   // ─── ORDERS ──────────────────────────────────────────────────────────────
   async getOrders() {
