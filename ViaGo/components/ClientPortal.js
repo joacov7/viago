@@ -1366,7 +1366,7 @@ function PortalAccount({ client, config, onClose, onTab, onClientUpdate }) {
     if (!form.name.trim()) return;
     setSaving(true); setSaveError('');
     try {
-      const updated = await DataService.updateClient(client.id, {
+      const updated = await DataService.updateClientSelf(client.id, {
         name: form.name.trim(),
         phone: form.phone.trim(),
         address: form.address.trim(),
@@ -1523,8 +1523,12 @@ function ReferralSignup({ refCode }) {
     }).catch(() => setPhase('invalid'));
   }, []);
 
+  const _submitKey = `nativa_ref_submitted_${refCode}`;
+  const alreadySubmitted = !!sessionStorage.getItem(_submitKey);
+
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim()) return;
+    if (!name.trim() || !phone.trim() || alreadySubmitted) return;
+    sessionStorage.setItem(_submitKey, '1');
     setPhase('saving');
     try {
       await DataService.createClient({
@@ -1535,6 +1539,7 @@ function ReferralSignup({ refCode }) {
       });
       setPhase('done');
     } catch (err) {
+      sessionStorage.removeItem(_submitKey);
       setErrMsg(err.message);
       setPhase('error');
     }
@@ -1542,7 +1547,7 @@ function ReferralSignup({ refCode }) {
 
   const company = config?.companyName || 'NATIVA';
   const referrerFirst = referrer?.name?.split(' ')[0] || 'un amigo';
-  const canSubmit = name.trim() && phone.trim() && address.trim() && phase !== 'saving';
+  const canSubmit = name.trim() && phone.trim() && address.trim() && phase !== 'saving' && !alreadySubmitted;
 
   return (
     <div style={{
@@ -1705,12 +1710,14 @@ function ClientPortalPage() {
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
-    const token = params.get('token') || localStorage.getItem('nativa_client_token');
+    const urlToken = params.get('token');
+    const token = urlToken || localStorage.getItem('nativa_client_token');
     if (!token) {
       if (ref) { setRefCode(ref); setState('referral-signup'); return; }
       setState('no-token'); return;
     }
     localStorage.setItem('nativa_client_token', token);
+    if (urlToken) window.history.replaceState({}, '', window.location.pathname);
     Promise.all([DataService.getClientByToken(token), DataService.getConfig()])
       .then(([cl, cfg]) => {
         if (!cl) { setState('invalid'); return; }

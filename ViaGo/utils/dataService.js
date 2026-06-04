@@ -206,6 +206,15 @@ const DataService = {
     if (error) throw new Error(error.message);
     return this._js(data);
   },
+  async updateClientSelf(id, { name, phone, address }) {
+    const allowed = {};
+    if (name !== undefined) allowed.name = String(name).trim().slice(0, 120);
+    if (phone !== undefined) allowed.phone = String(phone).trim().slice(0, 30);
+    if (address !== undefined) allowed.address = String(address).trim().slice(0, 200);
+    const { data, error } = await this._sb.from('clients').update(this._db(allowed)).eq('id', id).select().single();
+    if (error) throw new Error(error.message);
+    return this._js(data);
+  },
   async deleteClient(id) {
     await this._sb.from('clients').update({ active: false }).eq('id', id);
   },
@@ -362,6 +371,13 @@ const DataService = {
   },
   async getInvoices() {
     const { data } = await this._sb.from('invoices').select('*').order('created_at', { ascending: false }).limit(5000);
+    return this._jsMany(data);
+  },
+  async getInvoicesByDate(date) {
+    const { data } = await this._sb.from('invoices').select('*')
+      .gte('created_at', date + 'T00:00:00')
+      .lte('created_at', date + 'T23:59:59')
+      .order('created_at', { ascending: false });
     return this._jsMany(data);
   },
   async getInvoice(id) {

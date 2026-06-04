@@ -42,22 +42,40 @@
       const [pin, setPin] = React.useState('');
       const [checking, setChecking] = React.useState(false);
       const [error, setError] = React.useState(false);
+      const [failCount, setFailCount] = React.useState(0);
+      const [lockSecs, setLockSecs] = React.useState(0);
+
+      React.useEffect(() => {
+        if (!lockSecs) return;
+        const t = setTimeout(() => setLockSecs(s => Math.max(0, s - 1)), 1000);
+        return () => clearTimeout(t);
+      }, [lockSecs]);
+
+      const locked = lockSecs > 0;
 
       const append = async (d) => {
-        if (checking || pin.length >= 4) return;
+        if (checking || locked || pin.length >= 4) return;
         const next = pin + String(d);
         setPin(next);
         setError(false);
         if (next.length === 4) {
           setChecking(true);
           const ok = await onSubmit(next);
-          if (!ok) setError(true);
+          if (!ok) {
+            const next_fails = failCount + 1;
+            setFailCount(next_fails);
+            if (next_fails >= 5) {
+              setLockSecs(60);
+              setFailCount(0);
+            }
+            setError(true);
+          }
           setChecking(false);
           setPin('');
         }
       };
 
-      const del = () => { if (!checking) { setPin(p => p.slice(0, -1)); setError(false); } };
+      const del = () => { if (!checking && !locked) { setPin(p => p.slice(0, -1)); setError(false); } };
 
       const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, '⌫'];
 
@@ -78,11 +96,11 @@
             padding: '32px 28px', width: '100%', maxWidth: 300,
           }}>
             <div style={{
-              color: error ? '#f87171' : '#93b4dd',
+              color: locked ? '#fbbf24' : error ? '#f87171' : '#93b4dd',
               fontSize: 11, fontWeight: 600, textAlign: 'center',
               marginBottom: 22, letterSpacing: 2, textTransform: 'uppercase',
             }}>
-              {error ? 'PIN incorrecto' : checking ? 'Verificando…' : 'Ingresá tu PIN'}
+              {locked ? `Bloqueado ${lockSecs}s` : error ? 'PIN incorrecto' : checking ? 'Verificando…' : 'Ingresá tu PIN'}
             </div>
 
             {/* Dots */}
@@ -135,7 +153,7 @@
           DataService.getOrdersByDate(date),
           DataService.getClients(true),
           DataService.getZones(),
-          DataService.getInvoices(),
+          DataService.getInvoicesByDate(date),
         ]);
         const enriched = allOrders.map(o => {
           const client = allClients.find(c => c.id === o.clientId) || {};
