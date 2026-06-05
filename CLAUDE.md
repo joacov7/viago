@@ -203,7 +203,48 @@ Objeto global `DataService`. Métodos organizados por dominio:
 
 ---
 
-## 8. Flujo de deploy
+## 8. Módulo Purificadora (ESP32)
+
+**Componente:** `ViaGo/components/Purificadora.js`
+
+**Concepto:** El ESP32 físico (máquina de ósmosis inversa) se comunica con Supabase como bridge en la nube. El admin controla la máquina en tiempo real desde el navegador.
+
+### Tablas Supabase usadas
+| Tabla | Dirección | Descripción |
+|---|---|---|
+| `purif_status` | ESP32 → Supabase | El ESP32 hace POST cada ~2s con su estado (JSON en campo `payload`) |
+| `purif_commands` | Admin → Supabase → ESP32 | El admin escribe comandos; el ESP32 los lee y ejecuta |
+
+### Flujo de comunicación
+```
+Admin (browser) ←── polling cada 2s ──→ purif_status (Supabase)
+Admin (browser) ──── POST comando ────→ purif_commands (Supabase)
+ESP32 ──── POST payload c/ estado ────→ purif_status (Supabase)
+ESP32 ──── GET polling comandos ──────→ purif_commands (Supabase)
+```
+
+### Datos que publica el ESP32 (`purif_status.payload`)
+- Estado del motor (on/off), alarmas activas
+- Horas de uso de membrana y lámpara UV (alertas en 8760h y 9000h)
+- Programación horaria (`schedule`: enabled, onH, onM, offH, offM)
+- Historial almacenado localmente en el ESP32
+
+### Comandos que envía el admin (`purif_commands`)
+- Encender/apagar motor
+- Configurar programación horaria (hora ON / hora OFF)
+- Reset de contadores
+
+### Conexión badge
+- `connected` — último update hace < 8s
+- `slow` — hace 8-20s
+- `disconnected` — hace > 20s o sin datos
+
+### Nota
+El ESP32 usa NTP para sincronizar hora (UTC-3, Argentina). El historial se guarda localmente en el ESP32, no en Supabase.
+
+---
+
+## 9. Flujo de deploy
 
 ```bash
 # 1. Editar en ViaGo/
@@ -221,7 +262,7 @@ GitHub Pages publica automáticamente desde `docs/` en la rama correspondiente.
 
 ---
 
-## 9. Pendientes / próximos features
+## 10. Pendientes / próximos features
 
 - [ ] **Firma digital** en app repartidor: cliente firma en pantalla al recibir el pedido. Guardar como base64 en tabla `invoices`. Librería: `react-native-signature-canvas`.
 - [ ] **PWA** para portal cliente (manifest.json + service worker) — para que clientes puedan "instalar" desde el navegador en iOS/Android.
