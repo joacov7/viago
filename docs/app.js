@@ -3,7 +3,10 @@
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
-  componentDidCatch(error, info) { console.error('NATIVA error:', error, info); }
+  componentDidCatch(error, info) {
+    console.error('NATIVA error:', error, info);
+    if (typeof Sentry !== 'undefined') Sentry.captureException(error, { extra: info });
+  }
   render() {
     if (this.state.hasError) {
       return (

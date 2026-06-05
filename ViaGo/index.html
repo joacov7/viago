@@ -7,6 +7,19 @@
   <meta name="description" content="Sistema de gestión para distribución de agua: clientes, pedidos, reparto, facturación y fidelización.">
   <meta name="theme-color" content="#2563EB">
 
+  <!-- Sentry error monitoring — reemplazar DSN con el tuyo de sentry.io -->
+  <script src="https://browser.sentry-cdn.com/7.119.2/bundle.min.js" crossorigin="anonymous"></script>
+  <script>
+    if (typeof Sentry !== 'undefined') {
+      Sentry.init({
+        dsn: 'REEMPLAZAR_CON_TU_DSN_DE_SENTRY',
+        environment: 'production',
+        release: 'nativa@3',
+        ignoreErrors: ['ResizeObserver loop', 'Non-Error promise rejection'],
+      });
+    }
+  </script>
+
   <!-- React 18 -->
   <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
   <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
