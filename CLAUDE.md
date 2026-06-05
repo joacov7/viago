@@ -262,7 +262,29 @@ GitHub Pages publica automáticamente desde `docs/` en la rama correspondiente.
 
 ---
 
-## 10. Pendientes / próximos features
+## 10. Índices de base de datos (ya aplicados)
+
+Creados via SQL Editor de Supabase. No requieren Pro.
+
+| Índice | Tabla | Columnas | Motivo |
+|---|---|---|---|
+| idx_clients_access_token | clients | access_token | Portal cliente — lookup por token |
+| idx_clients_referral_code | clients | referral_code | Referidos — lookup por código |
+| idx_clients_active_name | clients | active, name | Query más frecuente del admin |
+| idx_clients_referred_by | clients | referred_by | Clientes inactivos |
+| idx_orders_delivery_date | orders | delivery_date | Pedidos del día (query crítica) |
+| idx_orders_client_id | orders | client_id | Historial por cliente |
+| idx_orders_created_at | orders | created_at DESC | Listado general |
+| idx_orders_delivery_client | orders | delivery_date, client_id | Clientes inactivos |
+| idx_invoices_client_id | invoices | client_id | Facturas por cliente |
+| idx_invoices_created_at | invoices | created_at DESC | Billing + dashboard stats |
+| idx_balance_client_id | balance_movements | client_id, created_at DESC | Historial de saldo |
+| idx_points_client_id | points_history | client_id, created_at DESC | Puntos de fidelización |
+| idx_costs_date | costs | date DESC | Filtro mensual de costos |
+
+---
+
+## 11. Pendientes / próximos features
 
 - [ ] **Firma digital** en app repartidor: cliente firma en pantalla al recibir el pedido. Guardar como base64 en tabla `invoices`. Librería: `react-native-signature-canvas`.
 - [ ] **PWA** para portal cliente (manifest.json + service worker) — para que clientes puedan "instalar" desde el navegador en iOS/Android.
